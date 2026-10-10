@@ -1,0 +1,10 @@
+package-as: TrueshotLodge
+
+# The changelog CurseForge shows for each file, instead of the commit messages.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+# Not part of the addon: the personal development tools.
+ignore:
+  - tools

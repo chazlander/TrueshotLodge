@@ -1,0 +1,6 @@
+# Personal development tools (not part of the addon)
+tools/
+
+# Exported/collected data
+collected.json
+creatures.json
