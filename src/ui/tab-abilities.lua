@@ -3,7 +3,6 @@ local Colors = Addon:GetModule("Colors")
 local DB = Addon:GetModule("DB")
 local Helpers = Addon:GetModule("Helpers")
 local L = Addon:GetModule("Locale")
-local PinHelper = Addon:GetModule("PinHelper")
 local Window = Addon:GetModule("Window")
 
 -- The ability tabs: Unique, Common, Passive and Passive Attack Speed are one view with a different set of abilities

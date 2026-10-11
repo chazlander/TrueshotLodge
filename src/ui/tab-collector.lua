@@ -7,6 +7,9 @@ local Window = Addon:GetModule("Window")
 local Helpers = Addon:GetModule("Helpers")
 local Line, LevelText, Money = Helpers.Line, Helpers.LevelText, Helpers.Money
 local SpellIcon, ZoneNames = Helpers.SpellIcon, Helpers.ZoneNames
+
+-- How many wanted rares the Bounties entry lists.
+local BOUNTY_RARES = 5
 local QUESTION_MARK_ICON = Helpers.QUESTION_MARK_ICON
 
 local function FamilyIcon(family)
@@ -33,6 +36,10 @@ local function Collecting()
 end
 
 local STATUS_WORDS = { available = true, unavailable = true, used = true }
+
+-- The Bounties entry's icon: the website's Bounties tab icon (a contract), or a scroll when this client lacks it.
+local BOUNTY_ICON = (GetFileIDFromPath and GetFileIDFromPath("Interface\\Icons\\INV_Inscription_80_Contract_Embers"))
+  or "Interface\\Icons\\INV_Scroll_03"
 
 -- ----------------------------------------------------------------------------
 -- The data, as list groups: { { key, name, rows = { { key, kind, label, data, isNew } } } }
@@ -114,6 +121,13 @@ function Window:GetCollectedGroups()
   -- The three sections (each only when it has something): Tamed Creatures, Wild Sightings with a header per family,
   -- and Trainers with Beast Training as a header of its own under the trainers.
   local sections = {}
+  -- First: the website's bounties, and how a tame credits you there (Send Name). Not collected data: it has no store,
+  -- so it cannot be deleted. Left out while searching.
+  if search == "" then
+    sections[#sections + 1] = { key = "section:bounties", section = true, name = L.BOUNTIES, rows = {
+      { key = "bounties", kind = "bounties", data = { name = L.BOUNTIES_ROW }, label = L.BOUNTIES_ROW },
+    } }
+  end
   if #tames.rows > 0 then
     sections[#sections + 1] = { key = "section:tamed", section = true, rows = tames.rows,
       name = ("%s (%d)"):format(L.TAMED_CREATURES, #tames.rows) }
@@ -156,7 +170,7 @@ local function CollectedOnEnter(button)
     GameTooltip:AddLine(row.isNew and "Not in the data yet" or "Already in the data", 1, 1, 1)
   end
   if row.data.shared_by then GameTooltip:AddLine(("%s: %s"):format(L.SHARED_BY, row.data.shared_by), 1, 1, 1) end
-  GameTooltip:AddLine(L.RIGHT_CLICK_TO_DELETE, 0.6, 0.6, 0.6)
+  if row.store then GameTooltip:AddLine(L.RIGHT_CLICK_TO_DELETE, 0.6, 0.6, 0.6) end
   GameTooltip:Show()
 end
 
@@ -228,6 +242,28 @@ function Window:RefreshCollector()
   self:UpdateCollectedDetails()
 end
 
+-- The rares nobody has tamed yet (no `tamed` in the data) that you can tame now: their level at most yours; with
+-- the Zone Filter on, only those in that zone. The highest level first (the closest to yours), then by name; at most
+-- BOUNTY_RARES.
+function Window:BountyRares(level, zone)
+  local found = {}
+  for id in pairs(Addon.TameableNPCs or {}) do
+    local npc = Addon:GetNPC(id)
+    local class = npc and npc.class or ""
+    if npc and class:find("Rare", 1, true) and not (type(npc.tamed) == "string" and npc.tamed ~= "")
+        and npc.min and npc.min <= level and (not zone or self:NPCInZone(npc, zone)) then
+      found[#found + 1] = npc
+    end
+  end
+  table.sort(found, function(a, b)
+    if a.min ~= b.min then return a.min > b.min end
+    return a.name < b.name
+  end)
+  local rares = {}
+  for i = 1, math.min(#found, BOUNTY_RARES) do rares[i] = found[i] end
+  return rares
+end
+
 function Window:CountOf(tbl)
   local n = 0
   for _ in pairs(tbl or {}) do n = n + 1 end
@@ -265,7 +301,32 @@ function Window:UpdateCollectedDetails()
 
   local d = row.data
   local lines, description
-  if row.kind == "creature" then
+  if row.kind == "bounties" then
+    self.icon:SetTexture(BOUNTY_ICON)
+    self.name:SetText(L.BOUNTIES)
+    self.subtitle:SetText(L.BOUNTIES_SITE)
+    local sendName = DB.global.send_name == true
+    lines = {
+      Line(L.SEND_NAME, sendName and L.ON or L.OFF),
+      Line(L.TAMED_CREATURES, #(DB.collected.tames or {})),
+    }
+    description = L.BOUNTIES_TEXT .. "\n\n"
+      .. (sendName and L.BOUNTIES_NAME_ON:format(Addon:PlayerName() or "?") or Colors.Highlight(L.BOUNTIES_NAME_OFF))
+    -- Under it, like the website's Missing Tamed Rares: the untamed rares you can tame now, the highest level first.
+    local level = UnitLevel("player") or 1
+    local zone = self:ZoneFilter() -- the title bar's Zone Filter: only the zone you are in
+    local rares = self:BountyRares(level, zone)
+    if zone then
+      self.npcLabel:SetText(#rares > 0 and L.BOUNTY_RARES_IN_ZONE:format(level, zone.name, #rares)
+        or L.BOUNTY_RARES_NONE_IN_ZONE:format(level, zone.name))
+    else
+      self.npcLabel:SetText(#rares > 0 and L.BOUNTY_RARES:format(level, #rares) or L.BOUNTY_RARES_NONE:format(level))
+    end
+    self.npcLabel:Show()
+    self.npcBox:SetDataProvider(CreateDataProvider(rares))
+    self.npcBox:Show()
+    self.npcBar:Show()
+  elseif row.kind == "creature" then
     self.icon:SetTexture(FamilyIcon(d.family))
     self.name:SetText(d.name or "?")
     self.subtitle:SetText(d.family or "")

@@ -1,4 +1,4 @@
-local ADDON_NAME, Addon = ...
+local _, Addon = ...
 local Collector = Addon:GetModule("Collector")
 local DB = Addon:GetModule("DB")
 
@@ -91,21 +91,21 @@ function Collector:Record(unit)
   -- range and add the zone.
   local c = creatures[id]
   if c then
-    local changed = {}
+    local updates = {}
     if c.shared_by then
       -- Shared by another user, and now seen yourself: it is your own record from here on.
       c.shared_by = nil
-      changed[#changed + 1] = "seen yourself (was shared)"
+      updates[#updates + 1] = "seen yourself (was shared)"
     end
     local level = UnitLevel(unit)
     if level and level > 0 then
       if not c.level_min or level < c.level_min then
         c.level_min = level
-        changed[#changed + 1] = "lowest level " .. level
+        updates[#updates + 1] = "lowest level " .. level
       end
       if not c.level_max or level > c.level_max then
         c.level_max = level
-        changed[#changed + 1] = "highest level " .. level
+        updates[#updates + 1] = "highest level " .. level
       end
     end
     local zoneId = getZoneMapId()
@@ -113,14 +113,13 @@ function Collector:Record(unit)
       c.zones = c.zones or {}
       if not c.zones[zoneId] then
         c.zones[zoneId] = true
-        changed[#changed + 1] = "new zone " .. zoneId
+        updates[#updates + 1] = "new zone " .. zoneId
       end
     end
     -- Only a change is reported: a creature in view is seen again on every scan.
-    if #changed > 0 then
-      Addon:Debug("collector: updated", c.name, "(" .. id .. "):", table.concat(changed, ", "))
-      Collector.version = Collector.version + 1
-      if Collector.onChange then Collector.onChange() end
+    if #updates > 0 then
+      Addon:Debug("collector: updated", c.name, "(" .. id .. "):", table.concat(updates, ", "))
+      changed()
       if not c.shared_by then share("creature", c) end
     end
     return
@@ -586,7 +585,7 @@ function Collector:PetChanged()
     ui_map_id = tame.ui_map_id, map_id = tame.map_id, x = tame.x, y = tame.y, subzone = tame.subzone,
     tamed = time(), pet_guid = UnitGUID("pet"),
     -- The hunter, credited on the site's Tamed badge ("Verified Tame: <date> by <name>"): only with Send Name on.
-    tamed_by = DB.global.send_name == true and UnitName("player") or nil,
+    tamed_by = DB.global.send_name == true and Addon:PlayerName() or nil,
   }
   DB.collected.tames = DB.collected.tames or {}
   table.insert(DB.collected.tames, entry)

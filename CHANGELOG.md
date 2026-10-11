@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+- **Bounties** on the Collected Data tab: what TrueshotLodge.com most needs found, with the top 5 untamed rares up to
+  your level (in your zone, with the Zone Filter on)
+- **Send Name** (Options, Collection; off by default): put your character's name on the beasts you tame, so the website
+  credits you on their Tamed badge ("Verified Tame: date by name"). Off, your collected data is anonymous.
+- The Tamed badge's tooltip says who made the tame
+- WoW Forever's surnames: your full name ("First Surname") is used for the tame credit, Data Sharing and the data kept
+  per character (moved over from the first name alone once)
+- Versions follow the game: 1.60.1 plus a build number (`1.60.1.<build>`)
+
 ## [Alpha] - 2026-10-10
 
 The first release of TrueshotLodge, the hunter's field guide to every tameable beast in WoW Forever.

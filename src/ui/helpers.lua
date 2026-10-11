@@ -1,7 +1,6 @@
 local _, Addon = ...
 local Colors = Addon:GetModule("Colors")
 local Helpers = Addon:GetModule("Helpers")
-local L = Addon:GetModule("Locale")
 
 -- The small pieces the window's tabs share: text, panels, icons, tooltips, and formatting. A helper only one tab uses
 -- stays in that tab's file. Data helpers (the family label and icon, attack speed text, ...) are on Addon.

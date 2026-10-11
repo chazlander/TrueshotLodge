@@ -1,5 +1,4 @@
 local _, Addon = ...
-local Colors = Addon:GetModule("Colors")
 local L = Addon:GetModule("Locale")
 local Stable = Addon:GetModule("Stable")
 local Window = Addon:GetModule("Window")
@@ -279,12 +278,12 @@ function Window:CreateStable(frame)
     divider:SetColorTexture(0, 0, 0, 0.55)
     xp.Dividers[i] = divider
   end
-  local function placeDividers(bar)
-    local width = bar:GetWidth() or 0
-    for i, divider in ipairs(bar.Dividers) do
+  local function placeDividers(xpBar)
+    local width = xpBar:GetWidth() or 0
+    for i, divider in ipairs(xpBar.Dividers) do
       divider:ClearAllPoints()
-      divider:SetPoint("TOP", bar, "TOPLEFT", width * i / XP_SECTIONS, -1)
-      divider:SetPoint("BOTTOM", bar, "BOTTOMLEFT", width * i / XP_SECTIONS, 1)
+      divider:SetPoint("TOP", xpBar, "TOPLEFT", width * i / XP_SECTIONS, -1)
+      divider:SetPoint("BOTTOM", xpBar, "BOTTOMLEFT", width * i / XP_SECTIONS, 1)
     end
   end
   xp:SetScript("OnSizeChanged", placeDividers)

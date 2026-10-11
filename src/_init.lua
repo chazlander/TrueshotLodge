@@ -18,9 +18,36 @@ function Addon:Plain(value)
   return value
 end
 
+-- Your character's full name. WoW Forever gives characters a surname: UnitName("player") returns the first name and
+-- the surname (where other versions return the realm), e.g. "Spike", "Skylance" -> "Spike Skylance". Just the first
+-- name when there is no surname; nil when the game hides it.
+function Addon:PlayerName()
+  local first, surname = UnitName("player")
+  first, surname = Addon:Plain(first), Addon:Plain(surname)
+  if type(first) ~= "string" or first == "" then return nil end
+  if type(surname) == "string" and surname ~= "" then return first .. " " .. surname end
+  return first
+end
+
+-- A character name as the game sends it in chat ("First Surname", or "First-Surname" in older payloads) as
+-- "First Surname", the way PlayerName() gives yours.
+function Addon:NormalizeName(name)
+  if type(name) ~= "string" then return name end
+  name = Ambiguate and Ambiguate(name, "none") or name
+  return (name:gsub("^([^%s%-]+)%-", "%1 "))
+end
+
+-- Whether a name (from chat, or saved) is yours.
+function Addon:IsPlayerName(name)
+  local me = Addon:PlayerName()
+  return type(name) == "string" and me ~= nil and Addon:NormalizeName(name):lower() == me:lower()
+end
+
 Addon.IGNORED_NPC_IDS = { [165189] = true }
 
-Addon.VERSION = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
+-- The game version and the build number: 1.60.1.<build>, the build filled in by the packager and the push (the
+-- number of commits). Run straight from the source, it reads "dev".
+Addon.VERSION = (C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or ""):gsub("@project%-revision@", "dev")
 -- The name players see ("TrueshotLodge", the TOC's Title); ADDON_NAME (TrueshotLodge) names things in code.
 Addon.TITLE = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Title") or ADDON_NAME
 Addon.ICON = "Interface\\AddOns\\" .. ADDON_NAME .. "\\media\\icon"

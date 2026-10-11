@@ -6,7 +6,7 @@ local PinHelper = Addon:GetModule("PinHelper")
 local UI = Addon:GetModule("UI")
 local Window = Addon:GetModule("Window")
 local Helpers = Addon:GetModule("Helpers")
-local ByLevel, NewText, TemplateExists = Helpers.ByLevel, Helpers.NewText, Helpers.TemplateExists
+local NewText, TemplateExists = Helpers.NewText, Helpers.TemplateExists
 local SetSpellTooltip = Helpers.SetSpellTooltip
 
 -- The tabs live in files of their own: window-tabs.lua (the column of tabs), tab-abilities.lua (Unique, Common,

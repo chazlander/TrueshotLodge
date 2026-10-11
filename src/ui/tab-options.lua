@@ -47,7 +47,10 @@ local function Groups()
           Window:OnCollectChanged() -- the Collected Data tab appears and disappears with it
         end),
       -- Off (the default): tames are recorded without a name. Turning it off also takes the name off those collected.
-      Setting("send_name", L.SEND_NAME, L.SEND_NAME_TOOLTIP, "Interface\\Icons\\INV_Misc_Note_06",
+      -- Its example badge shows today's date and your character's name.
+      Setting("send_name", L.SEND_NAME,
+        function() return L.SEND_NAME_TOOLTIP:format(date("%Y-%m-%d"), Addon:PlayerName() or "?") end,
+        "Interface\\Icons\\INV_Misc_Note_06",
         function() return DB.global.send_name == true end,
         function(value)
           DB.global.send_name = value
@@ -224,7 +227,10 @@ function Window:UpdateOptionDetails()
   self.subtitle:SetText(setting.group or "")
   local text, color = StateText(setting)
   self.facts:SetText(text ~= "" and ("%s: %s"):format(Colors.Label(L.STATUS), color:WrapTextInColorCode(text)) or "")
-  self.description:SetText(setting.description or "")
+  -- A description can be a function, worked out when it is shown (Send Name's example badge).
+  local description = setting.description
+  if type(description) == "function" then description = description() end
+  self.description:SetText(description or "")
   self:PlaceDescription()
 
   controls:ClearAllPoints()

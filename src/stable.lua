@@ -374,7 +374,7 @@ function Stable:Diagnose()
   end
   if GetStablePetInfo then
     for slot = 0, 10 do
-      local ok, icon, name, level, family = pcall(GetStablePetInfo, slot)
+      local ok, _, name, level, family = pcall(GetStablePetInfo, slot)
       if ok and name then Say(("  slot %d: %s, %s, level %s"):format(slot, tostring(name), tostring(family), tostring(level))) end
     end
   end

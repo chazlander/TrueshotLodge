@@ -75,7 +75,14 @@ function DB:Initialize()
 
   if type(saved.global) ~= "table" then saved.global = {} end
   if type(saved.char) ~= "table" then saved.char = {} end
-  local charKey = ("%s - %s"):format(UnitName("player") or "?", GetRealmName() or "?")
+  -- Keyed by your full name ("Spike Skylance - <realm>": in WoW Forever two characters can share a first name). What
+  -- an earlier version kept under the first name alone is moved over once.
+  local realm = GetRealmName() or "?"
+  local charKey = ("%s - %s"):format(Addon:PlayerName() or "?", realm)
+  local oldKey = ("%s - %s"):format(Addon:Plain(UnitName("player")) or "?", realm)
+  if saved.char[charKey] == nil and oldKey ~= charKey and type(saved.char[oldKey]) == "table" then
+    saved.char[charKey], saved.char[oldKey] = saved.char[oldKey], nil
+  end
   if type(saved.char[charKey]) ~= "table" then saved.char[charKey] = {} end
 
   -- The collected data: its own saved variable. What an earlier version kept in the settings is moved over once.

@@ -1,4 +1,4 @@
-local ADDON_NAME, Addon = ...
+local _, Addon = ...
 local Share = Addon:GetModule("Share")
 local DB = Addon:GetModule("DB")
 
@@ -90,7 +90,7 @@ local function Peers()
 end
 
 local function RememberPeer(name)
-  if not name or name == "" or name == UnitName("player") then return end
+  if not name or name == "" or Addon:IsPlayerName(name) then return end
   offlineUntil[name] = nil -- heard from them: they are online
   local peers = Peers()
   local peer = peers[name]
@@ -113,7 +113,7 @@ end
 -- know the channels do not seem to reach (not heard on a channel lately), the ones heard from most recently first.
 -- Each only while its Data Sharing option is on: TSL Moderators, and Same Shard for the users.
 local function WhisperNames()
-  local now, me = GetTime(), UnitName("player")
+  local now, me = GetTime(), Addon:PlayerName()
   local names, seen = {}, {}
   for _, name in ipairs(DB.global.share_moderators ~= false and MODERATORS or {}) do
     if name ~= me and not (offlineUntil[name] and now < offlineUntil[name]) then
@@ -451,9 +451,12 @@ local UPKEEP_EVERY = 10
 -- Entries an earlier version took in from your own messages (marked shared by you): a tame copying one of yours goes,
 -- anything else is yours again.
 local function CleanOwnShared()
-  local me = UnitName("player")
-  if type(me) ~= "string" or not DB.global then return end
-  local function mine(by) return type(by) == "string" and by:lower() == me:lower() end
+  if not Addon:PlayerName() or not DB.global then return end
+  local function mine(by) return Addon:IsPlayerName(by) end
+  -- Your own name heard back on the channel before your full name was known: not another user.
+  for name in pairs(Peers()) do
+    if mine(name) then Peers()[name] = nil end
+  end
   local tames = DB.collected.tames or {}
   local own = {}
   for _, t in ipairs(tames) do
@@ -692,12 +695,11 @@ local function Receive(prefix, message, channel, sender, _, _, localId, channelN
   end
   if type(sender) ~= "string" then return Drop("no sender") end
   -- The sender is the one the game reports, never anything in the message.
-  -- The game may add a realm ("Name-Realm"); the name alone is kept (Forever has no realms to tell apart).
-  local who = Ambiguate and Ambiguate(sender, "none") or sender
-  who = who:match("^([^%-]+)") or who
+  -- Their full name, "First Surname" (WoW Forever has surnames; older payloads send "First-Surname").
+  local who = Addon:NormalizeName(sender)
   -- Your own messages come back from the channel (and the group).
-  local me = UnitName("player")
-  if who == me or (type(me) == "string" and who:lower() == me:lower()) then
+  local me = Addon:PlayerName()
+  if Addon:IsPlayerName(who) then
     stats.echoes = stats.echoes + 1
     return
   end
