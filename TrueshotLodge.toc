@@ -1,9 +1,12 @@
 ## Interface: 16001
 ## Title: TrueshotLodge
 ## Author: Chazlander
-## Version: 1.60.1.@project-revision@
+## Version: 1.60.1.5
 ## Notes: A guide to tamed pet abilities.
 ## SavedVariables: TrueshotLodgeDB, TrueshotLodgeCollected
+## IconTexture: Interface\AddOns\TrueshotLodge\media\logo
+## X-Website: https://trueshotlodge.com
+## X-Curse-Project-ID: 1736050
 
 # Libraries
 libs\LibStub.lua

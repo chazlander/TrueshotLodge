@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+- Fixed: the version shows as `1.60.1.<build>` (the 1.60.1.5 beta showed a commit hash)
+- Fixed: your full name ("First Surname") is found even with the game's surnames display option off
+- The addon list shows the TrueshotLodge logo; the .toc names the website and the CurseForge project
+- Data: new verified tames, among them a source for a unique ability rank that had none
+
+**Still missing** (as of this release; the Bounties show what to look for):
+
+- 172 of 750 creatures have no known attack speed, 89 no level and 72 no zone (155 have no map points)
+- 47 ranks of the families' unique abilities have no known tameable creature
+- 80 rares have never been tamed by a TrueshotLodge hunter
+
+Help fill them in: turn on Collect Mode, go hunting, and upload your file at
+[TrueshotLodge.com](https://trueshotlodge.com/collector). The **Bounties** (in the addon's Collected Data tab and at
+[TrueshotLodge.com/bounties](https://trueshotlodge.com/bounties)) list what is wanted.
+
 ## [1.60.1.5] - 2026-10-11
 
 - **Bounties** on the Collected Data tab: what TrueshotLodge.com most needs found, with the top 5 untamed rares up to

@@ -193,7 +193,7 @@ Addon.TameableAbilities = {
     { spell_id = 1264502, rank = 5, pet_level = 60, training_cost = 0 }
   } },
   ["tendon-rip"] = { name = "Tendon Rip", learned_by = { "Hyena" }, unique = true, ranks = {
-    { spell_id = 1265038, rank = 1, pet_level = 12, training_cost = 0 },
+    { spell_id = 1265038, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 4127 } },
     { spell_id = 1265039, rank = 2, pet_level = 24, training_cost = 0 },
     { spell_id = 1265040, rank = 3, pet_level = 36, training_cost = 0 },
     { spell_id = 1265041, rank = 4, pet_level = 48, training_cost = 0 },

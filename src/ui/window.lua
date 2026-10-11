@@ -130,7 +130,7 @@ end
 -- the round portrait was and centred where it was, over the frame's corner. false brings back the ringed portrait.
 local BADGE_PORTRAIT = true
 local BADGE_SCALE = 1.2 -- the target against the round portrait's size
-local BADGE_PAD = 1.15 -- media/logo.tga's room around the target for its shadow (.tools/make_logo_icons.py)
+local BADGE_PAD = 1.15 -- media/logo.tga's room around the target for its shadow (.tools/build/make_logo_icons.py)
 
 function Window:CreatePortrait(frame)
   frame:SetPortraitToAsset(Addon.ICON)

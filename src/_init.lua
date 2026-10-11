@@ -57,9 +57,9 @@ end
 
 Addon.IGNORED_NPC_IDS = { [165189] = true }
 
--- The game version and the build number: 1.60.1.<build>, the build filled in by the packager and the push (the
--- number of commits). Run straight from the source, it reads "dev".
-Addon.VERSION = (C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or ""):gsub("@project%-revision@", "dev")
+-- The game version and the build number: 1.60.1.<build> (written into the .toc by each release; a local push puts
+-- the current number of commits there).
+Addon.VERSION = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "?"
 -- The name players see ("TrueshotLodge", the TOC's Title); ADDON_NAME (TrueshotLodge) names things in code.
 Addon.TITLE = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Title") or ADDON_NAME
 Addon.ICON = "Interface\\AddOns\\" .. ADDON_NAME .. "\\media\\icon"

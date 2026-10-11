@@ -90,7 +90,8 @@ The settings, grouped and explained, in the same list-and-details layout:
 
 - **General**: the minimap icon, NPC tooltips, and remembering your selections between tabs and sessions
 - **Visual**: the window's UI scale (50% to 150%) and resetting the tab order
-- **Collection**: Collect Mode (see below)
+- **Collection**: Collect Mode (see below), and Send Name: put your character's name on the beasts you tame, to be
+  credited on the website (off by default: your finds stay anonymous)
 - **Data Sharing**: who your collected finds are shared with (your shard, your zone, your group, the TrueshotLodge
   moderators), and whether to take in what other users share
 - **Advanced**: debug messages, for troubleshooting
@@ -101,6 +102,19 @@ Only shown while **Collect Mode** is on. TrueshotLodge's data grows with its pla
 quietly records the beasts you tame (and the abilities they came with), the tameable creatures you meet in the wild,
 and the pet trainers you talk to. This tab lists all of it, with what is not yet in the addon's data highlighted. What you collect helps fill in the gaps for every hunter, from missing attack speeds to creatures
 nobody has mapped yet.
+
+The **Bounties** entry at the top shows what TrueshotLodge most needs found, with the untamed rares up to your level
+(only those in your zone while the Zone Filter is ticked).
+
+## Help fill in the gaps
+
+Some data is still missing: creatures whose attack speed, level or zone nobody has recorded, ranks of the families'
+unique abilities with no known tameable creature, and rares no TrueshotLodge hunter has tamed yet. The
+[Bounties](https://trueshotlodge.com/bounties) on the website, and in the addon's Collected Data tab, list them.
+
+Turn on Collect Mode, go hunting, and upload your `TrueshotLodge.lua` at
+[TrueshotLodge.com](https://trueshotlodge.com/collector). With Send Name on, the beasts you tame carry your name onto
+the website's Tamed badge.
 
 ## Thank you!
 
