@@ -21,12 +21,24 @@ end
 -- Your character's full name. WoW Forever gives characters a surname: UnitName("player") returns the first name and
 -- the surname (where other versions return the realm), e.g. "Spike", "Skylance" -> "Spike Skylance". Just the first
 -- name when there is no surname; nil when the game hides it.
+-- UnitName follows the game's "show surnames" display option and can leave the surname out, so the calls that ignore
+-- it come first (as other Forever addons do): UnitNameUnmodified, UnitFullName, then UnitName.
+local NAME_CALLS = { "UnitNameUnmodified", "UnitFullName", "UnitName" }
+
 function Addon:PlayerName()
-  local first, surname = UnitName("player")
-  first, surname = Addon:Plain(first), Addon:Plain(surname)
-  if type(first) ~= "string" or first == "" then return nil end
-  if type(surname) == "string" and surname ~= "" then return first .. " " .. surname end
-  return first
+  local firstOnly
+  for _, call in ipairs(NAME_CALLS) do
+    local fn = _G[call]
+    if type(fn) == "function" then
+      local ok, first, surname = pcall(fn, "player")
+      first, surname = Addon:Plain(first), Addon:Plain(surname)
+      if ok and type(first) == "string" and first ~= "" then
+        if type(surname) == "string" and surname ~= "" then return first .. " " .. surname end
+        firstOnly = firstOnly or first
+      end
+    end
+  end
+  return firstOnly
 end
 
 -- A character name as the game sends it in chat ("First Surname", or "First-Surname" in older payloads) as
