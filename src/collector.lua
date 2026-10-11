@@ -585,6 +585,8 @@ function Collector:PetChanged()
     classification = tame.classification, creature_speed = tame.creature_speed, tame_spell_id = tame.tame_spell_id,
     ui_map_id = tame.ui_map_id, map_id = tame.map_id, x = tame.x, y = tame.y, subzone = tame.subzone,
     tamed = time(), pet_guid = UnitGUID("pet"),
+    -- The hunter, credited on the site's Tamed badge ("Verified Tame: <date> by <name>"): only with Send Name on.
+    tamed_by = DB.global.send_name == true and UnitName("player") or nil,
   }
   DB.collected.tames = DB.collected.tames or {}
   table.insert(DB.collected.tames, entry)
@@ -618,6 +620,18 @@ function Collector:ScanNameplates()
     local unit = plate.namePlateUnitToken or (plate.UnitFrame and plate.UnitFrame.unit)
     if unit then safely("collect", Collector.Record, Collector, unit) end
   end
+end
+
+-- Send Name turned off: takes your name off the tames already collected (tamed_by), so the file is anonymous again.
+function Collector:RemoveNames()
+  local removed = 0
+  for _, tame in ipairs(DB.collected.tames or {}) do
+    if tame.tamed_by then
+      tame.tamed_by = nil
+      removed = removed + 1
+    end
+  end
+  Addon:Debug("collector: Send Name off, removed the name from", removed, "tame(s)")
 end
 
 local scanTicker -- the repeating scan while collecting

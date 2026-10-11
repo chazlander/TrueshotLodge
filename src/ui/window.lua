@@ -720,8 +720,8 @@ function Window:InitNPCRow(row, npc)
       GameTooltip:Show()
     end)
     row.ForeverIcon:SetScript("OnLeave", GameTooltip_Hide)
-    -- A creature an addon user has tamed (`tamed` in the data, the day of the last tame): a green dot after its name,
-    -- "Verified Tame: <date>" on hover. The frame is a little larger than the dot, to be easier to hover.
+    -- A creature an addon user has tamed (`tamed` in the data, the day of the last tame; `tamed_by`, who): a green dot
+    -- after its name, "Verified Tame: <date> by <hunter>" on hover. The frame is a little larger than the dot, to be easier to hover.
     local badge = CreateFrame("Frame", nil, row)
     badge:SetSize(14, 14)
     badge:EnableMouse(true)
@@ -730,7 +730,8 @@ function Window:InitNPCRow(row, npc)
     dot:SetTexture(Addon.GREEN_DOT)
     badge:SetScript("OnEnter", function(frame)
       GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
-      GameTooltip:SetText(L.VERIFIED_TAME:format(frame.date or ""), 1, 1, 1)
+      local text = frame.by and L.VERIFIED_TAME_BY:format(frame.date or "", frame.by) or L.VERIFIED_TAME:format(frame.date or "")
+      GameTooltip:SetText(text, 1, 1, 1)
       GameTooltip:Show()
     end)
     badge:SetScript("OnLeave", GameTooltip_Hide)
@@ -760,6 +761,7 @@ function Window:InitNPCRow(row, npc)
   badge:SetShown(tamed)
   if tamed then
     badge.date = npc.tamed
+    badge.by = type(npc.tamed_by) == "string" and npc.tamed_by ~= "" and npc.tamed_by or nil
     local width = row.NameText.GetUnboundedStringWidth and row.NameText:GetUnboundedStringWidth()
       or row.NameText:GetStringWidth()
     local room = row.NameText:GetWidth()

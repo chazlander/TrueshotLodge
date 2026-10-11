@@ -41,6 +41,7 @@ local defaults = {
     selections = {}, -- tab -> { ability = slug, rank = n } or the trainer's id
     debug = false,
     collect = true, -- Collect Mode: record (and share) what is seen; on by default
+    send_name = false, -- Send Name: put your character's name on the beasts you tame (tamed_by); off = anonymous
   },
   -- What Collect Mode records (TrueshotLodgeCollected).
   collected = {

@@ -46,6 +46,13 @@ local function Groups()
           Addon:GetModule("Collector"):SetEnabled(value)
           Window:OnCollectChanged() -- the Collected Data tab appears and disappears with it
         end),
+      -- Off (the default): tames are recorded without a name. Turning it off also takes the name off those collected.
+      Setting("send_name", L.SEND_NAME, L.SEND_NAME_TOOLTIP, "Interface\\Icons\\INV_Misc_Note_06",
+        function() return DB.global.send_name == true end,
+        function(value)
+          DB.global.send_name = value
+          if not value then Addon:GetModule("Collector"):RemoveNames() end
+        end),
     } },
     { key = "options:sharing", name = L.DATA_SHARING, settings = {
       GlobalSetting("share_shard", L.SHARE_SHARD, L.SHARE_SHARD_TOOLTIP, "Interface\\Icons\\INV_Letter_15", true),
