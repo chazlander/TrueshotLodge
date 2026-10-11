@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.7] - 2026-10-11
 
 - Fixed: the version shows as `1.60.1.<build>` (the 1.60.1.5 beta showed a commit hash)
 - Fixed: your full name ("First Surname") is found even with the game's surnames display option off
