@@ -43,9 +43,9 @@ function Window:AbilityState(ability)
 end
 
 -- The current pet's family: the pet that is out, else the one in the stable's Current Pet slot (dismissed); nil
--- without a current pet. As the game names families, which is the data's English name on an English client.
+-- without a current pet. The data's English name, whatever the client's language.
 function Window:CurrentPetFamily()
-  local family = UnitExists and UnitExists("pet") and UnitCreatureFamily and Addon:Plain(UnitCreatureFamily("pet"))
+  local family = UnitExists("pet") and Addon:UnitFamily("pet")
   if family then return family end
   local Stable = Addon:GetModule("Stable")
   local slots = Stable.GetSlots and Stable:GetSlots()

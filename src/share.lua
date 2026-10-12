@@ -27,7 +27,8 @@ local DB = Addon:GetModule("DB")
 --   C  wild sighting   id, name, family, level min, level max, classification, attack speed, uiMapID, x, y, type
 --   T  tame            npc id, name, family, level, classification, creature speed, pet level, pet family, pet attack
 --                      speed, uiMapID, x, y, tamed (time); then ";" and the spells: spell id:rank:passive, "/"-separated
---   R  pet trainer     id, name, title, level, faction, uiMapID, x, y, subzone
+--   R  pet trainer     id, name, title, level, faction, uiMapID, x, y, subzone, unconfirmed (1: not known as a pet
+--                      trainer, titled in another language)
 --   S  trainer service trainer id, spell id, name, rank, price (copper), required level, status, pet ability (1/0)
 --   B  Beast Training  spell id, name, rank, price (copper), required level, status
 --   H  hello           addon version (when the addon loads in); answered with a whispered
@@ -194,7 +195,8 @@ local ENCODE = {
       t.pet_family, t.attack_speed, t.ui_map_id, t.x, t.y, t.tamed)) .. ";" .. table.concat(spells, "/")
   end,
   trainer = function(r)
-    return Join("R", Pack(r.id, r.name, r.title, r.level, r.faction, r.ui_map_id, r.x, r.y, r.subzone))
+    return Join("R", Pack(r.id, r.name, r.title, r.level, r.faction, r.ui_map_id, r.x, r.y, r.subzone,
+      r.unconfirmed and 1 or nil))
   end,
   service = function(s)
     return Join("S", Pack(s.trainer_id, s.spell_id, s.name, s.rank, s.cost, s.required_level, s.category,
@@ -603,8 +605,18 @@ end
 -- Receiving
 -- ----------------------------------------------------------------------------
 
-local function KnownFamily(family)
-  return family ~= nil and Addon.TameableFamilies ~= nil and Addon.TameableFamilies[family] ~= nil
+-- A family as sent: English from this version on, in the sender's language from earlier ones (recognized when it
+-- is yours too). The English name, or what was sent when the family is not known.
+local function FamilyName(text)
+  return Addon:EnglishFamily(text) or text
+end
+
+-- An ability rank as sent (named in the sender's language by earlier versions): the data's English name and
+-- "Rank N" when its spell id is in the data, otherwise the name as sent and the rank in English.
+local function Ability(spellId, name, rank)
+  local ability = Addon:AbilityOfSpell(spellId)
+  if ability then return ability.name, ("Rank %d"):format(ability.rank) end
+  return name, Addon:RankText(rank)
 end
 
 local function SpellName(id)
@@ -616,8 +628,8 @@ end
 local MERGE = {
   C = function(f, sender)
     local id = Number(f[1])
-    local family = Text(f[3])
-    if not id or id <= 0 or Addon.IGNORED_NPC_IDS[id] or not KnownFamily(family) then return end
+    local family = Addon:EnglishFamily(Text(f[3]))
+    if not id or id <= 0 or Addon.IGNORED_NPC_IDS[id] or not family then return end
     local creatures = DB.collected.creatures
     local key = tostring(id)
     local low, high, zone = Number(f[4]), Number(f[5]), Number(f[8])
@@ -634,9 +646,10 @@ local MERGE = {
       return changed
     end
     creatures[key] = {
-      id = id, name = Text(f[2]), family = family, level_min = low, level_max = high, classification = Text(f[6]),
-      mainhand_speed = Number(f[7]), ui_map_id = zone, zones = zone and { [zone] = true } or {}, x = Number(f[9]),
-      y = Number(f[10]), creature_type = Text(f[11]), collected = time(), shared_by = sender,
+      id = id, name = Text(f[2]), family = family, family_id = Addon:FamilyId(family), level_min = low, level_max = high,
+      classification = Text(f[6]), mainhand_speed = Number(f[7]), ui_map_id = zone, zones = zone and { [zone] = true } or {},
+      x = Number(f[9]), y = Number(f[10]), creature_type = "Beast", -- a pet family's creatures are all beasts
+      collected = time(), shared_by = sender,
     }
     return true
   end,
@@ -653,13 +666,18 @@ local MERGE = {
       local bits = Split(part, ":")
       local spellId = Number(bits[1])
       if spellId and spellId > 0 then
-        spells[#spells + 1] = { spell_id = spellId, name = SpellName(spellId) or ("Spell " .. spellId), rank = Text(bits[2]),
+        local ability = Addon:AbilityOfSpell(spellId)
+        spells[#spells + 1] = { spell_id = spellId,
+          name = ability and ability.name or SpellName(spellId) or ("Spell " .. spellId),
+          rank = ability and ("Rank %d"):format(ability.rank) or Addon:RankText(Text(bits[2])),
           passive = bits[3] == "1" or nil }
       end
     end
+    local family, petFamily = FamilyName(Text(f[3])), FamilyName(Text(f[8]))
     table.insert(DB.collected.tames, {
-      npc_id = id, name = Text(f[2]), family = Text(f[3]), level = Number(f[4]), classification = Text(f[5]),
-      creature_speed = Number(f[6]), pet_level = Number(f[7]), pet_family = Text(f[8]), attack_speed = Number(f[9]),
+      npc_id = id, name = Text(f[2]), family = family, family_id = Addon:FamilyId(family), level = Number(f[4]),
+      classification = Text(f[5]), creature_speed = Number(f[6]), pet_level = Number(f[7]), pet_family = petFamily,
+      pet_family_id = Addon:FamilyId(petFamily), attack_speed = Number(f[9]),
       ui_map_id = Number(f[10]), x = Number(f[11]), y = Number(f[12]), tamed = tamed, spells = spells, shared_by = sender,
     })
     return true
@@ -674,6 +692,7 @@ local MERGE = {
     trainers[id] = r
     r.name, r.title, r.level, r.faction = Text(f[2]), Text(f[3]), Number(f[4]), Text(f[5])
     r.ui_map_id, r.x, r.y, r.subzone = Number(f[6]), Number(f[7]), Number(f[8]), Text(f[9])
+    r.unconfirmed = f[10] == "1" or nil -- the sender could not confirm it is a pet trainer (see the collector)
     r.last_seen, r.shared_by = time(), sender
     return true
   end,
@@ -686,8 +705,9 @@ local MERGE = {
     r = r or { id = trainerId, services = {}, first_seen = time(), shared_by = sender }
     trainers[trainerId] = r
     r.services = r.services or {}
+    local name, rank = Ability(spellId, Text(f[3]), Text(f[4]))
     local entry = {
-      name = Text(f[3]), rank = Text(f[4]), spell_id = spellId, cost = Number(f[5]), required_level = Number(f[6]),
+      name = name, rank = rank, spell_id = spellId, cost = Number(f[5]), required_level = Number(f[6]),
       category = Text(f[7]), pet_ability = f[8] == "1" or nil,
     }
     for i, service in ipairs(r.services) do
@@ -700,7 +720,7 @@ local MERGE = {
     return true
   end,
   B = function(f, sender)
-    local name, rank = Text(f[2]), Text(f[3])
+    local name, rank = Ability(Number(f[1]), Text(f[2]), Text(f[3]))
     if not name then return end
     local book = DB.collected.beast_training
     local key = name .. "|" .. tostring(rank or "")

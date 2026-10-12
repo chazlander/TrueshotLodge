@@ -72,7 +72,7 @@ local function OnTooltipSetUnit(self, data)
 
   -- Get live unit info.
   if not unit and UnitTokenFromGUID then unit = UnitTokenFromGUID(guid) end
-  local family = unit and UnitCreatureFamily(unit)
+  local family = unit and Addon:UnitFamily(unit) -- English, whatever the client's language; nil for demons
   local npc = Addon:GetNPC(id)
 
   -- Pets owned by a player. Only hunter families count (not warlock demons).

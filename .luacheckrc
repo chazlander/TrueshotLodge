@@ -23,8 +23,8 @@ read_globals = {
   "date", "time", "strsplit", "tinsert", "wipe", "issecretvalue",
 
   -- C_ namespaces
-  "C_AddOns", "C_ChatInfo", "C_Map", "C_MerchantFrame", "C_NamePlate", "C_Spell", "C_SpellBook", "C_StableInfo",
-  "C_Timer", "C_TooltipInfo", "C_Trainer", "C_XMLUtil",
+  "C_AddOns", "C_ChatInfo", "C_CreatureInfo", "C_Map", "C_MerchantFrame", "C_NamePlate", "C_Spell", "C_SpellBook",
+  "C_StableInfo", "C_Timer", "C_TooltipInfo", "C_Trainer", "C_XMLUtil",
 
   -- Frames, mixins and UI utilities
   "ChatFrameUtil", "ClassTrainerFrame", "CreateColor", "CreateColorFromHexString", "CreateDataProvider", "CreateFrame",
@@ -39,8 +39,8 @@ read_globals = {
 
   -- Functions
   "Ambiguate", "BreakUpLargeNumbers", "ChatFrame_AddMessageEventFilter", "ChatFrame_RemoveChannel", "GetCVar",
-  "GetChannelList", "GetChannelName","GetCursorPosition", "GetFileIDFromPath", "GetMerchantItemInfo", "GetMerchantItemLink",
-  "GetMerchantNumItems", "GetNumTrainerServices", "GetPetExperience", "GetPetTrainingPoints", "GetRealZoneText",
+  "GetChannelList", "GetChannelName", "GetCursorPosition", "GetFileIDFromPath", "GetLocale", "GetMerchantItemInfo",
+  "GetMerchantItemLink", "GetMerchantNumItems", "GetNumTrainerServices", "GetPetExperience", "GetPetTrainingPoints", "GetRealZoneText",
   "GetRealmName", "GetSpellBookItemInfo", "GetSpellBookItemName", "GetSpellInfo", "GetSpellTexture", "GetStablePetInfo",
   "GetSubZoneText", "GetTime", "GetTrainerServiceItemLink", "GetUnitSpeed", "HasPetSpells", "InCombatLockdown",
   "IsInGroup", "IsInRaid", "IsLoggedIn", "IsMouseButtonDown", "IsPassiveSpell", "IsPlayerSpell", "IsSpellKnown",

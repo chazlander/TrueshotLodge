@@ -97,12 +97,23 @@ local function ReadStats()
   return stats
 end
 
+-- The pet's family: in English for the data's families, whatever the client's language; nil while the game hides it.
+local function PetFamily()
+  local english, _, text = Addon:UnitFamily("pet")
+  return english or text
+end
+
+-- A family as the stable gives it (in the client's language): in English for the data's families.
+local function EnglishFamily(family)
+  return Addon:EnglishFamily(family) or family
+end
+
 -- Copies the pet that is out. Nothing is changed while its name or family are hidden by the game (in combat).
 function Stable:SnapshotPet()
   local store = Store()
   if not (store and UnitExists("pet")) then return end
   local name = Addon:Plain(UnitName("pet"))
-  local family = Addon:Plain(UnitCreatureFamily("pet"))
+  local family = PetFamily()
   if not (name and family) or name == (UNKNOWNOBJECT or "Unknown") then return end
 
   local key = Key(name, family)
@@ -135,7 +146,7 @@ function Stable:GetActive()
   if not store then return nil end
   local name, family
   if UnitExists("pet") then
-    name, family = Addon:Plain(UnitName("pet")), Addon:Plain(UnitCreatureFamily("pet"))
+    name, family = Addon:Plain(UnitName("pet")), PetFamily()
   end
   local copy
   if name and family then
@@ -170,7 +181,7 @@ local function ReadStablePets()
       local ok, info = pcall(C_StableInfo.GetStablePetInfo, slot)
       if ok and type(info) == "table" and info.name then
         found[slot] = {
-          name = info.name, level = info.level, family = info.familyName, icon = info.icon,
+          name = info.name, level = info.level, family = EnglishFamily(info.familyName), icon = info.icon,
           display_id = info.displayID, creature_id = info.creatureID,
         }
       end
@@ -178,7 +189,7 @@ local function ReadStablePets()
   elseif GetStablePetInfo then
     for slot = 1, Stable.SLOTS - 1 do -- the stabled pets; slot 0 (the current pet) is the first box, from GetActive
       local ok, icon, name, level, family = pcall(GetStablePetInfo, slot)
-      if ok and name then found[slot + 1] = { name = name, level = level, family = family, icon = icon } end
+      if ok and name then found[slot + 1] = { name = name, level = level, family = EnglishFamily(family), icon = icon } end
     end
   end
   return found

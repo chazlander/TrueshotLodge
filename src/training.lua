@@ -58,28 +58,36 @@ end
 
 local STATUSES = { available = true, unavailable = true, used = true, header = true }
 
--- spell id -> the rank (1, 2, ...) of that ability in the addon's data: the exact version of the ability.
-local rankBySpell
-local function RankOfSpell(spellId)
-  if not rankBySpell then
-    rankBySpell = {}
+-- spell id -> { name, rank } of that ability rank in the addon's data: its English name and its rank (1, 2, ...).
+-- The game names spells in the client's language; the spell id is the same in every language.
+local bySpell
+function Addon:AbilityOfSpell(spellId)
+  if not bySpell then
+    bySpell = {}
     for _, ability in pairs(Addon.TameableAbilities) do
       for index, rank in ipairs(ability.ranks) do
-        if rank.spell_id then rankBySpell[rank.spell_id] = rank.rank or index end
+        if rank.spell_id then bySpell[rank.spell_id] = { name = ability.name, rank = rank.rank or index } end
       end
     end
   end
-  return rankBySpell[spellId]
+  return spellId and bySpell[spellId] or nil
+end
+
+-- A rank as saved: "Rank 3" in English from the game's text in any language ("Уровень 3"), or the text as it is
+-- when it has no number.
+function Addon:RankText(text)
+  local number = type(text) == "string" and tonumber(text:match("%d+")) or nil
+  return number and ("Rank %d"):format(number) or text
 end
 
 -- "Rank 3" for a trainer entry: from the addon's data when the spell is in it, otherwise from the game's own
 -- text for the spell. nil when the entry has no rank.
 local function RankText(spellId)
   if not spellId then return nil end
-  local number = RankOfSpell(spellId)
-  if number then return ("%s %d"):format(Addon:GetModule("Locale").RANK, number) end
+  local ability = Addon:AbilityOfSpell(spellId)
+  if ability then return ("Rank %d"):format(ability.rank) end
   local subtext = C_Spell and C_Spell.GetSpellSubtext and C_Spell.GetSpellSubtext(spellId)
-  if type(subtext) == "string" and subtext ~= "" then return subtext end
+  if type(subtext) == "string" and subtext ~= "" then return Addon:RankText(subtext) end
 end
 
 -- Returns a list of { index, name, rank, category, cost, level_req, icon } for every
@@ -107,13 +115,21 @@ function Training:ReadServices(petOnly)
     end
     if type(category) ~= "string" then category = nil end
 
-    if name and category ~= "header" and (not petOnly or self:IsPetAbility(name)) then
-      local spellId = serviceSpellId(i)
+    -- With petOnly, only the data's pet abilities: known by their English name, or on other client languages by
+    -- their spell id.
+    local wanted, spellId = name and category ~= "header", nil
+    if wanted and petOnly and not self:IsPetAbility(name) then
+      spellId = serviceSpellId(i)
+      wanted = Addon:AbilityOfSpell(spellId) ~= nil
+    end
+    if wanted then
+      spellId = spellId or serviceSpellId(i)
+      local ability = Addon:AbilityOfSpell(spellId)
       list[#list + 1] = {
         index = i,
         spell_id = spellId,
-        name = name,
-        rank = RankText(spellId) or ((type(rank) == "string" and rank ~= "") and rank or nil),
+        name = ability and ability.name or name, -- English for the data's abilities
+        rank = RankText(spellId) or ((type(rank) == "string" and rank ~= "") and Addon:RankText(rank) or nil),
         category = category,
         cost = trainerCall("GetTrainerServiceCost", i),
         -- Everything GetTrainerServiceCost returned (money first; on classic clients the next ones can be other costs,

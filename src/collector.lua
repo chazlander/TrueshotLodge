@@ -12,13 +12,6 @@ local SAMPLE_PRECISION = 100 -- Round positions to 1/100th of a percent.
 
 local frame = CreateFrame("Frame")
 
--- Only the beasts of the pet families in the data are collected (not demons, humanoids or critters, nor
--- families that are not out yet). The family name is compared as the game gives it, which is the data's
--- English name on an English client.
-local function isKnownFamily(family)
-  return family ~= nil and Addon.TameableFamilies ~= nil and Addon.TameableFamilies[family] ~= nil
-end
-
 local function round(n)
   return math.floor(n * SAMPLE_PRECISION + 0.5) / SAMPLE_PRECISION
 end
@@ -125,16 +118,18 @@ function Collector:Record(unit)
     return
   end
 
-  -- Only creatures of a known pet family.
-  local family = UnitCreatureFamily(unit)
-  if not isKnownFamily(family) then
+  -- Only the beasts of the pet families in the data (not demons, humanoids or critters, nor families that are not
+  -- out yet), matched by family id so that every client language counts. The English name is saved.
+  local family, familyId, familyText = Addon:UnitFamily(unit)
+  if not family then
     if not ignored[id] then
       ignored[id] = true
       Addon:Debug("collector: ignored", UnitName(unit), "(" .. id .. "):",
-        family and ("family " .. family .. " is not in the data") or "no pet family")
+        familyText and ("family " .. familyText .. " is not in the data") or "no pet family")
     end
     return
   end
+  local creatureType, creatureTypeId = Addon:UnitCreatureType(unit)
 
   local level = UnitLevel(unit)
   if not (level and level > 0) then level = nil end
@@ -147,7 +142,9 @@ function Collector:Record(unit)
     collected = time(),
     name = UnitName(unit),
     family = family,
-    creature_type = UnitCreatureType(unit),
+    family_id = familyId,
+    creature_type = creatureType,
+    creature_type_id = creatureTypeId,
     classification = UnitClassification(unit),
     level_min = level,
     level_max = level,
@@ -201,19 +198,30 @@ end
 local function interactionNpc()
   local unit = "npc"
   if not UnitExists(unit) or UnitIsPlayer(unit) then return end
-  if Addon:Plain(UnitCreatureType(unit)) == "Beast" or Addon:Plain(UnitCreatureFamily(unit)) then return end
+  if Addon:UnitIsBeast(unit) or Addon:Plain((UnitCreatureFamily(unit))) then return end
   local unitType, _, _, _, _, id = strsplit("-", UnitGUID(unit) or "")
   if unitType == "Creature" and id then return tonumber(id), unit end
 end
 
--- Takes out "trainers" an earlier version recorded from the Beast Training window: the beast that was targeted
--- (a tameable creature, or one collected as a creature), not a trainer.
--- Whether an npc's title makes it a pet trainer ("Pet Trainer", "Wolf Pet Trainer", ...). A stable master or another
--- trainer can open the same trainer window, but only pet trainers are recorded.
-local function isPetTrainerTitle(title)
-  return type(title) == "string" and title:lower():find("pet trainer", 1, true) ~= nil
+-- Whether the client's language is English (the language of the titles the addon knows).
+local function englishClient()
+  local locale = GetLocale and GetLocale() or "enUS"
+  return locale == "enUS" or locale == "enGB"
 end
 
+-- Whether an npc is a pet trainer. A stable master or another trainer can open the same trainer window, but only
+-- pet trainers are recorded. Returns true for a pet trainer: one in the trainer data (by npc id, in any language),
+-- or titled "Pet Trainer" ("Wolf Pet Trainer", ...) or with no title; "unconfirmed" for any other title on a client
+-- in another language (the title cannot be read there: recorded, and the website asks us whether it is one); false
+-- for any other title on an English client.
+local function petTrainerStatus(id, title)
+  if Addon.TameableTrainers and Addon.TameableTrainers[tonumber(id)] then return true end
+  if type(title) ~= "string" or title:lower():find("pet trainer", 1, true) then return true end
+  return not englishClient() and "unconfirmed" or false
+end
+
+-- Takes out "trainers" an earlier version recorded from the Beast Training window: the beast that was targeted
+-- (a tameable creature, or one collected as a creature), not a trainer.
 local function dropBeastTrainers()
   local trainers = DB.global and DB.collected.trainers
   if not trainers then return end
@@ -222,7 +230,7 @@ local function dropBeastTrainers()
     if (Addon.TameableNPCs and Addon.TameableNPCs[npc]) or (DB.collected.creatures and DB.collected.creatures[tostring(npc)]) then
       trainers[id] = nil
       Addon:Debug("collector: removed", tostring(npc), "from the trainers: it is a beast, not a trainer")
-    elseif type(trainer) == "table" and trainer.title and not isPetTrainerTitle(trainer.title) then
+    elseif type(trainer) == "table" and not trainer.shared_by and petTrainerStatus(id, trainer.title) == false then
       trainers[id] = nil
       Addon:Debug("collector: removed", tostring(trainer.name), "from the trainers: a", trainer.title, "is no pet trainer")
     end
@@ -254,7 +262,8 @@ function Collector:RecordTrainer()
   if not id then return Addon:Debug("collector: trainer window open, but no npc to record") end
   -- Only pet trainers (a stable master, for one, opens a trainer window that lists pet abilities too).
   local title = npcTitle(unit)
-  if title and not isPetTrainerTitle(title) then
+  local status = petTrainerStatus(id, title)
+  if not status then
     return Addon:Debug("collector: not recording", tostring(UnitName(unit)), "-", title, "is no pet trainer")
   end
 
@@ -269,7 +278,9 @@ function Collector:RecordTrainer()
 
   trainer.id = id
   trainer.name = UnitName(unit)
-  trainer.title = npcTitle(unit) or trainer.title
+  trainer.title = title or trainer.title
+  -- Not known as a pet trainer and its title in another language: the website asks us to confirm it.
+  trainer.unconfirmed = status == "unconfirmed" or nil
   -- Your standing with the trainer (4 Neutral, 5 Friendly ... 8 Exalted): prices are lower at Friendly and up, so the
   -- website works the full price back from it.
   trainer.reaction = Addon:Plain(UnitReaction(unit, "player")) or trainer.reaction
@@ -471,6 +482,9 @@ local function readPetSpellbook()
     if name and spellId and spellId > 0 then
       local rank = subName ~= "" and subName or nil
       if not rank and C_Spell and C_Spell.GetSpellSubtext then rank = C_Spell.GetSpellSubtext(spellId) end
+      -- Saved in English whatever the client's language: the data's name and rank for its abilities.
+      local ability = Addon:AbilityOfSpell(spellId)
+      if ability then name, rank = ability.name, ("Rank %d"):format(ability.rank) else rank = Addon:RankText(rank) end
       spells[#spells + 1] = {
         spell_id = spellId, name = name, rank = rank ~= "" and rank or nil, passive = passive and true or nil, slot = slot,
       }
@@ -499,10 +513,13 @@ function Collector:TameStarted(spellId, castGUID)
 
   local level = Addon:Plain(UnitLevel("target"))
   local mapId, x, y = getObserverPosition()
+  local family, familyId, familyText = Addon:UnitFamily("target")
   local tame = {
     npc_id = tonumber(id),
     name = Addon:Plain(UnitName("target")),
-    family = Addon:Plain(UnitCreatureFamily("target")),
+    family = family or familyText, -- English when the data knows the family
+    family_id = familyId,
+    family_text = familyText, -- as the game names it (a new pet is named this): see isTamedPet
     level = level and level > 0 and level or nil,
     classification = Addon:Plain(UnitClassification("target")),
     creature_speed = Addon:Plain((UnitAttackSpeed("target"))),
@@ -538,7 +555,9 @@ function Collector:ReadTamedPet(entry, last)
   local spells = readPetSpellbook()
   local before = entry.spells and #entry.spells or -1
   entry.pet_level = Addon:Plain(UnitLevel("pet")) or entry.pet_level
-  entry.pet_family = Addon:Plain(UnitCreatureFamily("pet")) or entry.pet_family
+  local petFamily, petFamilyId, petFamilyText = Addon:UnitFamily("pet")
+  entry.pet_family = petFamily or petFamilyText or entry.pet_family
+  entry.pet_family_id = petFamilyId or entry.pet_family_id
   entry.attack_speed = Addon:Plain((UnitAttackSpeed("pet"))) or entry.attack_speed
   if #spells >= math.max(before, 0) then entry.spells = spells end
   entry.reads = (entry.reads or 0) + 1
@@ -562,10 +581,10 @@ end
 -- (A value the game keeps secret in combat is not checked.)
 local function isTamedPet(tame)
   local petName = Addon:Plain(UnitName("pet"))
-  local petFamily = Addon:Plain(UnitCreatureFamily("pet"))
+  local _, _, petFamily = Addon:UnitFamily("pet") -- both compared as the game names them, in the client's language
   local petLevel = Addon:Plain(UnitLevel("pet"))
-  if tame.family and petFamily and petFamily ~= tame.family then return false, "family " .. tostring(petFamily) end
-  if petName and petName ~= tame.family and petName ~= tame.name then return false, "named " .. tostring(petName) end
+  if tame.family_text and petFamily and petFamily ~= tame.family_text then return false, "family " .. tostring(petFamily) end
+  if petName and petName ~= tame.family_text and petName ~= tame.name then return false, "named " .. tostring(petName) end
   if tame.level and petLevel and petLevel > 0 and petLevel ~= tame.level then return false, "level " .. tostring(petLevel) end
   return true
 end
@@ -580,7 +599,7 @@ function Collector:PetChanged()
   pendingTame = nil
 
   local entry = {
-    npc_id = tame.npc_id, name = tame.name, family = tame.family, level = tame.level,
+    npc_id = tame.npc_id, name = tame.name, family = tame.family, family_id = tame.family_id, level = tame.level,
     classification = tame.classification, creature_speed = tame.creature_speed, tame_spell_id = tame.tame_spell_id,
     ui_map_id = tame.ui_map_id, map_id = tame.map_id, x = tame.x, y = tame.y, subzone = tame.subzone,
     tamed = time(), pet_guid = UnitGUID("pet"),
@@ -651,9 +670,9 @@ function Collector:Diagnose()
     local ok, result = pcall(function()
       local guid = UnitGUID(unit)
       local kind, _, _, _, _, id = strsplit("-", guid)
-      local family = UnitCreatureFamily(unit)
-      return ("%s %s id=%s family=%s known=%s"):format(tostring(UnitName(unit)), kind, tostring(id),
-        tostring(family), tostring(isKnownFamily(family)))
+      local family, familyId, familyText = Addon:UnitFamily(unit)
+      return ("%s %s id=%s family=%s (%s) known=%s"):format(tostring(UnitName(unit)), kind, tostring(id),
+        tostring(familyText), tostring(familyId), tostring(family ~= nil))
     end)
     say("  " .. tostring(unit) .. ":", ok and result or ("ERROR " .. tostring(result)))
   end

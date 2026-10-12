@@ -69,16 +69,93 @@ Addon.FOREVER_ICON = "Interface\\AddOns\\" .. ADDON_NAME .. "\\media\\forever"
 -- The question mark icon (INV_Misc_QuestionMark), for anything whose real icon is not known (yet).
 Addon.QUESTION_MARK_ICON = 134400
 
+-- ----------------------------------------------------------------------------
+-- Pet families, whatever the client's language
+-- ----------------------------------------------------------------------------
+-- The family data (data/ForeverTameableFamilies.lua) is keyed by the English family name, with the game's family id
+-- (CreatureFamily, the website's pet_families.id). The game names a unit's family in the client's language
+-- ("Кошка" on a Russian client), so families are matched by that id: UnitCreatureFamily gives it after the name, and
+-- C_CreatureInfo.GetCreatureFamilyInfo names each id in the client's language. What is saved and shared is the
+-- English name.
+
+local familyById -- family id -> the English name, built from the family data on first use
+local function FamiliesById()
+  if not familyById then
+    familyById = {}
+    for name, info in pairs(Addon.TameableFamilies or {}) do familyById[info.id] = name end
+  end
+  return familyById
+end
+
+local localFamilyIds -- family name in the client's language -> family id, built on first use
+-- The family id of a family name, in English or in the client's language; nil for a family the data does not know.
+function Addon:FamilyId(name)
+  if type(name) ~= "string" then return nil end
+  local info = self.TameableFamilies and self.TameableFamilies[name]
+  if info then return info.id end
+  if not localFamilyIds then
+    localFamilyIds = {}
+    local get = C_CreatureInfo and C_CreatureInfo.GetCreatureFamilyInfo
+    for id in pairs(get and FamiliesById() or {}) do
+      local ok, family = pcall(get, id)
+      if ok and type(family) == "table" and type(family.name) == "string" then localFamilyIds[family.name] = id end
+    end
+  end
+  return localFamilyIds[name]
+end
+
+-- The English name of a family named in English or in the client's language; nil for a family the data does not know.
+function Addon:EnglishFamily(name)
+  local id = self:FamilyId(name)
+  return id and FamiliesById()[id] or nil
+end
+
+-- A unit's pet family: its English name and family id (nil, nil when the data does not know it), and the name as the
+-- game gives it (in the client's language; a demon's family too).
+function Addon:UnitFamily(unit)
+  local name, id = UnitCreatureFamily(unit)
+  name, id = self:Plain(name), self:Plain(id)
+  if type(id) ~= "number" then id = self:FamilyId(name) end
+  local english = id and FamiliesById()[id] or nil
+  return english, english and id or nil, name
+end
+
+-- The game's creature type id for beasts (UnitCreatureType's second value).
+local CREATURE_TYPE_BEAST = 1
+
+-- A unit's creature type: in English for a beast ("Beast"), otherwise as the game gives it; and the type id.
+function Addon:UnitCreatureType(unit)
+  local name, id = UnitCreatureType(unit)
+  name, id = self:Plain(name), self:Plain(id)
+  if type(id) ~= "number" then id = nil end
+  if id == CREATURE_TYPE_BEAST then name = "Beast" end
+  return name, id
+end
+
+-- Whether a unit is a beast, whatever the client's language.
+function Addon:UnitIsBeast(unit)
+  local name, id = self:UnitCreatureType(unit)
+  if id then return id == CREATURE_TYPE_BEAST end
+  return name == "Beast"
+end
+
+-- The family data of a family named in English or in the client's language (saved data from earlier versions), or nil.
+local function FamilyInfo(family)
+  local families = Addon.TameableFamilies
+  if not (family and families) then return nil end
+  return families[family] or families[Addon:EnglishFamily(family) or ""]
+end
+
 -- A family's icon (the game's icon file id, from the family data), or nil.
 function Addon:FamilyIcon(family)
-  local info = family and self.TameableFamilies and self.TameableFamilies[family]
+  local info = FamilyInfo(family)
   return info and info.icon or nil
 end
 
 -- A family name with the infinity mark (as an inline texture) before it when the family is new in WoW Forever
 -- (`forever = true` in the family data, from pet_families.forever: Fox, not Bird of Prey, which only has some new creatures).
 function Addon:FamilyLabel(family)
-  local info = family and self.TameableFamilies and self.TameableFamilies[family]
+  local info = FamilyInfo(family)
   if info and info.forever then
     return ("|T%s:14:14:0:0|t %s"):format(self.FOREVER_ICON, family)
   end

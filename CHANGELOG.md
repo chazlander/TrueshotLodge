@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+- Fixed: on a client in another language than English, Collect Mode recorded no tameable creatures, NPC tooltips
+  and Filter by Pet did not work, and Beast Training and pet trainers were not read. Families, creature types and
+  abilities are now recognized by their game ids, which are the same in every language
+- Collected data is saved in English whatever your client's language: families, abilities and ranks ("Rank 3"),
+  with each family's id. Creature names stay as your client shows them; the website puts them in English by id
+- Data shared by players on clients in other languages is added in English
+- A pet trainer the addon does not know yet, met on a client in another language, is recorded for us to confirm
+  (its title cannot be read there)
+- Your collected file notes your client's language
+- TODO: Add multi language support on the website.
+- `/tsl debug collect check` shows each creature's family id
+
 ## [1.60.1.11] - 2026-10-12
 
 - Data sharing's hidden channels keep out of the way of the game's own: they are moved after every other channel

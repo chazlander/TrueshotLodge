@@ -127,7 +127,8 @@ end
 function Integrity:SignAll()
   EachRecord(function(kind, key, record) record.sig = self:Tag(kind, key, record) end)
   if type(DB.collected) == "table" then
-    local addon = { version = Addon.VERSION, saved_at = time() }
+    -- locale: the client's language (ruRU, deDE, ...): names in the file are in it, families are in English.
+    local addon = { version = Addon.VERSION, saved_at = time(), locale = GetLocale and GetLocale() or nil }
     addon.sig = self:Tag("addon", "", addon)
     DB.collected.addon = addon
   end
