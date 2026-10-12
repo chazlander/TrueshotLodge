@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.9] - 2026-10-11
 
 - Your collected data now records which version of the addon saved it, so after a change to the data the website
   can ask for an upload from an up-to-date addon
