@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.11] - 2026-10-12
 
 - Data sharing's hidden channels keep out of the way of the game's own: they are moved after every other channel
   you are in, so General, Trade, LocalDefense and LookingForGroup keep their usual numbers
