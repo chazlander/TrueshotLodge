@@ -137,6 +137,9 @@ do -- Initialization, once this addon's saved variables are loaded.
     if name ~= ADDON_NAME then return end
     self:UnregisterEvent("ADDON_LOADED")
     Addon:GetModule("DB"):Initialize()
+    -- Collected records changed outside the game since the last logout are marked edited (src/integrity.lua).
+    local ok, err = pcall(Addon:GetModule("Integrity").Check, Addon:GetModule("Integrity"))
+    if not ok then Addon:Debug("integrity: check failed:", err) end
     Addon:GetModule("MinimapIcon"):Initialize()
     Addon:GetModule("Commands"):Initialize()
   end)

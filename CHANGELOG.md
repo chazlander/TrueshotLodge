@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- Your collected data now records which version of the addon saved it, so after a change to the data the website
+  can ask for an upload from an up-to-date addon
+- README: a section on the Bounties
+
 ## [1.60.1.7] - 2026-10-11
 
 - Fixed: the version shows as `1.60.1.<build>` (the 1.60.1.5 beta showed a commit hash)

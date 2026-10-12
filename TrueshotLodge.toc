@@ -29,6 +29,7 @@ src\colors.lua
 src\data.lua
 src\commands.lua
 src\db.lua
+src\integrity.lua
 src\tooltips.lua
 src\training.lua
 src\collector.lua

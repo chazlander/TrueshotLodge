@@ -103,8 +103,31 @@ quietly records the beasts you tame (and the abilities they came with), the tame
 and the pet trainers you talk to. This tab lists all of it, with what is not yet in the addon's data highlighted. What you collect helps fill in the gaps for every hunter, from missing attack speeds to creatures
 nobody has mapped yet.
 
-The **Bounties** entry at the top shows what TrueshotLodge most needs found, with the untamed rares up to your level
-(only those in your zone while the Zone Filter is ticked).
+The **Bounties** entry at the top of this tab shows what TrueshotLodge most needs found (see below).
+
+## ![Bounties](https://wow.zamimg.com/images/wow/icons/medium/inv_inscription_80_contract_embers.jpg) Bounties
+
+The beasts and abilities hunters most need found, posted as bounties. In the addon, **Bounties** is the first entry on
+the Collected Data tab:
+
+- **Wanted Rares**: the top 5 rares nobody has tamed yet that you can tame now (up to your level), the highest level
+  first, each with its level, zone and a **Map Location** button. Tick the **Zone Filter** in the title bar to see only
+  the ones in the zone you are in.
+- Whether **Send Name** is on, and how many tames you have collected.
+
+The full list is on the website at [TrueshotLodge.com/bounties](https://trueshotlodge.com/bounties):
+
+- **Missing Tamed Rares**: rares no TrueshotLodge hunter has tamed yet, lowest level first
+- **Missing Attack Speed**: creatures whose attack speed nobody has recorded
+- **Missing Zone**: creatures nobody knows the whereabouts of
+- **Unique Abilities without Source**: ranks of a family's unique ability that no known tameable creature has, each with
+  its **Potential Tameable Targets**: the family's untamed beasts between the levels of the ranks around it
+
+To claim one: turn on Collect Mode, track the beast down (a look at its nameplate records its attack speed and where it
+lives; a tame records the abilities it came with), then upload your `TrueshotLodge.lua` at
+[TrueshotLodge.com](https://trueshotlodge.com/collector). We check what you found and add it for every hunter. With
+**Send Name** on (Options, Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
+date by *your name*".
 
 ## Help fill in the gaps
 
