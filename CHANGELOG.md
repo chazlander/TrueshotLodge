@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.13] - 2026-10-12
 
 - Fixed: on a client in another language than English, Collect Mode recorded no tameable creatures, NPC tooltips
   and Filter by Pet did not work, and Beast Training and pet trainers were not read. Families, creature types and
