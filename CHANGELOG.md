@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.15] - 2026-10-12
 
 - A tame shared with other players now carries your credit when Send Name is on, so the website names you as the
   hunter who tamed it whoever uploads it (the name is the one the game reports for the sender)
