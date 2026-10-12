@@ -39,7 +39,7 @@ read_globals = {
 
   -- Functions
   "Ambiguate", "BreakUpLargeNumbers", "ChatFrame_AddMessageEventFilter", "ChatFrame_RemoveChannel", "GetCVar",
-  "GetChannelName", "GetCursorPosition", "GetFileIDFromPath", "GetMerchantItemInfo", "GetMerchantItemLink",
+  "GetChannelList", "GetChannelName","GetCursorPosition", "GetFileIDFromPath", "GetMerchantItemInfo", "GetMerchantItemLink",
   "GetMerchantNumItems", "GetNumTrainerServices", "GetPetExperience", "GetPetTrainingPoints", "GetRealZoneText",
   "GetRealmName", "GetSpellBookItemInfo", "GetSpellBookItemName", "GetSpellInfo", "GetSpellTexture", "GetStablePetInfo",
   "GetSubZoneText", "GetTime", "GetTrainerServiceItemLink", "GetUnitSpeed", "HasPetSpells", "InCombatLockdown",

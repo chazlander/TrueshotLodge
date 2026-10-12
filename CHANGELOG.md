@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+- Data sharing's hidden channels keep out of the way of the game's own: they are moved after every other channel
+  you are in, so General, Trade, LocalDefense and LookingForGroup keep their usual numbers
+- The zone's sharing channel is joined as a temporary channel, so the game no longer saves it and rejoins it at
+  login; the zone channels earlier versions saved are left automatically
+- `/tsl debug shared` lists your channel numbers
+
 ## [1.60.1.9] - 2026-10-11
 
 - Your collected data now records which version of the addon saved it, so after a change to the data the website

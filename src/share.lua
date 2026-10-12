@@ -4,7 +4,9 @@ local DB = Addon:GetModule("DB")
 
 -- Sharing collected data with other TrueshotLodge users, while collecting. The addon joins two hidden chat channels
 -- (removed from every chat window): TrueshotLodge, for everyone, and one for the zone you are in (TrueshotLodge1411 in
--- Durotar, switched as you move), which reaches the players around you even where the global one does not. Each
+-- Durotar, switched as you move, joined as a temporary channel), which reaches the players around you even where the
+-- global one does not. Both are kept after every other channel you are in, so they never take the numbers of the
+-- game's own channels (General, Trade, ...). Each
 -- entry the collector records goes out once per session (no heartbeats) to both channels and, while you are in a
 -- group, to the group (party, raid or instance). With "Collect Data From Others" on (Advanced Options, off by
 -- default), entries from other users are added to the collected data with `shared_by` (who sent it); they never
@@ -61,7 +63,7 @@ local ticker, joinTimer
 
 -- What /tsl debug shared reports.
 local stats = { sent = 0, failed = 0, throttled = 0, received = 0, added = 0, echoes = 0, dropped = {}, lastResult = nil,
-  joinTries = 0, pings = {}, answers = {}, hellos = {}, routes = {}, forgotten = {}, lines = 0 }
+  joinTries = 0, moves = 0, cleaned = 0, pings = {}, answers = {}, hellos = {}, routes = {}, forgotten = {}, lines = 0 }
 
 local function Drop(reason)
   stats.dropped[reason] = (stats.dropped[reason] or 0) + 1
@@ -410,14 +412,15 @@ local function HideChannel(name)
   hidden[name] = true
 end
 
-local function JoinChannel(name)
+-- The global channel is joined as a permanent channel; a zone channel as a temporary one, so the game does not
+-- save it and join it again at the next login.
+local function JoinChannel(name, temporary)
   stats.joinTries = stats.joinTries + 1
   local frameId = DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME:GetID() or 1
-  if JoinPermanentChannel then
-    pcall(JoinPermanentChannel, name, nil, frameId, 1)
-  elseif JoinTemporaryChannel then
-    pcall(JoinTemporaryChannel, name, nil, frameId, 1)
-  end
+  local first, second = JoinPermanentChannel, JoinTemporaryChannel
+  if temporary then first, second = second, first end
+  local join = first or second
+  if join then pcall(join, name, nil, frameId, 1) end
   if ChannelId(name) then Addon:Debug("share: joined the", name, "channel (" .. ChannelId(name) .. ")") end
 end
 
@@ -427,6 +430,76 @@ local function LeaveChannel(name)
     Addon:Debug("share: left the", name, "channel")
   end
   if name then hidden[name] = nil end
+end
+
+-- The channels you are in, in number order: { { id = 1, name = "General - Durotar" }, ... }, or nil when the game
+-- does not give the list.
+local function ChannelList()
+  if not GetChannelList then return nil end
+  local ok, list = pcall(function() return { GetChannelList() } end)
+  if not ok or #list % 3 ~= 0 then return nil end
+  local channels = {}
+  for i = 1, #list, 3 do
+    local id, name = list[i], list[i + 1]
+    if Addon:IsSecret(id) or Addon:IsSecret(name) or type(id) ~= "number" or type(name) ~= "string" then return nil end
+    channels[#channels + 1] = { id = id, name = name }
+  end
+  table.sort(channels, function(a, b) return a.id < b.id end)
+  return channels
+end
+
+-- Where a channel goes in the order: everyone else's first (0), then the global channel (1), then the zone ones (2).
+local function ChannelRank(name)
+  local lower = name:lower()
+  if lower == CHANNEL:lower() then return 1 end
+  if lower:match("^" .. CHANNEL:lower() .. "%d+$") then return 2 end
+  return 0
+end
+
+-- Keeps our channels after every other channel, so they never hold the low numbers the game's own channels
+-- (General, Trade, LocalDefense, LookingForGroup) and your own use. A channel joined gets the lowest free number,
+-- so after any channel joins or leaves, ours are swapped past the others (the order of the others is kept).
+local function MoveChannelsToEnd()
+  local swap = C_ChatInfo and C_ChatInfo.SwapChatChannelsByChannelIndex
+  local channels = enabled and swap and ChannelList()
+  if not channels then return end
+  for i = 2, #channels do
+    local j = i
+    while j > 1 and ChannelRank(channels[j].name) < ChannelRank(channels[j - 1].name) do
+      local before, after = channels[j - 1], channels[j]
+      if not pcall(swap, before.id, after.id) then return end
+      Addon:Debug("share: moved", before.name, "from", before.id, "to", after.id)
+      before.name, after.name = after.name, before.name
+      stats.moves = stats.moves + 1
+      j = j - 1
+    end
+  end
+end
+
+-- Moves the channels a moment after the list changes (one move for a burst of changes).
+local moveTimer
+local function ScheduleMove()
+  if moveTimer or not enabled then return end
+  moveTimer = C_Timer.NewTimer(0.2, function()
+    moveTimer = nil
+    MoveChannelsToEnd()
+  end)
+end
+
+-- Earlier versions joined the zone channels as permanent ones, which the game joins again at login. Every zone
+-- channel of ours but the current zone's is left: once, and again after the channel list changes.
+local cleanedUp = false
+local function LeaveOldZoneChannels()
+  if cleanedUp then return end
+  local channels = ChannelList()
+  if not channels then return end
+  cleanedUp = true
+  for _, channel in ipairs(channels) do
+    if ChannelRank(channel.name) == 2 and channel.name:lower() ~= (zoneChannel or ""):lower() then
+      LeaveChannel(channel.name)
+      stats.cleaned = stats.cleaned + 1
+    end
+  end
 end
 
 -- Keeps you in the global channel and in the channel of the zone you are in (leaving the last zone's), each hidden
@@ -439,8 +512,12 @@ local function Upkeep()
     LeaveChannel(zoneChannel)
     zoneChannel = name
   end
+  LeaveOldZoneChannels()
   for _, channelName in ipairs({ CHANNEL, zoneChannel }) do
-    if not ChannelId(channelName) then JoinChannel(channelName) end
+    if not ChannelId(channelName) then
+      JoinChannel(channelName, channelName == zoneChannel)
+      ScheduleMove()
+    end
     if ChannelId(channelName) and not hidden[channelName] then HideChannel(channelName) end
   end
   Pump()
@@ -495,6 +572,8 @@ function Share:SetEnabled(on)
     frame:RegisterEvent("CHAT_MSG_ADDON")
     frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    frame:RegisterEvent("CHANNEL_COUNT_UPDATE")
+    frame:RegisterEvent("CHANNEL_UI_UPDATE")
     tokenAt = GetTime()
     ticker = ticker or C_Timer.NewTicker(SEND_EVERY, Pump)
     -- The first try waits until the game's own channels are in (a few seconds after login).
@@ -508,8 +587,11 @@ function Share:SetEnabled(on)
     frame:UnregisterEvent("CHAT_MSG_ADDON")
     frame:UnregisterEvent("ZONE_CHANGED_NEW_AREA")
     frame:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    frame:UnregisterEvent("CHANNEL_COUNT_UPDATE")
+    frame:UnregisterEvent("CHANNEL_UI_UPDATE")
     if ticker then ticker:Cancel() ticker = nil end
     if joinTimer then joinTimer:Cancel() joinTimer = nil end
+    if moveTimer then moveTimer:Cancel() moveTimer = nil end
     queue, pending, pendingOrder = {}, {}, {}
     LeaveChannel(zoneChannel)
     LeaveChannel(CHANNEL)
@@ -736,6 +818,11 @@ function Share:Status()
   say("channel", CHANNEL, id and ("joined as " .. id) or ("NOT joined (join tries: " .. stats.joinTries .. ")"),
     "| prefix registered", tostring(C_ChatInfo and C_ChatInfo.IsAddonMessagePrefixRegistered
       and C_ChatInfo.IsAddonMessagePrefixRegistered(PREFIX)))
+  local order = {}
+  for _, channel in ipairs(ChannelList() or {}) do order[#order + 1] = channel.id .. " " .. channel.name end
+  say("channel numbers:", #order > 0 and table.concat(order, ", ") or "unknown",
+    "| moved", stats.moves, "time(s)", C_ChatInfo and C_ChatInfo.SwapChatChannelsByChannelIndex and ""
+      or "(this client cannot move channels)", "| old zone channels left", stats.cleaned)
   local waitingWhispers = 0
   for _, lines in pairs(pending) do waitingWhispers = waitingWhispers + #lines end
   say("sent", stats.sent, "messages (" .. stats.lines .. " lines) | failed", stats.failed, "| throttled", stats.throttled,
@@ -804,5 +891,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
     Receive(...)
   elseif event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
     C_Timer.NewTimer(2, Upkeep) -- the map knows the new zone a moment later
+  elseif event == "CHANNEL_COUNT_UPDATE" or event == "CHANNEL_UI_UPDATE" then
+    if event == "CHANNEL_COUNT_UPDATE" then cleanedUp = false end
+    ScheduleMove()
   end
 end)
