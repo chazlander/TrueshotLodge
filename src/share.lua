@@ -26,7 +26,8 @@ local DB = Addon:GetModule("DB")
 -- A message is lines of "<kind>|1,<field>,<field>,...", fields percent-escaped (so no field holds a line break):
 --   C  wild sighting   id, name, family, level min, level max, classification, attack speed, uiMapID, x, y, type
 --   T  tame            npc id, name, family, level, classification, creature speed, pet level, pet family, pet attack
---                      speed, uiMapID, x, y, tamed (time); then ";" and the spells: spell id:rank:passive, "/"-separated
+--                      speed, uiMapID, x, y, tamed (time), credit (1: Send Name on, credit the sender); then ";" and
+--                      the spells: spell id:rank:passive, "/"-separated
 --   R  pet trainer     id, name, title, level, faction, uiMapID, x, y, subzone, unconfirmed (1: not known as a pet
 --                      trainer, titled in another language)
 --   S  trainer service trainer id, spell id, name, rank, price (copper), required level, status, pet ability (1/0)
@@ -81,6 +82,7 @@ end
 local PEERS_KEPT = 50 -- remembered
 local PEERS_WHISPERED = 25 -- whispered each update at most (besides the moderators)
 local whispered = {} -- name -> GetTime() of the last whisper (to tell an "is not playing" answer to ours)
+local notPlayingHandled = {} -- name -> true once their "is not playing" answer was handled (until whispered again)
 local heardOnChannel = {} -- name -> GetTime() they were last heard on one of the channels
 local offlineUntil = {} -- name -> GetTime() until which a moderator is skipped
 
@@ -191,8 +193,9 @@ local ENCODE = {
     for _, spell in ipairs(t.spells or {}) do
       spells[#spells + 1] = Escape(spell.spell_id) .. ":" .. Escape(spell.rank) .. ":" .. (spell.passive and "1" or "0")
     end
+    -- Credit (1): you tamed it with Send Name on (tamed_by), so whoever adds it credits you by name.
     return Join("T", Pack(t.npc_id, t.name, t.family, t.level, t.classification, t.creature_speed, t.pet_level,
-      t.pet_family, t.attack_speed, t.ui_map_id, t.x, t.y, t.tamed)) .. ";" .. table.concat(spells, "/")
+      t.pet_family, t.attack_speed, t.ui_map_id, t.x, t.y, t.tamed, t.tamed_by and 1 or nil)) .. ";" .. table.concat(spells, "/")
   end,
   trainer = function(r)
     return Join("R", Pack(r.id, r.name, r.title, r.level, r.faction, r.ui_map_id, r.x, r.y, r.subzone,
@@ -321,6 +324,7 @@ local function Pump()
     end
     if target then
       whispered[target] = now
+      notPlayingHandled[target] = nil
       whisperTimes[#whisperTimes + 1] = now
       try("WHISPER", target, "whisper")
       if #list > 0 then pendingOrder[#pendingOrder + 1] = target else pending[target] = nil end
@@ -679,6 +683,9 @@ local MERGE = {
       classification = Text(f[5]), creature_speed = Number(f[6]), pet_level = Number(f[7]), pet_family = petFamily,
       pet_family_id = Addon:FamilyId(petFamily), attack_speed = Number(f[9]),
       ui_map_id = Number(f[10]), x = Number(f[11]), y = Number(f[12]), tamed = tamed, spells = spells, shared_by = sender,
+      -- The tamer asked for credit (Send Name): their name as the game reports the sender, never one in the message.
+      -- A tame travels one hop, so its sender is the hunter who tamed it.
+      tamed_by = f[14] == "1" and sender or nil,
     })
     return true
   end,
@@ -880,14 +887,22 @@ do
   NOT_PLAYING = before and ("^" .. literal(before) .. "(.+)" .. literal(after) .. "$") or "^$"
 end
 
+-- The game says it once for each whisper that could not be delivered, and every chat window that shows system
+-- messages runs this filter on each: all of those copies are hidden (for 15 seconds after our last whisper to
+-- them), and they are forgotten once.
+local NOT_PLAYING_HIDE = 15
 local function NotPlayingFilter(_, _, message, ...)
   if Addon:IsSecret(message) or type(message) ~= "string" then return false end
-  local name = message:match(NOT_PLAYING)
-  if not name then return false end
-  name = name:match("^([^%-]+)") or name
-  local at = whispered[name]
-  if not at or GetTime() - at > 15 then return false end -- not about one of ours
-  whispered[name] = nil
+  local text = message:match(NOT_PLAYING)
+  if not text then return false end
+  -- The name as we whispered it: "First Surname" (the game may write "First-Surname"), or a first name alone.
+  local name
+  for _, candidate in ipairs({ Addon:NormalizeName(text), text:match("^([^%-]+)") or text }) do
+    if whispered[candidate] then name = candidate break end
+  end
+  if not name or GetTime() - whispered[name] > NOT_PLAYING_HIDE then return false end -- not about one of ours
+  if notPlayingHandled[name] then return true end
+  notPlayingHandled[name] = true
   pending[name] = nil
   if isModerator[name] then
     offlineUntil[name] = GetTime() + OFFLINE_SKIP

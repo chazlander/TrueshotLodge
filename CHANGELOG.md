@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+- A tame shared with other players now carries your credit when Send Name is on, so the website names you as the
+  hunter who tamed it whoever uploads it (the name is the one the game reports for the sender)
+- Fixed: "No player named ... is currently playing." could still show in chat after data sharing whispered a player
+  who had gone offline (with more than one chat window, or several whispers to them); every copy is hidden now
+- Data: 754 tameable creatures (5 new: Ice Claw Bear, White Lion, Frostwolf, Highland Lurker and Bloodwing Bat), and
+  13 more verified by a tame (37 in all)
+
+**Still missing** (as of this release):
+
+- 169 of 754 creatures have no known attack speed, 87 no level and 70 no zone (159 have no map points)
+
 ## [1.60.1.13] - 2026-10-12
 
 - Fixed: on a client in another language than English, Collect Mode recorded no tameable creatures, NPC tooltips

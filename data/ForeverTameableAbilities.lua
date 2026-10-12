@@ -179,14 +179,14 @@ Addon.TameableAbilities = {
     { spell_id = 26064, rank = 1, pet_level = 20, training_cost = 15, npc_ids = { 3653, 4824, 4887, 4825, 2408, 14223, 8213 } }
   } },
   ["sonic-blast"] = { name = "Sonic Blast", learned_by = { "Bat" }, unique = true, ranks = {
-    { spell_id = 1264478, rank = 1, pet_level = 12, training_cost = 1 },
-    { spell_id = 1264479, rank = 2, pet_level = 24, training_cost = 1 },
+    { spell_id = 1264478, rank = 1, pet_level = 12, training_cost = 1, npc_ids = { 277882 } },
+    { spell_id = 1264479, rank = 2, pet_level = 24, training_cost = 1, npc_ids = { 277881 } },
     { spell_id = 1264480, rank = 3, pet_level = 36, training_cost = 1 },
     { spell_id = 1264481, rank = 4, pet_level = 48, training_cost = 1 },
     { spell_id = 1264482, rank = 5, pet_level = 60, training_cost = 1 }
   } },
   ["swipe"] = { name = "Swipe", learned_by = { "Bear" }, unique = true, ranks = {
-    { spell_id = 1264494, rank = 1, pet_level = 12, training_cost = 0 },
+    { spell_id = 1264494, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 1797 } },
     { spell_id = 1264497, rank = 2, pet_level = 24, training_cost = 0 },
     { spell_id = 1264498, rank = 3, pet_level = 36, training_cost = 0 },
     { spell_id = 1264501, rank = 4, pet_level = 48, training_cost = 0 },
@@ -209,7 +209,7 @@ Addon.TameableAbilities = {
     { spell_id = 1310612, rank = 1, pet_level = 20, training_cost = 10, npc_ids = { 250874 } }
   } },
   ["web"] = { name = "Web", learned_by = { "Spider" }, unique = true, ranks = {
-    { spell_id = 1265843, rank = 1, pet_level = 12, training_cost = 0 },
+    { spell_id = 1265843, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 1780, 1781 } },
     { spell_id = 1265878, rank = 2, pet_level = 24, training_cost = 0 },
     { spell_id = 1265880, rank = 3, pet_level = 36, training_cost = 0 },
     { spell_id = 1265881, rank = 4, pet_level = 48, training_cost = 0 },
