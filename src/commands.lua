@@ -31,6 +31,7 @@ local DEBUG_COMMANDS = {
   { "shared", "what Data Sharing is doing" },
   { "shared ping", "test who hears you" },
   { "stable", "what the game says about your pets, next to the Stable tab's copies" },
+  { "npc <id>", "what the game, our data and your collected data say about a creature" },
   { "training", "the open trainer's pet abilities and costs, and the pet's training points" },
   { "training scan", "globals that might belong to the Beast Training window" },
   { "training events", "print each event as it first fires (again to stop)" },
@@ -63,6 +64,38 @@ end
 
 function Debug.stable()
   return Addon:GetModule("Stable"):Diagnose()
+end
+
+-- `/tsl debug npc <id>`: what the game, our data and your collected data say about a creature.
+function Debug.npc(option)
+  local id = tonumber(option)
+  if not id or id <= 0 then return Say("npc: give an npc id, e.g. /tsl debug npc 3123") end
+
+  local game = Addon:NPCGameName(id)
+  Say("npc " .. id .. ":", game and ('the game says "' .. game .. '"') or "the game does not give a name yet (try again)")
+
+  local npc = Addon.TameableNPCs[id]
+  if npc then
+    local levels = npc.min and ((npc.max and npc.max ~= npc.min) and (npc.min .. "-" .. npc.max) or npc.min) or "?"
+    local maps = 0
+    for _ in pairs(npc.maps or {}) do maps = maps + 1 end
+    Say("  our data:", npc.name, "|", npc.family, "| level", levels, npc.class or "normal",
+      "| attack speed", tostring(npc.speed or "?"), "|", #(npc.zones or {}), "zone(s),", maps, "map(s)",
+      npc.tamed and ("| tamed " .. npc.tamed) or "")
+  else
+    Say("  our data: not in it")
+  end
+
+  local creatures = Addon:GetModule("DB").collected.creatures
+  local c = creatures and creatures[tostring(id)]
+  if c then
+    local zones = 0
+    for _ in pairs(c.zones or {}) do zones = zones + 1 end
+    Say("  you collected:", tostring(c.name), "|", tostring(c.family), "| level", tostring(c.level_min) .. "-" .. tostring(c.level_max),
+      "| speed", tostring(c.mainhand_speed), "|", zones, "zone(s)", c.shared_by and ("| shared by " .. c.shared_by) or "")
+  else
+    Say("  you collected: nothing of it")
+  end
 end
 
 function Debug.icon()

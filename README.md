@@ -84,6 +84,31 @@ Your pets, cached and kept in the addon so you can look them over anywhere, laid
 
 A pet is remembered the last time it was out, so even a pet sitting in the stable shows its stats and abilities.
 
+## ![Bounties](https://wow.zamimg.com/images/wow/icons/medium/inv_inscription_80_contract_embers.jpg) Bounties
+
+The beasts and abilities hunters most need found, posted as bounties: the same list as
+[TrueshotLodge.com/bounties](https://trueshotlodge.com/bounties), worked out from the addon's data.
+
+- **How to Claim**: whether Collect Mode and Send Name are on, how many tames you have collected, and how a bounty is
+  claimed
+- **Pet Bounties**:
+  - **Missing Tamed Rares**: rares no TrueshotLodge hunter has tamed yet
+  - **Missing Attack Speed**: creatures whose attack speed nobody has recorded
+  - **Missing Zone**: creatures nobody knows the whereabouts of
+- **Unique Abilities without Source**: ranks of a family's unique ability that no known tameable creature has, each with
+  its **Potential Tameable Targets**: the family's untamed beasts between the levels of the ranks around it
+
+Each bounty lists its creatures, the lowest level first, each with its level, zone and a **Map Location** button. Tick
+the **Zone Filter** in the title bar to see only the ones in the zone you are in, or turn on **Filter by Level** (the
+Filter menu) to see only the ones you can tame now, the highest level first. The bounties under a heading are listed
+alphabetically; right-click the heading to list them by number of creatures instead (and again to switch back).
+
+To claim one: turn on Collect Mode, track the beast down (a look at its nameplate records its attack speed and where it
+lives; a tame records the abilities it came with), then upload your `TrueshotLodge.lua` at
+[TrueshotLodge.com](https://trueshotlodge.com/collector). We check what you found and add it for every hunter. With
+**Send Name** on (Options, Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
+date by *your name*".
+
 ## ![Options](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_gear_01.jpg) Options
 
 The settings, grouped and explained, in the same list-and-details layout:
@@ -99,41 +124,16 @@ The settings, grouped and explained, in the same list-and-details layout:
 ## ![Collected Data](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_note_02.jpg) Collected Data
 
 Only shown while **Collect Mode** is on. TrueshotLodge's data grows with its players: with Collect Mode on, the addon
-quietly records the beasts you tame (and the abilities they came with), the tameable creatures you meet in the wild,
-and the pet trainers you talk to. This tab lists all of it, with what is not yet in the addon's data highlighted. What you collect helps fill in the gaps for every hunter, from missing attack speeds to creatures
-nobody has mapped yet.
-
-The **Bounties** entry at the top of this tab shows what TrueshotLodge most needs found (see below).
-
-## ![Bounties](https://wow.zamimg.com/images/wow/icons/medium/inv_inscription_80_contract_embers.jpg) Bounties
-
-The beasts and abilities hunters most need found, posted as bounties. In the addon, **Bounties** is the first entry on
-the Collected Data tab:
-
-- **Wanted Rares**: the top 5 rares nobody has tamed yet that you can tame now (up to your level), the highest level
-  first, each with its level, zone and a **Map Location** button. Tick the **Zone Filter** in the title bar to see only
-  the ones in the zone you are in.
-- Whether **Send Name** is on, and how many tames you have collected.
-
-The full list is on the website at [TrueshotLodge.com/bounties](https://trueshotlodge.com/bounties):
-
-- **Missing Tamed Rares**: rares no TrueshotLodge hunter has tamed yet, lowest level first
-- **Missing Attack Speed**: creatures whose attack speed nobody has recorded
-- **Missing Zone**: creatures nobody knows the whereabouts of
-- **Unique Abilities without Source**: ranks of a family's unique ability that no known tameable creature has, each with
-  its **Potential Tameable Targets**: the family's untamed beasts between the levels of the ranks around it
-
-To claim one: turn on Collect Mode, track the beast down (a look at its nameplate records its attack speed and where it
-lives; a tame records the abilities it came with), then upload your `TrueshotLodge.lua` at
-[TrueshotLodge.com](https://trueshotlodge.com/collector). We check what you found and add it for every hunter. With
-**Send Name** on (Options, Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
-date by *your name*".
+quietly records the beasts you tame (and the abilities they came with), the tameable creatures you meet in the wild
+that the addon's data does not fully know yet (a new creature, level, zone or attack speed), and the pet trainers you
+talk to. This tab lists all of it, with what is not yet in the addon's data highlighted. What you collect helps fill in
+the gaps for every hunter, from missing attack speeds to creatures nobody has mapped yet.
 
 ## Help fill in the gaps
 
 Some data is still missing: creatures whose attack speed, level or zone nobody has recorded, ranks of the families'
 unique abilities with no known tameable creature, and rares no TrueshotLodge hunter has tamed yet. The
-[Bounties](https://trueshotlodge.com/bounties) on the website, and in the addon's Collected Data tab, list them.
+[Bounties](https://trueshotlodge.com/bounties) on the website, and the addon's Bounties tab, list them.
 
 Turn on Collect Mode, go hunting, and upload your `TrueshotLodge.lua` at
 [TrueshotLodge.com](https://trueshotlodge.com/collector). With Send Name on, the beasts you tame carry your name onto

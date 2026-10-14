@@ -42,6 +42,19 @@ local function getZoneMapId()
   return mapId
 end
 
+-- The player's position on the zone's map (getZoneMapId: the map the website's creature map points are on), not on a
+-- cave's or a city district's own map. For a tame: Tame Beast's short range puts the hunter next to the beast, so it
+-- is close to where the beast was.
+local function getZonePosition()
+  local zoneId = getZoneMapId()
+  if not zoneId then return end
+  local pos = C_Map.GetPlayerMapPosition(zoneId, "player")
+  if not pos then return end
+  local x, y = pos:GetXY()
+  if not x or (x == 0 and y == 0) then return end
+  return zoneId, round(x * 100), round(y * 100)
+end
+
 -- Called when something new was recorded (the window's Collected Data tab refreshes on it).
 Collector.version = 0 -- Counts every change to the collected data; the window's tab polls it.
 
@@ -61,8 +74,70 @@ local function share(kind, entry)
   if Share.Send then Share:Send(kind, entry) end
 end
 
+-- UnitClassification() => the data's classification text (nil: a plain creature), as in the website's pets table.
+local CLASSIFICATIONS = { elite = "Elite", rare = "Rare", rareelite = "Rare Elite", worldboss = "Boss" }
+
+-- Whether the addon's data (data/ForeverTameableNPCs.lua, from the website's database) already holds everything a
+-- sighting says: the creature is in it, with the same family and classification, every level seen inside its level
+-- range, the same attack speed, and each zone seen among its map zones. Such a sighting tells the website nothing new,
+-- so it is neither kept nor sent to other players (Collector:Record). A sighting with anything the data lacks or has
+-- differently (a new level, zone or speed, or a value the data does not have yet) is kept and sent.
+local function inData(c)
+  local npc = Addon.TameableNPCs and Addon.TameableNPCs[c.id]
+  if not npc then return false end
+  if npc.family ~= c.family then return false end
+  if npc.class ~= CLASSIFICATIONS[c.classification] then return false end
+  -- Levels: the data must have them (a level the data lacks is news), and the sightings lie inside its range.
+  if c.level_min or c.level_max then
+    local low, high = npc.min, npc.max or npc.min
+    if not (low and high) then return false end
+    if (c.level_min and c.level_min < low) or (c.level_max and c.level_max > high) then return false end
+  end
+  -- Attack speed, to a tenth as the website compares it (a speed hidden in combat is not compared).
+  if c.mainhand_speed then
+    if not npc.speed or math.abs(c.mainhand_speed - npc.speed) > 0.05 then return false end
+  end
+  -- Zones: the data's maps are its zones' world maps (a creature without map points has just `map`).
+  for zoneId in pairs(c.zones or {}) do
+    if not ((npc.maps and npc.maps[zoneId]) or npc.map == zoneId) then return false end
+  end
+  return true
+end
+
+-- Shares a creature sighting unless the data already holds all of it (see inData).
+local function shareCreature(c)
+  if inData(c) then
+    return Addon:Debug("collector: not sharing", c.name, "(" .. c.id .. "): the data already has it")
+  end
+  share("creature", c)
+end
+Collector.InData = inData -- (data sharing leaves out received sightings the data already holds, too)
+
+-- At load: drops the wild sightings the addon's data now holds completely (inData). A new release brings in what
+-- players found, and those records would only be uploaded and reviewed again for nothing. Tames (each one verifies its
+-- creature), trainers and Beast Training (their prices are not in the data) are always kept. Returns how many went.
+function Collector:PurgeKnown()
+  local creatures = DB.collected and DB.collected.creatures
+  if type(creatures) ~= "table" then return 0 end
+  local removed = 0
+  for key, c in pairs(creatures) do
+    if type(c) == "table" and c.id and inData(c) then
+      creatures[key] = nil -- (clearing a field while traversing is allowed)
+      removed = removed + 1
+    end
+  end
+  if removed > 0 then
+    Addon:Debug("collector:", removed, "sighting(s) the addon's data now holds were removed from the collected data")
+  end
+  return removed
+end
+
 -- Creatures already reported as ignored this session (npc id), so debug mode says so once, not on every scan.
 local ignored = {}
+
+-- Sightings the data already holds completely (inData), this session: not kept in the collected data. Each waits here,
+-- and is kept (and shared) as soon as a later sighting of it adds something the data lacks (another level or zone).
+local waiting = {}
 
 function Collector:Record(unit)
   if not (DB.global and DB.global.collect) then return end
@@ -82,7 +157,7 @@ function Collector:Record(unit)
 
   -- Each creature id is collected once. Later sightings only widen the level
   -- range and add the zone.
-  local c = creatures[id]
+  local c = creatures[id] or waiting[id]
   if c then
     local updates = {}
     if c.shared_by then
@@ -90,7 +165,7 @@ function Collector:Record(unit)
       c.shared_by = nil
       updates[#updates + 1] = "seen yourself (was shared)"
     end
-    local level = UnitLevel(unit)
+    local level = Addon:Plain(UnitLevel(unit)) -- (secret in combat: not compared or saved)
     if level and level > 0 then
       if not c.level_min or level < c.level_min then
         c.level_min = level
@@ -110,10 +185,20 @@ function Collector:Record(unit)
       end
     end
     -- Only a change is reported: a creature in view is seen again on every scan.
+    if #updates > 0 and waiting[id] then
+      -- One the data held completely: kept once it adds something the data lacks.
+      if inData(c) then return end
+      waiting[id] = nil
+      creatures[id] = c
+      Addon:Debug("collector: recorded", c.name, "(" .. id .. ") now that it differs from the data:", table.concat(updates, ", "))
+      changed()
+      share("creature", c)
+      return
+    end
     if #updates > 0 then
       Addon:Debug("collector: updated", c.name, "(" .. id .. "):", table.concat(updates, ", "))
       changed()
-      if not c.shared_by then share("creature", c) end
+      if not c.shared_by then shareCreature(c) end
     end
     return
   end
@@ -131,28 +216,31 @@ function Collector:Record(unit)
   end
   local creatureType, creatureTypeId = Addon:UnitCreatureType(unit)
 
-  local level = UnitLevel(unit)
+  -- Every unit value goes through Addon:Plain: in combat the game can hand out "secret" values, which cannot be
+  -- compared or saved (the saved file holds nil for them) and would stop the records from being signed at logout.
+  local Plain = function(value) return Addon:Plain(value) end
+  local level = Plain(UnitLevel(unit))
   if not (level and level > 0) then level = nil end
   local zoneId = getZoneMapId()
 
   local mainhand, offhand = UnitAttackSpeed(unit)
-  mainhand, offhand = Addon:Plain(mainhand), Addon:Plain(offhand) -- secret in combat: not saved
+  mainhand, offhand = Plain(mainhand), Plain(offhand)
   c = {
     id = tonumber(id),
     collected = time(),
-    name = UnitName(unit),
+    name = Plain(UnitName(unit)) or Addon:NPCName(id),
     family = family,
     family_id = familyId,
     creature_type = creatureType,
     creature_type_id = creatureTypeId,
-    classification = UnitClassification(unit),
+    classification = Plain(UnitClassification(unit)),
     level_min = level,
     level_max = level,
     zones = zoneId and { [zoneId] = true } or {},
-    power_type = UnitPowerType(unit),
-    health_max = UnitHealthMax(unit),
-    power_max = UnitPowerMax(unit),
-    sex = UnitSex(unit),
+    power_type = Plain((UnitPowerType(unit))),
+    health_max = Plain(UnitHealthMax(unit)),
+    power_max = Plain(UnitPowerMax(unit)),
+    sex = Plain(UnitSex(unit)),
     mainhand_speed = mainhand,
     offhand_speed = offhand,
     instance_id = tonumber(instanceId),
@@ -165,6 +253,12 @@ function Collector:Record(unit)
     c.y = y
     c.ui_map_id = zoneId -- Zone of this first position.
     c.subzone = GetSubZoneText()
+  end
+
+  -- Nothing the data lacks: not kept (it waits, in case a later sighting of it adds something).
+  if inData(c) then
+    waiting[id] = c
+    return Addon:Debug("collector: not recording", c.name, "(" .. id .. "): the data already has it")
   end
 
   creatures[id] = c
@@ -277,15 +371,15 @@ function Collector:RecordTrainer()
   trainers[id] = trainer
 
   trainer.id = id
-  trainer.name = UnitName(unit)
+  trainer.name = Addon:Plain(UnitName(unit)) or trainer.name or Addon:NPCName(id)
   trainer.title = title or trainer.title
   -- Not known as a pet trainer and its title in another language: the website asks us to confirm it.
   trainer.unconfirmed = status == "unconfirmed" or nil
   -- Your standing with the trainer (4 Neutral, 5 Friendly ... 8 Exalted): prices are lower at Friendly and up, so the
   -- website works the full price back from it.
   trainer.reaction = Addon:Plain(UnitReaction(unit, "player")) or trainer.reaction
-  trainer.level = UnitLevel(unit)
-  trainer.faction = UnitFactionGroup and UnitFactionGroup(unit) or nil
+  trainer.level = Addon:Plain(UnitLevel(unit)) or trainer.level
+  trainer.faction = UnitFactionGroup and Addon:Plain((UnitFactionGroup(unit))) or trainer.faction
   trainer.ui_map_id = getZoneMapId()
   local mapId, x, y = getObserverPosition()
   if mapId then
@@ -512,7 +606,7 @@ function Collector:TameStarted(spellId, castGUID)
   end
 
   local level = Addon:Plain(UnitLevel("target"))
-  local mapId, x, y = getObserverPosition()
+  local mapId, x, y = getZonePosition() -- on the zone's map: where the beast is (see getZonePosition)
   local family, familyId, familyText = Addon:UnitFamily("target")
   local tame = {
     npc_id = tonumber(id),
@@ -650,6 +744,21 @@ function Collector:RemoveNames()
     end
   end
   Addon:Debug("collector: Send Name off, removed the name from", removed, "tame(s)")
+end
+
+-- A one-time chat tip about Send Name, once per account, for players who have it off (the default). It is never turned
+-- on for them: it puts their name on the website. The first load decides it either way (`send_name_tip`), so whoever
+-- turns Send Name off later never gets it.
+local SEND_NAME_TIP_DELAY = 15 -- seconds after loading in, past the login messages
+
+function Collector:SendNameTip()
+  local global = DB.global
+  if not global or global.send_name_tip then return end
+  global.send_name_tip = true
+  if global.send_name == true then return end
+  C_Timer.After(SEND_NAME_TIP_DELAY, function()
+    print(("|cFF007EA6%s|r: %s"):format(Addon.TITLE, Addon:GetModule("Locale").SEND_NAME_TIP))
+  end)
 end
 
 local scanTicker -- the repeating scan while collecting

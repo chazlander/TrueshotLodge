@@ -219,6 +219,29 @@ function Addon:GetNPC(id)
   return npc
 end
 
+-- A creature's name as the game gives it, in the client's language, from its npc id: the tooltip of a unit link with
+-- that id. It answers for any creature the client knows, also ones the data does not have; for one the client has not
+-- loaded yet the first call can come back empty. nil when it does not answer.
+function Addon:NPCGameName(id)
+  id = tonumber(id)
+  if not (id and C_TooltipInfo and C_TooltipInfo.GetHyperlink) then return nil end
+  local ok, data = pcall(C_TooltipInfo.GetHyperlink, ("unit:Creature-0-0-0-0-%d-0"):format(id))
+  local line = ok and type(data) == "table" and type(data.lines) == "table" and data.lines[1]
+  local name = type(line) == "table" and Addon:Plain(line.leftText) or nil
+  if type(name) == "string" and name ~= "" and name ~= UNKNOWNOBJECT then return name end
+  return nil
+end
+
+-- A creature's name from its npc id: the game's (in your language, as the creatures you meet yourself are saved),
+-- else the English name in the data; nil when neither has it. What a shared entry says is another player's language,
+-- so it is only used when this finds nothing.
+function Addon:NPCName(id)
+  local name = self:NPCGameName(id)
+  if name then return name end
+  local npc = TameableNPCs[tonumber(id) or 0]
+  return npc and npc.name or nil
+end
+
 -- The tab an ability is listed on: "UNIQUE" when it is the exclusive ability of a single pet family
 -- (`unique = true` in the data), even when it is passive; "PASSIVE" for the other passive abilities
 -- (resistances, Great Stamina, ...), which are learned from trainers; "COMMON" for everything else.

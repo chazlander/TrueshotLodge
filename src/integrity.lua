@@ -46,8 +46,11 @@ local function IsList(t)
   return n > 0
 end
 
--- A value written out one fixed way: n<number>, s<length>:<text>, T/F, [list], {key=value,...} by key.
+-- A value written out one fixed way: n<number>, s<length>:<text>, T/F, [list], {key=value,...} by key. A "secret"
+-- value (one the game hides in combat) cannot be read, and the game saves it as nil: it is written as "?", so signing
+-- never stops on one. (The collector keeps them out; this is the safety net.)
 local function Canon(v, top)
+  if Addon:IsSecret(v) then return "?" end
   local t = type(v)
   if t == "number" then return "n" .. NumberText(v) end
   if t == "string" then return "s" .. #v .. ":" .. v end
@@ -108,8 +111,33 @@ local function EachRecord(fn)
   end
 end
 
--- At load: marks the records changed outside the game. Records without a tag (from before tags) are left as they are.
+-- The time a record was made or last seen (0 when it has none).
+local function RecordTime(record)
+  return tonumber(record.collected or record.tamed or record.last_seen or record.first_seen) or 0
+end
+
+-- Whether the last save's signing finished: it writes the file's details (`addon.saved_at`) last, after every record,
+-- so a record newer than saved_at means it stopped partway (versions up to 1.60.1.15 stopped at the first record they
+-- could not sign, a wild sighting holding a secret value). The records it did not reach keep an old tag, which no longer
+-- matches what the game changed since: that is not a hand edit.
+function Integrity:LastSigningFinished()
+  local addon = type(DB.collected) == "table" and DB.collected.addon
+  local savedAt = type(addon) == "table" and tonumber(addon.saved_at)
+  if not savedAt then return true end -- (no details: a file from before them, signed whole or not at all)
+  local finished = true
+  EachRecord(function(_, _, record)
+    if RecordTime(record) > savedAt then finished = false end
+  end)
+  return finished
+end
+
+-- At load: marks the records changed outside the game. Records without a tag (from before tags) are left as they are,
+-- and nothing is marked when the last signing did not finish (see LastSigningFinished): logout signs them all again.
 function Integrity:Check()
+  if not self:LastSigningFinished() then
+    Addon:Debug("integrity: the last save did not finish signing; nothing marked, every record is signed at logout")
+    return 0
+  end
   local edited = 0
   EachRecord(function(kind, key, record)
     if type(record.sig) == "string" and not record.edited and record.sig ~= self:Tag(kind, key, record) then
@@ -124,8 +152,16 @@ end
 -- At logout: signs every record, as the game is about to write the saved file, and notes which addon version saved
 -- it (`addon`, tagged too): when the data changes in a way old files cannot follow, the website can ask for an upload
 -- from a newer version.
+-- Each record is signed on its own: one that cannot be signed is left unsigned (the website counts it as untagged)
+-- and the others are still signed, so the file's details below are always written.
 function Integrity:SignAll()
-  EachRecord(function(kind, key, record) record.sig = self:Tag(kind, key, record) end)
+  local failed = 0
+  EachRecord(function(kind, key, record)
+    local ok, tag = pcall(self.Tag, self, kind, key, record)
+    record.sig = ok and tag or nil
+    if not ok then failed = failed + 1 end
+  end)
+  if failed > 0 then Addon:Debug("integrity:", failed, "record(s) could not be signed and were left unsigned") end
   if type(DB.collected) == "table" then
     -- locale: the client's language (ruRU, deDE, ...): names in the file are in it, families are in English.
     local addon = { version = Addon.VERSION, saved_at = time(), locale = GetLocale and GetLocale() or nil }

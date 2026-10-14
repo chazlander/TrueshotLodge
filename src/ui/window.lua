@@ -45,6 +45,10 @@ local MINI_MAP_WIDTH = Helpers.MINI_MAP_WIDTH
 -- too. Set it back to true once a client update fixes it.
 local BLIZZARD_ICON_RING = false
 
+-- The Bounties tab's icon: the website's Bounties tab icon (a contract), or a scroll when this client lacks it.
+Window.BOUNTY_ICON = (GetFileIDFromPath and GetFileIDFromPath("Interface\\Icons\\INV_Inscription_80_Contract_Embers"))
+  or "Interface\\Icons\\INV_Scroll_03"
+
 local TABS = {
   { key = "UNIQUE", label = L.UNIQUE, title = L.UNIQUE_ABILITIES, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming" },
   { key = "COMMON", label = L.COMMON, title = L.COMMON_ABILITIES, icon = "Interface\\Icons\\Ability_Racial_Cannibalize" },
@@ -52,6 +56,7 @@ local TABS = {
   { key = "ATTACK", label = L.ATTACK_SPEEDS, title = L.ATTACK_SPEEDS, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
   { key = "TRAINERS", label = L.TRAINERS, title = L.TRAINERS, icon = "Interface\\Icons\\Ability_Hunter_BeastTraining" },
   { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall" },
+  { key = "BOUNTIES", label = L.BOUNTIES, title = L.BOUNTIES, icon = Window.BOUNTY_ICON },
   { key = "OPTIONS", label = L.OPTIONS, title = L.OPTIONS, icon = "Interface\\Icons\\INV_Misc_Gear_01" },
   -- Last, so the tabs above never move: it is only shown while collecting is on.
   { key = "COLLECTOR", label = L.COLLECTED_DATA, title = L.COLLECTED_DATA, icon = "Interface\\Icons\\INV_Misc_Note_02" },
@@ -244,6 +249,8 @@ function Window:Remember()
   local selections = DB.global.selections
   if self.tab == "TRAINERS" then
     selections.TRAINERS = self.selectedTrainer and self.selectedTrainer.id or nil
+  elseif self.tab == "BOUNTIES" then
+    selections.BOUNTIES = self.selectedBounty
   elseif self.tab == "OPTIONS" then
     selections.OPTIONS = self.selectedOption
   elseif self.selected then
@@ -378,14 +385,31 @@ function Window:CreateList(frame)
       factory("ProfessionsRecipeListCategoryTemplate", function(button)
         button:Init(node)
         button.tooltipText = data.family -- shown by ListHeaderMixin.OnEnter
-        button:SetScript("OnClick", function()
+        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        button:SetScript("OnClick", function(_, mouseButton)
+          -- Right-click: the Bounties tab's headings switch how their rows are sorted; other headings ignore it.
+          if mouseButton == "RightButton" then
+            if data.sortable then self:ToggleBountySort(data.key) end
+            return
+          end
           node:ToggleCollapsed()
           self.expanded[data.key] = not node:IsCollapsed() or nil
           button:UpdateCollapsedState(node:IsCollapsed())
           self:UpdateToggleButton()
         end)
-        button:SetScript("OnEnter", function(this) ListHeaderMixin.OnEnter(this) end)
-        button:SetScript("OnLeave", function(this) ListHeaderMixin.OnLeave(this) end)
+        button:SetScript("OnEnter", function(this)
+          ListHeaderMixin.OnEnter(this)
+          if data.hint then -- how right-clicking sorts it
+            GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+            GameTooltip:SetText(data.title or data.categoryInfo.name)
+            GameTooltip:AddLine(data.hint, 0.6, 0.6, 0.6)
+            GameTooltip:Show()
+          end
+        end)
+        button:SetScript("OnLeave", function(this)
+          ListHeaderMixin.OnLeave(this)
+          if data.hint then GameTooltip:Hide() end
+        end)
       end)
     elseif data.rankInfo then
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitRankButton(button, data.rankInfo) end)
@@ -395,6 +419,8 @@ function Window:CreateList(frame)
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitTrainerButton(button, data.trainer) end)
     elseif data.collected then
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitCollectedButton(button, data.collected) end)
+    elseif data.bounty then
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitBountyButton(button, data.bounty) end)
     else
       factory("Frame")
     end
@@ -413,6 +439,7 @@ local FILTERS = {
   COMMON = { { key = "filter_by_level", label = L.FILTER_BY_LEVEL }, { key = "filter_by_pet", label = L.FILTER_BY_PET } },
   PASSIVE = { { key = "filter_by_level", label = L.FILTER_BY_LEVEL } },
   TRAINERS = { { key = "filter_by_faction", label = L.FILTER_BY_FACTION } },
+  BOUNTIES = { { key = "filter_by_level", label = L.FILTER_BY_LEVEL } }, -- the creatures you can tame now
 }
 
 function Window:CreateFilterMenu(parent)
@@ -524,6 +551,10 @@ function Window:Refresh()
   end
   if self.tab == "COLLECTOR" then
     self:RefreshCollector()
+    return
+  end
+  if self.tab == "BOUNTIES" then
+    self:RefreshBounties()
     return
   end
   self:RefreshAbilities() -- the ability tabs (tab-abilities.lua)
@@ -800,6 +831,10 @@ function Window:UpdateDetails()
   end
   if self.tab == "COLLECTOR" then
     self:UpdateCollectedDetails()
+    return
+  end
+  if self.tab == "BOUNTIES" then
+    self:UpdateBountyDetails()
     return
   end
   if self.tab == "OPTIONS" then

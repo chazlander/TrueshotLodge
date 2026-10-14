@@ -217,7 +217,11 @@ do -- Initialization, once this addon's saved variables are loaded.
     -- Collected records changed outside the game since the last logout are marked edited (src/integrity.lua).
     local ok, err = pcall(Addon:GetModule("Integrity").Check, Addon:GetModule("Integrity"))
     if not ok then Addon:Debug("integrity: check failed:", err) end
+    -- Wild sightings the addon's data now holds (a new release brought them in) are dropped (src/collector.lua).
+    ok, err = pcall(Addon:GetModule("Collector").PurgeKnown, Addon:GetModule("Collector"))
+    if not ok then Addon:Debug("collector: cleanup failed:", err) end
     Addon:GetModule("MinimapIcon"):Initialize()
     Addon:GetModule("Commands"):Initialize()
+    Addon:GetModule("Collector"):SendNameTip()
   end)
 end

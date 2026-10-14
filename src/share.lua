@@ -24,8 +24,9 @@ local DB = Addon:GetModule("DB")
 -- (a burst of BURST, then one message every SEND_EVERY seconds; a throttled send waits).
 --
 -- A message is lines of "<kind>|1,<field>,<field>,...", fields percent-escaped (so no field holds a line break):
---   C  wild sighting   id, name, family, level min, level max, classification, attack speed, uiMapID, x, y, type
---   T  tame            npc id, name, family, level, classification, creature speed, pet level, pet family, pet attack
+--   C  wild sighting   id, name (empty when the sender's data has the creature: the receiver names it from the id), family,
+--                      level min, level max, classification, attack speed, uiMapID, x, y, type
+--   T  tame            npc id, name (as in C), family, level, classification, creature speed, pet level, pet family, pet attack
 --                      speed, uiMapID, x, y, tamed (time), credit (1: Send Name on, credit the sender); then ";" and
 --                      the spells: spell id:rank:passive, "/"-separated
 --   R  pet trainer     id, name, title, level, faction, uiMapID, x, y, subzone, unconfirmed (1: not known as a pet
@@ -33,7 +34,7 @@ local DB = Addon:GetModule("DB")
 --   S  trainer service trainer id, spell id, name, rank, price (copper), required level, status, pet ability (1/0)
 --   B  Beast Training  spell id, name, rank, price (copper), required level, status
 --   H  hello           addon version (when the addon loads in); answered with a whispered
---   W  welcome         addon version
+--   W  welcome         addon version (a newer version than yours, reported by two players, is told once: CheckVersion)
 --   P  ping            token (/tsl debug shared ping); answered with a whispered
 --   Q  answer          token
 
@@ -183,10 +184,17 @@ end
 
 local function Pack(...) return { n = select("#", ...), ... } end
 
+-- A creature's name is sent only when the data does not have the creature: whoever receives it names it from its npc
+-- id (Addon:NPCName, in their own language), which also spares them a name in another language.
+local function NameIfNew(npcId, name)
+  if Addon.TameableNPCs and Addon.TameableNPCs[tonumber(npcId) or 0] then return nil end
+  return name
+end
+
 local ENCODE = {
   creature = function(c)
-    return Join("C", Pack(c.id, c.name, c.family, c.level_min, c.level_max, c.classification, c.mainhand_speed,
-      c.ui_map_id or next(c.zones or {}), c.x, c.y, c.creature_type))
+    return Join("C", Pack(c.id, NameIfNew(c.id, c.name), c.family, c.level_min, c.level_max, c.classification,
+      c.mainhand_speed, c.ui_map_id or next(c.zones or {}), c.x, c.y, c.creature_type))
   end,
   tame = function(t)
     local spells = {}
@@ -194,8 +202,9 @@ local ENCODE = {
       spells[#spells + 1] = Escape(spell.spell_id) .. ":" .. Escape(spell.rank) .. ":" .. (spell.passive and "1" or "0")
     end
     -- Credit (1): you tamed it with Send Name on (tamed_by), so whoever adds it credits you by name.
-    return Join("T", Pack(t.npc_id, t.name, t.family, t.level, t.classification, t.creature_speed, t.pet_level,
-      t.pet_family, t.attack_speed, t.ui_map_id, t.x, t.y, t.tamed, t.tamed_by and 1 or nil)) .. ";" .. table.concat(spells, "/")
+    return Join("T", Pack(t.npc_id, NameIfNew(t.npc_id, t.name), t.family, t.level, t.classification, t.creature_speed,
+      t.pet_level, t.pet_family, t.attack_speed, t.ui_map_id, t.x, t.y, t.tamed, t.tamed_by and 1 or nil))
+      .. ";" .. table.concat(spells, "/")
   end,
   trainer = function(r)
     return Join("R", Pack(r.id, r.name, r.title, r.level, r.faction, r.ui_map_id, r.x, r.y, r.subzone,
@@ -649,12 +658,17 @@ local MERGE = {
       end
       return changed
     end
-    creatures[key] = {
-      id = id, name = Text(f[2]), family = family, family_id = Addon:FamilyId(family), level_min = low, level_max = high,
+    local record = {
+      id = id, family = family, family_id = Addon:FamilyId(family), level_min = low, level_max = high,
       classification = Text(f[6]), mainhand_speed = Number(f[7]), ui_map_id = zone, zones = zone and { [zone] = true } or {},
       x = Number(f[9]), y = Number(f[10]), creature_type = "Beast", -- a pet family's creatures are all beasts
       collected = time(), shared_by = sender,
     }
+    -- As with your own sightings: one the addon's data already holds completely is not kept (older addons still send them).
+    local Collector = Addon:GetModule("Collector")
+    if Collector.InData and Collector.InData(record) then return Drop("already in the addon's data") end
+    record.name = Addon:NPCName(id) or Text(f[2])
+    creatures[key] = record
     return true
   end,
   T = function(f, sender, spellText)
@@ -679,7 +693,8 @@ local MERGE = {
     end
     local family, petFamily = FamilyName(Text(f[3])), FamilyName(Text(f[8]))
     table.insert(DB.collected.tames, {
-      npc_id = id, name = Text(f[2]), family = family, family_id = Addon:FamilyId(family), level = Number(f[4]),
+      npc_id = id, name = Addon:NPCName(id) or Text(f[2]), family = family, family_id = Addon:FamilyId(family),
+      level = Number(f[4]),
       classification = Text(f[5]), creature_speed = Number(f[6]), pet_level = Number(f[7]), pet_family = petFamily,
       pet_family_id = Addon:FamilyId(petFamily), attack_speed = Number(f[9]),
       ui_map_id = Number(f[10]), x = Number(f[11]), y = Number(f[12]), tamed = tamed, spells = spells, shared_by = sender,
@@ -749,6 +764,48 @@ local function IsOurChannel(name, localId)
   return id ~= nil and id > 0 and (id == ChannelId(CHANNEL) or id == ChannelId(zoneChannel))
 end
 
+-- ----------------------------------------------------------------------------
+-- A newer version: told once a session
+-- ----------------------------------------------------------------------------
+
+-- A version's numbers ("1.60.1.17" -> { 1, 60, 1, 17 }), or nil when it is not just numbers and dots.
+local function VersionNumbers(text)
+  if type(text) ~= "string" or not text:match("^%d+[%d%.]*$") then return nil end
+  local numbers = {}
+  for part in text:gmatch("%d+") do numbers[#numbers + 1] = tonumber(part) end
+  return numbers
+end
+
+-- Whether version a is newer than version b.
+local function IsNewer(a, b)
+  for i = 1, math.max(#a, #b) do
+    local x, y = a[i] or 0, b[i] or 0
+    if x ~= y then return x > y end
+  end
+  return false
+end
+
+-- Every hello and welcome carries the sender's version. A newer one than yours is believed once two different players
+-- report it: a single sender may be a development build that is not out yet, or someone sending a made-up version.
+local NEWER_VERSION_REPORTERS = 2
+local newerReported = {} -- version text -> { [sender] = true }
+local newerTold = false
+
+local function CheckVersion(text, who)
+  if newerTold then return end
+  local theirs, mine = VersionNumbers(text), VersionNumbers(Addon.VERSION)
+  if not (theirs and mine and IsNewer(theirs, mine)) then return end
+  local senders = newerReported[text] or {}
+  newerReported[text] = senders
+  senders[who] = true
+  local count = 0
+  for _ in pairs(senders) do count = count + 1 end
+  if count < NEWER_VERSION_REPORTERS then return end
+  newerTold = true
+  print(("|cFF007EA6%s|r: %s"):format(Addon.TITLE, Addon:GetModule("Locale").NEWER_VERSION:format(text, Addon.VERSION)))
+end
+Share.CheckVersion = CheckVersion -- (for the tests)
+
 -- One line of a message from `who`.
 local function ReceiveLine(line, who, channel, via)
   local kind, version, rest = line:match("^(%u)|(%d+),(.*)$")
@@ -756,10 +813,12 @@ local function ReceiveLine(line, who, channel, via)
   -- Hello: they just loaded in. Whisper a welcome back so they know you (not to a whispered hello: they know you).
   if kind == "H" then
     stats.hellos[who] = Clock()
+    CheckVersion(Text(rest), who)
     if channel ~= "WHISPER" then Share:Queue("W|1," .. Escape(Addon.VERSION or "?"), false, true, who) end
     return Addon:Debug("share: hello from", who, "(via " .. via .. ")")
   elseif kind == "W" then
     stats.hellos[who] = Clock()
+    CheckVersion(Text(rest), who)
     return Addon:Debug("share: welcome from", who)
   end
   -- A test ping: answer it (once per ping, by whisper), whatever the options. An answer to yours: say who heard it.

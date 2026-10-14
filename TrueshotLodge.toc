@@ -47,4 +47,5 @@ src\ui\tab-trainers.lua
 src\ui\zone-filter.lua
 src\ui\tab-options.lua
 src\ui\tab-collector.lua
+src\ui\tab-bounties.lua
 src\ui\tab-stable.lua
