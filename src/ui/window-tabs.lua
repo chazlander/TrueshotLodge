@@ -12,9 +12,16 @@ local TABS = Window.TABS
 -- so a tab that is hidden (Collected Data without Collect Mode) leaves no gap wherever it sits.
 local TAB_TOP, TAB_GAP = -60, 2 -- the first tab's offset under the frame's top right corner, and the space between tabs
 local DRAG_DELAY = 0.4 -- seconds the button is held before the tab lifts
+-- The tabs' size against the template's (90%). Their offsets are in their own scale, so the column shrinks with them.
+local TAB_SCALE = 0.9
+
+local noSideTab = {} -- tabs given no side tab (`noSideTab` in Window.TABS: none at the moment)
+for _, info in ipairs(TABS) do
+  if info.noSideTab then noSideTab[info.key] = true end
+end
 
 local function TabVisible(key)
-  return key ~= "COLLECTOR" or DB.global.collect == true
+  return not noSideTab[key] and (key ~= "COLLECTOR" or DB.global.collect == true)
 end
 
 -- The tabs' keys in the character's order: the saved order, then any tab it does not name in its usual place.
@@ -73,7 +80,8 @@ function Window:UpdateTabDrag()
   local visible = VisibleKeys(self:TabOrder(), tab.key)
   local count = #visible + 1
   local _, cursor = GetCursorPosition()
-  local offset = cursor / frame:GetEffectiveScale() - frame:GetTop() - self.tabStep / 2
+  -- (in the tabs' own scale, as their offsets are)
+  local offset = (cursor / frame:GetEffectiveScale() - frame:GetTop()) / TAB_SCALE - self.tabStep / 2
   offset = math.max(TAB_TOP - (count - 1) * self.tabStep, math.min(TAB_TOP, offset))
   tab:ClearAllPoints()
   tab:SetPoint("TOPLEFT", frame, "TOPRIGHT", 0, offset)
@@ -120,37 +128,40 @@ end
 function Window:CreateSideTabs(frame)
   self.tabs = {}
   for _, info in ipairs(TABS) do
-    local tab = CreateFrame("Frame", nil, frame, "LargeSideTabButtonTemplate")
-    tab:EnableMouse(true)
-    tab.Icon:SetTexture(info.icon)
-    if tab.SetFillToInterior then tab:SetFillToInterior(true) end
-    tab.tooltipText = info.label
-    tab:SetScript("OnEnter", function(this)
-      if self.dragTab then return end
-      GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-      GameTooltip:SetText(info.label)
-      GameTooltip:AddLine(L.TAB_DRAG_HINT, 0.6, 0.6, 0.6)
-      GameTooltip:Show()
-    end)
-    tab:SetScript("OnLeave", GameTooltip_Hide)
-    tab:SetCustomOnMouseUpHandler(function(_, button, upInside)
-      if self.dragTab or self.justDragged then return end
-      if button == "LeftButton" and upInside ~= false then self:SelectTab(info.key) end
-    end)
-    -- Held for a moment, the tab lifts and follows the cursor.
-    tab:HookScript("OnMouseDown", function(this, button)
-      if button ~= "LeftButton" then return end
-      self.pressToken = (self.pressToken or 0) + 1
-      local token = self.pressToken
-      C_Timer.After(DRAG_DELAY, function()
-        if self.pressToken == token and not self.dragTab and IsMouseButtonDown("LeftButton") then
-          self:BeginTabDrag(this)
-        end
+    if not info.noSideTab then
+      local tab = CreateFrame("Frame", nil, frame, "LargeSideTabButtonTemplate")
+      tab:SetScale(TAB_SCALE)
+      tab:EnableMouse(true)
+      tab.Icon:SetTexture(info.icon)
+      if tab.SetFillToInterior then tab:SetFillToInterior(true) end
+      tab.tooltipText = info.label
+      tab:SetScript("OnEnter", function(this)
+        if self.dragTab then return end
+        GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+        GameTooltip:SetText(info.label)
+        GameTooltip:AddLine(L.TAB_DRAG_HINT, 0.6, 0.6, 0.6)
+        GameTooltip:Show()
       end)
-    end)
-    tab:HookScript("OnMouseUp", function() self.pressToken = (self.pressToken or 0) + 1 end)
-    tab.key = info.key
-    self.tabs[#self.tabs + 1] = tab
+      tab:SetScript("OnLeave", GameTooltip_Hide)
+      tab:SetCustomOnMouseUpHandler(function(_, button, upInside)
+        if self.dragTab or self.justDragged then return end
+        if button == "LeftButton" and upInside ~= false then self:SelectTab(info.key) end
+      end)
+      -- Held for a moment, the tab lifts and follows the cursor.
+      tab:HookScript("OnMouseDown", function(this, button)
+        if button ~= "LeftButton" then return end
+        self.pressToken = (self.pressToken or 0) + 1
+        local token = self.pressToken
+        C_Timer.After(DRAG_DELAY, function()
+          if self.pressToken == token and not self.dragTab and IsMouseButtonDown("LeftButton") then
+            self:BeginTabDrag(this)
+          end
+        end)
+      end)
+      tab:HookScript("OnMouseUp", function() self.pressToken = (self.pressToken or 0) + 1 end)
+      tab.key = info.key
+      self.tabs[#self.tabs + 1] = tab
+    end
   end
   local height = self.tabs[1]:GetHeight()
   self.tabStep = (height and height > 0 and height or 56) + TAB_GAP

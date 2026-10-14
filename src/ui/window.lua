@@ -38,7 +38,11 @@ local WIDTH, HEIGHT = 671, 594
 -- UI Scale on the Options tab: the window's own scale, in steps of 5%.
 local MIN_SCALE, MAX_SCALE, SCALE_STEP = 0.5, 1.5, 0.05
 local LIST_WIDTH = Helpers.LIST_WIDTH
-local FACTS_X = 224 -- where the details start in the right-hand pane (right of the icon, name and rank)
+local HEADER_X = 84 -- where the tab's title and count start: clear of the logo, with some room
+local DETAILS_TOP = 12 -- the room above the details pane's top row (the icon, name and facts)
+local DETAILS_LEFT = 12 -- the room left of the details pane's content
+local FACTS_X = 246 -- where the details start in the right-hand pane (right of the icon, name and rank)
+Window.DETAILS_TOP, Window.DETAILS_LEFT = DETAILS_TOP, DETAILS_LEFT -- (the Families tab lays out its own top row)
 local MINI_MAP_WIDTH = Helpers.MINI_MAP_WIDTH
 -- The details icon: Blizzard's CircularGiantItemButtonTemplate (true), or a ring drawn here (false). Since October 2026
 -- the client draws that template's ring wrong: a dark square over part of the icon, in Blizzard's own profession window
@@ -50,13 +54,15 @@ Window.BOUNTY_ICON = (GetFileIDFromPath and GetFileIDFromPath("Interface\\Icons\
   or "Interface\\Icons\\INV_Scroll_03"
 
 local TABS = {
+  -- First, as on the website (which opens on it).
+  { key = "FAMILIES", label = L.FAMILIES, title = L.PET_FAMILIES, icon = "Interface\\Icons\\Ability_Hunter_Pet_Wolf" },
   { key = "UNIQUE", label = L.UNIQUE, title = L.UNIQUE_ABILITIES, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming" },
   { key = "COMMON", label = L.COMMON, title = L.COMMON_ABILITIES, icon = "Interface\\Icons\\Ability_Racial_Cannibalize" },
   { key = "PASSIVE", label = L.PASSIVE, title = L.PASSIVE_ABILITIES, icon = "Interface\\Icons\\Spell_Nature_UnyeildingStamina" },
   { key = "ATTACK", label = L.ATTACK_SPEEDS, title = L.ATTACK_SPEEDS, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
   { key = "TRAINERS", label = L.TRAINERS, title = L.TRAINERS, icon = "Interface\\Icons\\Ability_Hunter_BeastTraining" },
-  { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall" },
   { key = "BOUNTIES", label = L.BOUNTIES, title = L.BOUNTIES, icon = Window.BOUNTY_ICON },
+  { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall" },
   { key = "OPTIONS", label = L.OPTIONS, title = L.OPTIONS, icon = "Interface\\Icons\\INV_Misc_Gear_01" },
   -- Last, so the tabs above never move: it is only shown while collecting is on.
   { key = "COLLECTOR", label = L.COLLECTED_DATA, title = L.COLLECTED_DATA, icon = "Interface\\Icons\\INV_Misc_Note_02" },
@@ -184,7 +190,8 @@ function Window:Create()
   frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
   frame:SetTitle(("%s %s"):format(Addon.TITLE, Colors.Primary(Addon.VERSION or "")))
   self:CreatePortrait(frame)
-  self:CreateZoneFilter(frame) -- the Zone Filter checkbox by the close button (zone-filter.lua)
+  self:CreateFilterButtons(frame) -- Level, Zone, Pet (and Faction) at the right of the header
+  self:CreateZoneFilter(frame) -- the Zone Filter follows you into a new zone (zone-filter.lua)
   frame:SetScale(self:SavedScale())
   frame:HookScript("OnShow", function() self:Refresh() end)
   frame:HookScript("OnHide", function() self:OnHide() end)
@@ -196,6 +203,7 @@ function Window:Create()
   frame:RegisterEvent("PLAYER_LEVEL_UP")
   frame:HookScript("OnEvent", function(_, event, unit)
     if not frame:IsShown() then return end
+    if unit == "player" then self:UpdateFilterButtons() end -- the Pet button needs a pet
     if event == "PLAYER_LEVEL_UP" or (unit == "player" and DB.global.filter_by_pet) then self:Refresh() end
   end)
   tinsert(UISpecialFrames, frameName) -- Escape closes it.
@@ -206,11 +214,18 @@ function Window:Create()
     return false
   end
 
-  -- The selected tab's title, and a count under it (like the profession window's skill bar).
+  -- The selected tab's title, and a count under it (like the profession window's skill bar): on the left, clear of
+  -- the logo, with the filter buttons at the other end of the same band.
   self.header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  self.header:SetPoint("TOP", 20, -32)
+  self.header:SetPoint("TOPLEFT", HEADER_X, -32)
+  self.header:SetJustifyH("LEFT")
+  local font, size, flags = self.header:GetFont()
+  if font and size then self.header:SetFont(font, size - 2, flags) end -- a size under the template's
   self.headerCount = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  self.headerCount:SetPoint("TOP", self.header, "BOTTOM", 0, -4)
+  self.headerCount:SetPoint("TOPLEFT", self.header, "BOTTOMLEFT", 0, -4)
+  self.headerCount:SetJustifyH("LEFT")
+  font, size, flags = self.headerCount:GetFont()
+  if font and size then self.headerCount:SetFont(font, size - 1, flags) end
 
   local background = frame:CreateTexture(nil, "BACKGROUND", nil, -3)
   if background:SetAtlas("Profession-Background-Template2", true) == false then background:Hide() end
@@ -251,6 +266,8 @@ function Window:Remember()
     selections.TRAINERS = self.selectedTrainer and self.selectedTrainer.id or nil
   elseif self.tab == "BOUNTIES" then
     selections.BOUNTIES = self.selectedBounty
+  elseif self.tab == "FAMILIES" then
+    selections.FAMILIES = self.selectedFamily
   elseif self.tab == "OPTIONS" then
     selections.OPTIONS = self.selectedOption
   elseif self.selected then
@@ -271,6 +288,25 @@ function Window:SelectTab(key)
   self:Refresh()
 end
 
+-- The name and the line under it, right of the icon: up to the facts column, or with `wide` (no facts: a pet bounty,
+-- Collected Data) across the whole pane. `white`: the line under it in white (a pet bounty's text) instead of gold.
+function Window:SetTopWide(wide, white)
+  for _, text in ipairs({ self.name, self.subtitle }) do
+    text:ClearAllPoints()
+    if text == self.name then
+      text:SetPoint("TOPLEFT", self.iconButton, "TOPRIGHT", 12, -6)
+    else
+      text:SetPoint("TOPLEFT", self.name, "BOTTOMLEFT", 0, -6)
+    end
+    if wide then
+      text:SetPoint("RIGHT", self.details, "RIGHT", -20, 0)
+    else
+      text:SetPoint("RIGHT", self.facts, "LEFT", -12, 0)
+    end
+  end
+  self.subtitle:SetFontObject(white and "GameFontHighlight" or "GameFontNormal") -- white text, or the gold rank line
+end
+
 -- Without sticky selections the window starts over each time it is opened.
 function Window:OnHide()
   if self:Sticky() then return end
@@ -284,6 +320,21 @@ function Window:UpdateTabs()
     tab:SetChecked(tab.key == self.tab)
     if tab.key == "COLLECTOR" then tab:SetShown(DB.global.collect == true) end
   end
+  -- The Families tab's own parts of the details (tab-families.lua): only there, with the creatures under its ability
+  -- rows; on the other tabs the creatures go under the description.
+  local families = self.tab == "FAMILIES"
+  if self.iconButton then self:SetTopWide(false) end -- (a pet bounty widens it again)
+  if self.familyWidgets then self.familyWidgets:SetShown(families) end
+  if self.npcLabel then
+    self.npcLabel:ClearAllPoints()
+    if families then
+      self.npcLabel:SetPoint("TOPLEFT", self:FamilyWidgets().abilities, "BOTTOMLEFT", 0, -14)
+    else
+      self.npcLabel:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", 0, -14)
+    end
+    self.npcLabel:SetPoint("RIGHT", self.details, "RIGHT", -20, 0)
+  end
+  self:UpdateFilterButtons() -- the tab's own filters
   if not self.dragTab then self:LayoutTabs() end -- (a tab being dragged is placed by the cursor)
   for _, info in ipairs(TABS) do
     if info.key == self.tab then self.header:SetText(info.title) end
@@ -328,7 +379,6 @@ function Window:CreateList(frame)
   search:SetAutoFocus(false)
   search:SetHeight(20)
   search:SetPoint("TOPLEFT", 13, -8)
-  search:SetPoint("TOPRIGHT", -34, -11) -- moved left of the filter button below
   search:HookScript("OnTextChanged", function(box)
     self.search = (box:GetText() or ""):lower()
     self:Refresh()
@@ -348,19 +398,11 @@ function Window:CreateList(frame)
   toggle:SetScript("OnLeave", GameTooltip_Hide)
   self.toggleButton = toggle
 
-  -- Filter menu, like the profession window's: Filter by Level hides the ranks the character's level has
-  -- not reached, and the abilities left with none.
-  local filter = self:CreateFilterMenu(list)
-  if filter then
-    filter:SetPoint("RIGHT", toggle, "LEFT", -4, 0)
-    search:ClearAllPoints()
-    search:SetPoint("TOPLEFT", 13, -11)
-    search:SetPoint("RIGHT", filter, "LEFT", -4, 0)
-  else
-    search:ClearAllPoints()
-    search:SetPoint("TOPLEFT", 13, -11)
-    search:SetPoint("RIGHT", toggle, "LEFT", -4, 0)
-  end
+  -- (The filters are buttons in the header: Window:CreateFilterButtons.)
+  search:ClearAllPoints()
+  search:SetPoint("TOPLEFT", 13, -11)
+  search:SetPoint("RIGHT", toggle, "LEFT", -4, 0)
+  self.searchBox = search -- (the Collected Data tab moves the row under its Clear All Data button)
 
   local scrollBox = CreateFrame("Frame", nil, list, "WowScrollBoxList")
   scrollBox:SetPoint("TOPLEFT", 8, -38)
@@ -421,6 +463,8 @@ function Window:CreateList(frame)
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitCollectedButton(button, data.collected) end)
     elseif data.bounty then
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitBountyButton(button, data.bounty) end)
+    elseif type(data.family) == "table" then -- (a header's `family` is a name: the unique abilities' tooltip)
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitFamilyButton(button, data.family) end)
     else
       factory("Frame")
     end
@@ -433,67 +477,140 @@ function Window:CreateList(frame)
   ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 end
 
--- The filters each tab's Filter menu offers (the setting is DB.global[key]).
-local FILTERS = {
-  UNIQUE = { { key = "filter_by_level", label = L.FILTER_BY_LEVEL }, { key = "filter_by_pet", label = L.FILTER_BY_PET } },
-  COMMON = { { key = "filter_by_level", label = L.FILTER_BY_LEVEL }, { key = "filter_by_pet", label = L.FILTER_BY_PET } },
-  PASSIVE = { { key = "filter_by_level", label = L.FILTER_BY_LEVEL } },
-  TRAINERS = { { key = "filter_by_faction", label = L.FILTER_BY_FACTION } },
-  BOUNTIES = { { key = "filter_by_level", label = L.FILTER_BY_LEVEL } }, -- the creatures you can tame now
+-- The filter buttons at the right of the header: Level, Zone, Pet (and Faction on the Trainers tab), in the Filters
+-- box. Each shows on the tabs it applies to; grey while off, red and glowing while on. The setting is
+-- DB.global[key]; the Zone Filter's own rules are in zone-filter.lua.
+local FILTER_BUTTONS = {
+  { key = "filter_by_level", label = L.FILTER_LEVEL, title = L.FILTER_BY_LEVEL, slot = 1,
+    tabs = { UNIQUE = true, COMMON = true, PASSIVE = true, ATTACK = true, BOUNTIES = true, FAMILIES = true } },
+  { key = "zone_filter", label = L.FILTER_ZONE, title = L.ZONE_FILTER_TITLE, slot = 2,
+    tabs = { UNIQUE = true, COMMON = true, ATTACK = true, TRAINERS = true, BOUNTIES = true, FAMILIES = true } },
+  { key = "filter_by_pet", label = L.FILTER_PET, title = L.FILTER_BY_PET, slot = 3, tabs = { UNIQUE = true, COMMON = true } },
+  -- (the Pet place: the two never show on the same tab)
+  { key = "filter_by_faction", label = L.FILTER_FACTION, title = L.FILTER_BY_FACTION, slot = 3, tabs = { TRAINERS = true } },
 }
+local FILTER_WIDTH, FILTER_HEIGHT, FILTER_GAP = 58, 22, 6
+-- The Filters box: fixed at the top right, as wide as three buttons whichever show, from under the title bar down to
+-- the top of the panes (the list's top, 72), with the window's own edge on its right.
+local FILTER_SLOTS, FILTER_LEFT, FILTER_RIGHT = 3, 10, 8 -- the places; the room before the first and after the last
+local FILTER_BOX_TOP, FILTER_BOX_BOTTOM, FILTER_BUTTONS_TOP = 26, 72, 17 -- (the buttons' top: under the label)
 
-function Window:CreateFilterMenu(parent)
-  local ok, dropdown = pcall(CreateFrame, "DropdownButton", nil, parent, "WowStyle1FilterDropdownTemplate")
-  if not (ok and dropdown and dropdown.SetupMenu) then return nil end
-  dropdown:SetSize(72, 22)
-  dropdown:SetText(L.FILTER)
-  -- The list's border is drawn over the dropdown's reset (X) button unless both sit above it.
-  dropdown:SetFrameLevel(parent:GetFrameLevel() + 10)
-  if dropdown.ResetButton then dropdown.ResetButton:SetFrameLevel(dropdown:GetFrameLevel() + 1) end
+-- Whether a filter button can be used now: Pet needs a current pet (summoned or dismissed).
+function Window:FilterUsable(filter)
+  return filter.key ~= "filter_by_pet" or self:CurrentPetFamily() ~= nil
+end
 
-  -- The menu depends on the tab (see FILTERS).
-  dropdown:SetupMenu(function(_, root)
-    for _, filter in ipairs(FILTERS[self.tab] or {}) do
-      -- Filter by Pet needs a current pet (summoned or dismissed): greyed out without one, naming its family with one.
-      local label, family = filter.label, nil
-      if filter.key == "filter_by_pet" then
-        family = self:CurrentPetFamily()
-        if family then label = ("%s (%s)"):format(label, family) end
+-- The glow of a filter that is on: a soft gold light around the button, pulsing (the addon's own: the game's proc glow
+-- does not show on these buttons). Made the first time it is needed.
+local function ShowGlow(button, on)
+  local glow = button.ftGlow
+  if not glow then
+    if not on then return end
+    glow = button:CreateTexture(nil, "OVERLAY")
+    glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    glow:SetBlendMode("ADD")
+    glow:SetVertexColor(1, 0.75, 0.3)
+    -- The art's button square is 36 of its 64 pixels: it overhangs by 14/36 of the button on each side, so its bright
+    -- edge falls on the button's own (a wide button needs a wider overhang than a tall one).
+    local width, height = button:GetSize()
+    local overX, overY = width * 14 / 36, height * 14 / 36
+    glow:SetPoint("TOPLEFT", -overX, overY)
+    glow:SetPoint("BOTTOMRIGHT", overX, -overY)
+    local pulse = glow:CreateAnimationGroup()
+    pulse:SetLooping("BOUNCE")
+    local fade = pulse:CreateAnimation("Alpha")
+    fade:SetFromAlpha(1)
+    fade:SetToAlpha(0.35)
+    fade:SetDuration(0.8)
+    fade:SetSmoothing("IN_OUT")
+    glow.pulse = pulse
+    button.ftGlow = glow
+  end
+  glow:SetShown(on)
+  if on then glow.pulse:Play() else glow.pulse:Stop() end
+end
+
+function Window:CreateFilterButtons(frame)
+  self.filterButtons = {}
+  for _, filter in ipairs(FILTER_BUTTONS) do
+    local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    button:SetSize(FILTER_WIDTH, FILTER_HEIGHT)
+    button:SetText(filter.label)
+    button:SetFrameLevel(frame:GetFrameLevel() + 20) -- over the window's background art
+    button:SetMotionScriptsWhileDisabled(true) -- a Pet button without a pet still says why
+    button.filter = filter
+    button:SetScript("OnClick", function()
+      DB.global[filter.key] = not DB.global[filter.key]
+      if PlaySound and SOUNDKIT then
+        PlaySound(DB.global[filter.key] and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
       end
-      local option = root:CreateCheckbox(label,
-        function() return DB.global[filter.key] end,
-        function()
-          DB.global[filter.key] = not DB.global[filter.key]
-          self:Refresh()
-        end)
-      if filter.key == "filter_by_pet" and not family and option and option.SetEnabled then
-        pcall(option.SetEnabled, option, false)
-        -- Says why it is greyed out, on hover.
-        if option.SetTooltip then
-          pcall(option.SetTooltip, option, function(tooltip)
-            if GameTooltip_SetTitle then GameTooltip_SetTitle(tooltip, L.NO_ACTIVE_PET) else tooltip:SetText(L.NO_ACTIVE_PET) end
-          end)
-        end
-      end
-    end
-  end)
-  -- The reset (X) button appears while a filter of the tab is on.
-  if dropdown.SetDefaultCallback then
-    dropdown:SetDefaultCallback(function()
-      for _, filter in ipairs(FILTERS[self.tab] or {}) do DB.global[filter.key] = false end
+      self:UpdateFilterButtons()
       self:Refresh()
     end)
-  end
-  if dropdown.SetIsDefaultCallback then
-    dropdown:SetIsDefaultCallback(function()
-      for _, filter in ipairs(FILTERS[self.tab] or {}) do
-        if DB.global[filter.key] then return false end
+    button:SetScript("OnEnter", function(this)
+      GameTooltip:SetOwner(this, "ANCHOR_BOTTOM")
+      GameTooltip:SetText(filter.title, 1, 1, 1)
+      if filter.key == "zone_filter" then
+        local zone = self:PlayerZone()
+        if zone then GameTooltip:AddLine(zone.name, 1, 0.82, 0) end
+        GameTooltip:AddLine(L.ZONE_FILTER_TOOLTIP, nil, nil, nil, true)
+      elseif filter.key == "filter_by_pet" then
+        local family = self:CurrentPetFamily()
+        GameTooltip:AddLine(family or L.NO_ACTIVE_PET, 1, 0.82, 0)
       end
-      return true
+      GameTooltip:AddLine(DB.global[filter.key] and L.ON or L.OFF, 0.6, 0.6, 0.6)
+      GameTooltip:Show()
     end)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+    self.filterButtons[#self.filterButtons + 1] = button
   end
-  self.filterButton = dropdown
-  return dropdown
+
+  -- The box: "Filters" over the buttons, and a line on its left down to the panes.
+  local group = CreateFrame("Frame", nil, frame)
+  group:SetFrameLevel(frame:GetFrameLevel() + 19)
+  group:SetSize(FILTER_LEFT + FILTER_SLOTS * FILTER_WIDTH + (FILTER_SLOTS - 1) * FILTER_GAP + FILTER_RIGHT,
+    FILTER_BOX_BOTTOM - FILTER_BOX_TOP)
+  group:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -FILTER_BOX_TOP)
+  local label = group:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  label:SetPoint("TOP", 0, -3)
+  label:SetText(L.FILTERS)
+  local line = group:CreateTexture(nil, "ARTWORK")
+  line:SetColorTexture(0.78, 0.69, 0.55, 0.45) -- the window's tan, faint
+  line:SetWidth(1)
+  line:SetPoint("TOPLEFT", 0, 0)
+  line:SetPoint("BOTTOMLEFT", 0, 0)
+  self.filterGroup = group
+  -- Each button in its own place in the box: one that does not apply to the tab is hidden, the others stay put.
+  for _, button in ipairs(self.filterButtons) do
+    button:SetPoint("TOPLEFT", group, "TOPLEFT", FILTER_LEFT + (button.filter.slot - 1) * (FILTER_WIDTH + FILTER_GAP),
+      -FILTER_BUTTONS_TOP)
+  end
+end
+
+-- Shows the filter buttons that apply to the current tab (each in its place), grey while off, red and glowing while on.
+function Window:UpdateFilterButtons()
+  if not self.filterButtons then return end
+  for _, button in ipairs(self.filterButtons) do
+    local filter = button.filter
+    local shown = filter.tabs[self.tab] == true
+    button:SetShown(shown)
+    if shown then
+      local usable = self:FilterUsable(filter)
+      local on = DB.global[filter.key] == true and usable
+      button:SetEnabled(usable)
+      -- Grey while off: the red art without its color, and the label greyed.
+      for _, part in ipairs({ button.Left, button.Middle, button.Right }) do
+        if part and part.SetDesaturated then part:SetDesaturated(not on) end
+      end
+      local text = button:GetFontString()
+      if text then
+        if on then text:SetTextColor(1, 0.82, 0) else text:SetTextColor(0.6, 0.6, 0.6) end
+      end
+      ShowGlow(button, on)
+    else
+      ShowGlow(button, false)
+    end
+  end
 end
 
 -- Whether a header of the current list is open, and opening or closing them all.
@@ -517,11 +634,6 @@ function Window:UpdateToggleButton()
   local open = self:AnyExpanded()
   self.toggleButton:SetText(open and "-" or "+")
   self.toggleButton:SetShown(true)
-  if self.filterButton then
-    self.filterButton:SetShown(self.tab ~= "OPTIONS" and self.tab ~= "STABLE" and self.tab ~= "COLLECTOR"
-      and self.tab ~= "ATTACK")
-    if self.filterButton.ValidateResetState then self.filterButton:ValidateResetState() end
-  end
 end
 
 -- Headers start collapsed; the ones opened stay open across refreshes (search, reopening the window).
@@ -555,6 +667,10 @@ function Window:Refresh()
   end
   if self.tab == "BOUNTIES" then
     self:RefreshBounties()
+    return
+  end
+  if self.tab == "FAMILIES" then
+    self:RefreshFamilies()
     return
   end
   self:RefreshAbilities() -- the ability tabs (tab-abilities.lua)
@@ -606,7 +722,7 @@ function Window:CreateDetails(frame)
     icon = circle("ARTWORK", 53) -- up to the ring, with a hairline of the dark circle between
     icon:SetTexCoord(0.06, 0.94, 0.06, 0.94) -- past the icon art's own dark edge, so the picture fills the circle
   end
-  iconButton:SetPoint("TOPLEFT", 24, -24)
+  iconButton:SetPoint("TOPLEFT", DETAILS_LEFT, -DETAILS_TOP)
   iconButton:SetScript("OnClick", nil)
   iconButton:SetScript("OnEnter", function(this)
     local sel = self.selected
@@ -618,19 +734,16 @@ function Window:CreateDetails(frame)
   -- Top row: icon, then name and rank, then the details (pet level, training cost, families). The
   -- description goes under the row, and the tameable creatures get the rest of the pane.
   self.facts = NewText(details, "GameFontHighlightSmall")
-  self.facts:SetPoint("TOPLEFT", details, "TOPLEFT", FACTS_X, -28)
+  self.facts:SetPoint("TOPLEFT", details, "TOPLEFT", FACTS_X, -(DETAILS_TOP + 4))
   self.facts:SetPoint("RIGHT", -20, 0)
   self.facts:SetSpacing(3)
 
   self.name = NewText(details, "GameFontHighlightLarge")
-  self.name:SetPoint("TOPLEFT", iconButton, "TOPRIGHT", 12, -6)
-  self.name:SetPoint("RIGHT", self.facts, "LEFT", -12, 0)
 
   self.subtitle = NewText(details, "GameFontNormal")
-  self.subtitle:SetPoint("TOPLEFT", self.name, "BOTTOMLEFT", 0, -6)
-  self.subtitle:SetPoint("RIGHT", self.facts, "LEFT", -12, 0)
-
   self.iconButton = iconButton
+  self:SetTopWide(false)
+
   self.description = NewText(details, "GameFontHighlight")
   -- Placed in UpdateDetails, under whichever part of the top row is taller.
   self.description:SetPoint("RIGHT", -20, 0)
@@ -782,30 +895,10 @@ function Window:InitNPCRow(row, npc)
   row.EliteIcon:SetPoint("TOPLEFT", x, -2)
   row.EliteIcon:SetShown(elite)
   if elite then x = x + 17 end
-  local badge = row.TamedBadge
-  local tamed = type(npc.tamed) == "string" and npc.tamed ~= ""
-  row.NameText:ClearAllPoints()
-  row.NameText:SetPoint("TOPLEFT", x, -3)
-  -- Room for the dot after the name, which is cut short before it when the row is narrow.
-  row.NameText:SetPoint("RIGHT", tamed and -(112 + badge:GetWidth() + 6) or -112, 0)
-  row.NameText:SetText(Colors.Primary(npc.name))
-  badge:SetShown(tamed)
-  if tamed then
-    badge.date = npc.tamed
-    badge.by = type(npc.tamed_by) == "string" and npc.tamed_by ~= "" and npc.tamed_by or nil
-    local width = row.NameText.GetUnboundedStringWidth and row.NameText:GetUnboundedStringWidth()
-      or row.NameText:GetStringWidth()
-    local room = row.NameText:GetWidth()
-    if room and room > 0 then width = math.min(width, room) end
-    badge:ClearAllPoints()
-    badge:SetPoint("LEFT", row.NameText, "LEFT", width + 3, 0)
-  end
-  row.npc = npc
-  row.InfoText:SetText(("%s %s  %s"):format(L.LEVEL, npc.level_range or L.UNKNOWN, npc.location or L.UNKNOWN_ZONE))
   -- The map button: the pins; the zone's map without pins (no map points); greyed out without a zone (or a map).
   local button = row.MapButton
   if npc.ui_map_id and npc.coords and #npc.coords > 0 then
-    button:SetText(L.MAP_LOCATION)
+    button:SetText(L.MAP)
     button:SetEnabled(true)
     button.hint = nil
   elseif npc.ui_map_id then
@@ -821,6 +914,32 @@ function Window:InitNPCRow(row, npc)
     button:SetEnabled(false)
     button.hint = nil
   end
+  -- As wide as its word ("Map" is small); the name and the line under it get the rest of the row.
+  button:SetWidth(math.max(44, math.ceil((button:GetTextWidth() or 60) + 24)))
+  local reserve = button:GetWidth() + 8
+  row.InfoText:ClearAllPoints()
+  row.InfoText:SetPoint("TOPLEFT", 4, -18)
+  row.InfoText:SetPoint("RIGHT", -reserve, 0)
+  local badge = row.TamedBadge
+  local tamed = type(npc.tamed) == "string" and npc.tamed ~= ""
+  row.NameText:ClearAllPoints()
+  row.NameText:SetPoint("TOPLEFT", x, -3)
+  -- Room for the dot after the name, which is cut short before it when the row is narrow.
+  row.NameText:SetPoint("RIGHT", tamed and -(reserve + badge:GetWidth() + 6) or -reserve, 0)
+  row.NameText:SetText(Colors.Primary(npc.name))
+  badge:SetShown(tamed)
+  if tamed then
+    badge.date = npc.tamed
+    badge.by = type(npc.tamed_by) == "string" and npc.tamed_by ~= "" and npc.tamed_by or nil
+    local width = row.NameText.GetUnboundedStringWidth and row.NameText:GetUnboundedStringWidth()
+      or row.NameText:GetStringWidth()
+    local room = row.NameText:GetWidth()
+    if room and room > 0 then width = math.min(width, room) end
+    badge:ClearAllPoints()
+    badge:SetPoint("LEFT", row.NameText, "LEFT", width + 3, 0)
+  end
+  row.npc = npc
+  row.InfoText:SetText(("%s %s  %s"):format(L.LEVEL, npc.level_range or L.UNKNOWN, npc.location or L.UNKNOWN_ZONE))
   button.npc = npc
 end
 
@@ -835,6 +954,10 @@ function Window:UpdateDetails()
   end
   if self.tab == "BOUNTIES" then
     self:UpdateBountyDetails()
+    return
+  end
+  if self.tab == "FAMILIES" then
+    self:UpdateFamilyDetails()
     return
   end
   if self.tab == "OPTIONS" then
@@ -883,10 +1006,10 @@ end
 -- The description starts under the taller part of the top row: the icon (with the name and subtitle
 -- beside it) or the details, which can run to several lines (a long family list, for instance).
 function Window:PlaceDescription()
-  local iconBottom = 24 + self.iconButton:GetHeight()
-  local factsBottom = 28 + (self.facts:GetStringHeight() or 0)
+  local iconBottom = DETAILS_TOP + self.iconButton:GetHeight()
+  local factsBottom = DETAILS_TOP + 4 + (self.facts:GetStringHeight() or 0)
   self.description:ClearAllPoints()
-  self.description:SetPoint("TOPLEFT", self.details, "TOPLEFT", 24, -(math.max(iconBottom, factsBottom) + 14))
+  self.description:SetPoint("TOPLEFT", self.details, "TOPLEFT", DETAILS_LEFT, -(math.max(iconBottom, factsBottom) + 14))
   self.description:SetPoint("RIGHT", -20, 0)
 end
 

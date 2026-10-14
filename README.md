@@ -32,8 +32,17 @@ Browse the same pets, abilities and trainers on the web at **[TrueshotLodge.com]
 
 TrueshotLodge looks and feels like the game's own profession window: a list on the left, the details on the right,
 and tabs down the side. Hold a side tab for a moment to drag it up or down the column and put your tabs in the order
-you like (saved for each character). The **Zone Filter** checkbox in the title bar narrows everything to the zone you
-are standing in.
+you like (saved for each character). At the top right, across from the tab's title, are the **filter buttons**.
+Each tab shows the filters it can use: **Level** (what your level reaches, or the
+creatures you can tame now), **Zone** (only the zone you are standing in), **Pet** (only what your active pet's
+family can learn) and, on the Trainers tab, **Faction**. A filter is grey while off, and red and glowing while on.
+
+## ![Families](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_pet_wolf.jpg) Families
+
+Every pet family, by type (Cunning, Ferocity, Tenacity), with its number of tameable creatures. Select one to see its
+unique ability and what it does, its type and diet, the common and passive abilities it learns, and **all its tameable
+creatures**, each with a **Map Location** button. The **Zone** and **Level** filters narrow the creatures to the
+zone you are in and the ones you can tame now.
 
 ## ![Unique Abilities](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beasttaming.jpg) Unique Abilities
 
@@ -47,13 +56,13 @@ Select a rank to see:
   Location** button that opens your world map with a pin on every place it has been seen
 - whether your pet already knows it
 
-Use the **Filter** menu to show only the ranks your level has reached, or only the abilities your active pet's family
-can learn.
+Turn on **Level** to show only the ranks your level has reached, or **Pet** for only the abilities your active pet's
+family can learn.
 
 ## ![Common Abilities](https://wow.zamimg.com/images/wow/icons/medium/ability_racial_cannibalize.jpg) Common Abilities
 
 The abilities many families share, such as Bite, Claw, Cower, Dash, Dive and Growl, laid out the same way: every
-rank, what it does, who can learn it, and the creatures you can tame it from. Filter by level or by your active pet.
+rank, what it does, who can learn it, and the creatures you can tame it from. The **Level** and **Pet** filters work here too.
 
 ## ![Passive Abilities](https://wow.zamimg.com/images/wow/icons/medium/spell_nature_unyeildingstamina.jpg) Passive Abilities
 
@@ -64,13 +73,13 @@ its level and its cost.
 
 Every beast attacks at its own speed, and keeps it when tamed. This tab lists each attack speed (Faster Attack I to
 VII, Slower Attack II and III) with all the creatures that have it, so you can hunt down the fastest pet of the family
-you want.
+you want. Every speed starts open, and the **Level** filter keeps the beasts you can tame now.
 
 ## ![Trainers](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beasttraining.jpg) Trainers
 
 The pet trainers, grouped by zone and colored by faction. Select one to see their
 title, level, location and coordinates, with a small map of the zone and a pin on the trainer; click it to open your
-world map there. Filter by faction to see only the trainers who will teach you.
+world map there. Turn on **Faction** to see only the trainers who will teach you.
 
 ## ![Stable](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beastcall.jpg) Stable
 
@@ -92,21 +101,23 @@ The beasts and abilities hunters most need found, posted as bounties: the same l
 - **How to Claim**: whether Collect Mode and Send Name are on, how many tames you have collected, and how a bounty is
   claimed
 - **Pet Bounties**:
-  - **Missing Tamed Rares**: rares no TrueshotLodge hunter has tamed yet
+  - **Missing Rares**: rares no TrueshotLodge hunter has tamed yet
+  - **Missing Normal**: every other creature no TrueshotLodge hunter has tamed yet
+  - **Missing Forever**: the creatures new in WoW Forever (∞) no TrueshotLodge hunter has tamed yet
   - **Missing Attack Speed**: creatures whose attack speed nobody has recorded
   - **Missing Zone**: creatures nobody knows the whereabouts of
 - **Unique Abilities without Source**: ranks of a family's unique ability that no known tameable creature has, each with
   its **Potential Tameable Targets**: the family's untamed beasts between the levels of the ranks around it
 
-Each bounty lists its creatures, the lowest level first, each with its level, zone and a **Map Location** button. Tick
-the **Zone Filter** in the title bar to see only the ones in the zone you are in, or turn on **Filter by Level** (the
-Filter menu) to see only the ones you can tame now, the highest level first. The bounties under a heading are listed
+Each bounty lists its creatures, the lowest level first, each with its level, zone and a **Map Location** button. Turn
+on **Zone** to see only the ones in the zone you are in, or **Level** to see only the ones you can tame now, the
+highest level first. The bounties under a heading are listed
 alphabetically; right-click the heading to list them by number of creatures instead (and again to switch back).
 
 To claim one: turn on Collect Mode, track the beast down (a look at its nameplate records its attack speed and where it
 lives; a tame records the abilities it came with), then upload your `TrueshotLodge.lua` at
 [TrueshotLodge.com](https://trueshotlodge.com/collector). We check what you found and add it for every hunter. With
-**Send Name** on (Options, Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
+**Send Name** on (Options tab, Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
 date by *your name*".
 
 ## ![Options](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_gear_01.jpg) Options

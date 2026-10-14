@@ -152,12 +152,12 @@ function Addon:FamilyIcon(family)
   return info and info.icon or nil
 end
 
--- A family name with the infinity mark (as an inline texture) before it when the family is new in WoW Forever
+-- A family name with the infinity mark (as an inline texture) after it, as on the website, when the family is new in WoW Forever
 -- (`forever = true` in the family data, from pet_families.forever: Fox, not Bird of Prey, which only has some new creatures).
 function Addon:FamilyLabel(family)
   local info = FamilyInfo(family)
   if info and info.forever then
-    return ("|T%s:14:14:0:0|t %s"):format(self.FOREVER_ICON, family)
+    return ("%s |T%s:14:14:0:0|t"):format(family, self.FOREVER_ICON)
   end
   return family
 end

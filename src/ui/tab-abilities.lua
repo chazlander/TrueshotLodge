@@ -66,9 +66,22 @@ function Window:PetShown(ability)
   return false
 end
 
--- Whether a rank passes the filter (always, unless Filter by Level is on).
+-- Whether a rank passes the filter (always, unless Filter by Level is on). On the attack speeds, Filter by Level keeps
+-- the beasts you can tame now instead (AttackNPCs): a speed is listed while it has one.
 function Window:RankShown(rank)
+  if self.tab == "ATTACK" then return not DB.global.filter_by_level or #self:AttackNPCs(rank) > 0 end
   return not DB.global.filter_by_level or self:InLevelRange(rank)
+end
+
+-- An attack speed's beasts (Addon:GetNPC) that pass Filter by Level: with it on, the ones you can tame now (their
+-- lowest level at most yours; a beast of unknown level is left out), as on the Bounties tab.
+function Window:AttackNPCs(rank)
+  local npcs, level = {}, self.playerLevel or (UnitLevel and UnitLevel("player")) or 1
+  for _, id in ipairs(rank.npc_ids or {}) do
+    local npc = Addon:GetNPC(id)
+    if npc and (not DB.global.filter_by_level or (npc.min and npc.min <= level)) then npcs[#npcs + 1] = npc end
+  end
+  return npcs
 end
 
 -- The saved ability selection of the current tab, when that ability is among `abilities` (the search may
@@ -196,6 +209,14 @@ function Window:RefreshAbilities()
     local header = icon and ("|T%s:18:18:0:0|t %s"):format(icon, name) or name
     self.listKeys[#self.listKeys + 1] = ability
     local category = provider:Insert({ categoryInfo = { name = header }, family = family, key = ability })
+    -- The attack speeds start open (the first time each is listed; after that they stay as the player left them).
+    if self.tab == "ATTACK" then
+      self.attackHeadersSeen = self.attackHeadersSeen or {}
+      if not self.attackHeadersSeen[ability] then
+        self.attackHeadersSeen[ability] = true
+        self.expanded[ability] = true
+      end
+    end
     self:SetCollapsed(category, ability)
     for rankIndex, rank in ipairs(ability.ranks) do
       if self:RankShown(rank) then
@@ -236,7 +257,7 @@ function Window:RefreshAbilities()
   end
   if self.tab == "ATTACK" then
     local beasts = 0
-    for _, ability in ipairs(abilities) do beasts = beasts + #ability.ranks[1].npc_ids end
+    for _, ability in ipairs(abilities) do beasts = beasts + #self:AttackNPCs(ability.ranks[1]) end
     self.headerCount:SetFormattedText(L.ATTACK_SPEED_COUNT, #abilities, beasts)
   else
     self.headerCount:SetFormattedText(L.RANKS_KNOWN, known, total)
@@ -314,9 +335,13 @@ function Window:UpdateAbilityDetails()
 
   -- Trainer passives are not learned from creatures.
   local npcs = {}
-  for _, id in ipairs(rank.npc_ids or {}) do
-    local npc = Addon:GetNPC(id)
-    if npc then npcs[#npcs + 1] = npc end
+  if ability.attack_speed then
+    npcs = self:AttackNPCs(rank) -- with Filter by Level, the beasts you can tame now
+  else
+    for _, id in ipairs(rank.npc_ids or {}) do
+      local npc = Addon:GetNPC(id)
+      if npc then npcs[#npcs + 1] = npc end
+    end
   end
   table.sort(npcs, ByLevel)
   -- The Zone Filter: only the creatures in the player's zone, "2 of 5 in Westfall".

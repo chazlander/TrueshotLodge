@@ -199,7 +199,8 @@ function Window:UpdateTrainerDetails()
   else
     self.mapButton:SetPoint("TOPLEFT", self.description, "TOPLEFT", 0, 0)
   end
-  self.mapButton:SetText(hasMap and L.MAP_LOCATION or L.MAP_UNAVAILABLE)
+  self.mapButton:SetText(hasMap and L.MAP or L.MAP_UNAVAILABLE)
+  self.mapButton:SetWidth(MINI_MAP_WIDTH) -- as wide as the map preview it sits under
   self.mapButton:SetEnabled(hasMap and true or false)
   self.mapButton:SetScript("OnClick", openMap)
   self.mapButton:Show()

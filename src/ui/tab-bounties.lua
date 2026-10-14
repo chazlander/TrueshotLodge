@@ -6,7 +6,8 @@ local L = Addon:GetModule("Locale")
 local Window = Addon:GetModule("Window")
 
 -- The "Bounties" tab: what we still want hunters to find, as on TrueshotLodge.com/bounties, worked out from the
--- addon's data. On the left: How to Claim; the Pet Bounties (Missing Tamed Rares, Missing Attack Speed, Missing Zone);
+-- addon's data. On the left: How to Claim; the Pet Bounties (Missing Rares, Missing Normal, Missing Forever, Missing
+-- Attack Speed, Missing Zone);
 -- and the Unique Abilities without Source (ranks of a family's unique ability that no known tameable creature has). On
 -- the right, the selected one with its creatures and their Map Location buttons. The title bar's Zone Filter keeps the
 -- creatures of the zone you are in, and Filter by Level the ones you can tame now (their lowest level at most yours).
@@ -19,7 +20,7 @@ local function Tamed(npc)
   return type(npc.tamed) == "string" and npc.tamed ~= ""
 end
 
--- Whether the data has map points for a creature: the website lists rares and attack speeds only for those.
+-- Whether the data has map points for a creature: the website lists rares, normal tames and attack speeds only for those.
 local function HasMapPoints(npc)
   return npc.maps ~= nil and next(npc.maps) ~= nil
 end
@@ -28,6 +29,11 @@ end
 local PET_BOUNTIES = {
   { key = "rares", name = L.BOUNTY_RARES, wanted = L.BOUNTY_RARES_WANTED, text = L.BOUNTY_RARES_TEXT,
     wants = function(npc) return (npc.class or ""):find("Rare", 1, true) ~= nil and not Tamed(npc) and HasMapPoints(npc) end },
+  { key = "normals", name = L.BOUNTY_NORMALS, wanted = L.BOUNTY_NORMALS_WANTED, text = L.BOUNTY_NORMALS_TEXT,
+    wants = function(npc) return (npc.class or ""):find("Rare", 1, true) == nil and not Tamed(npc) and HasMapPoints(npc) end },
+  -- New in WoW Forever (`forever` in the data: patch 1.60 or later) and nobody has tamed it, located or not.
+  { key = "forever", name = L.BOUNTY_FOREVER, wanted = L.BOUNTY_FOREVER_WANTED, text = L.BOUNTY_FOREVER_TEXT,
+    wants = function(npc) return npc.forever == true and not Tamed(npc) end },
   { key = "attack-speed", name = L.BOUNTY_SPEED, wanted = L.BOUNTY_SPEED_WANTED, text = L.BOUNTY_SPEED_TEXT,
     wants = function(npc) return npc.speed == nil and HasMapPoints(npc) end },
   { key = "zone", name = L.BOUNTY_ZONE, wanted = L.BOUNTY_ZONE_WANTED, text = L.BOUNTY_ZONE_TEXT,
@@ -262,7 +268,6 @@ function Window:RefreshBounties()
   self.bountyByKey = {}
   self.bountyHeadersSeen = self.bountyHeadersSeen or {}
   local first
-  local wanted = { rares = 0, ["attack-speed"] = 0, zone = 0, unique = 0 }
   for _, group in ipairs(groups) do
     self.listKeys[#self.listKeys + 1] = group.key
     -- A header starts open the first time it is shown; after that it stays as the player left it.
@@ -278,8 +283,6 @@ function Window:RefreshBounties()
       category:Insert({ bounty = row })
       self.bountyByKey[row.key] = row
       first = first or row.key
-      if row.kind == "pet" then wanted[row.key] = row.count end
-      if row.kind == "unique" then wanted.unique = wanted.unique + 1 end
     end
   end
   -- The selection: the one shown before, else the one saved (sticky selections), else the first.
@@ -290,7 +293,7 @@ function Window:RefreshBounties()
 
   self.scrollBox:SetDataProvider(provider)
   self.noResults:SetShown(first == nil)
-  self.headerCount:SetFormattedText(L.BOUNTY_COUNTS, wanted.rares, wanted["attack-speed"], wanted.zone, wanted.unique)
+  self.headerCount:SetText(L.WANTED_TAMES)
   self:UpdateToggleButton()
   self:UpdateBountyDetails()
 end
@@ -340,6 +343,18 @@ function Window:UpdateBountyDetails()
   self.details:Show()
   self.mapButton:Hide()
   self.miniMap:Hide()
+  -- A pet bounty: the name across the whole pane, what it wants in white under it (no facts), and the creatures
+  -- straight after. The others keep the usual layout.
+  local wide = row.kind == "pet"
+  self:SetTopWide(wide, wide)
+  self.npcLabel:ClearAllPoints()
+  if wide then
+    self.npcLabel:SetPoint("TOP", self.subtitle, "BOTTOM", 0, -12)
+    self.npcLabel:SetPoint("LEFT", self.details, "LEFT", Window.DETAILS_LEFT, 0)
+  else
+    self.npcLabel:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", 0, -14)
+  end
+  self.npcLabel:SetPoint("RIGHT", self.details, "RIGHT", -20, 0)
 
   local lines = {}
   local description -- each kind below sets it
@@ -360,9 +375,7 @@ function Window:UpdateBountyDetails()
   elseif row.kind == "pet" then
     self.icon:SetTexture(Window.BOUNTY_ICON)
     self.name:SetText(row.bounty.name)
-    self.subtitle:SetText(row.bounty.wanted)
-    add(Line(L.BOUNTY_CREATURE_COUNT, #row.creatures))
-    description = row.bounty.text
+    self.subtitle:SetText(row.bounty.text)
     self:ShowBountyCreatures(row.creatures, L.BOUNTY_CREATURES, L.BOUNTY_NONE)
   else
     local entry = row.entry

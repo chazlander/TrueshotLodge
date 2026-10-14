@@ -349,10 +349,14 @@ function Window:UpdateCollectedDetails()
 
   -- Entries other TrueshotLodge users shared say who sent them.
   if d.shared_by then table.insert(lines, 1, Line(L.SHARED_BY, d.shared_by)) end
+  -- Everything in the main section, under the name (which takes the whole width): the facts, then the rest.
   local shown = {}
-  for i = 1, 8 do if lines[i] then shown[#shown + 1] = lines[i] end end
-  self.facts:SetText(table.concat(shown, "\n"))
-  self.description:SetText(description or "")
+  for i = 1, #lines do if lines[i] then shown[#shown + 1] = lines[i] end end
+  self:SetTopWide(true)
+  self.facts:SetText("")
+  local text = table.concat(shown, "\n")
+  if description and description ~= "" then text = text .. "\n\n" .. description end
+  self.description:SetText(text)
   self:PlaceDescription()
 end
 
@@ -428,10 +432,10 @@ function Window:AskToClear()
 end
 
 -- The button sits at the far right of the tab's heading, and only shows on this tab.
+-- Across the top of the list, over the search row (placed by UpdateClearButton, once the list is made).
 function Window:CreateClearButton(frame)
   local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  button:SetSize(100, 22)
-  button:SetPoint("TOPRIGHT", -16, -34)
+  button:SetSize(116, 22)
   button:SetText(L.CLEAR_DATA)
   button:SetScript("OnClick", function() self:AskToClear() end)
   button:Hide()
@@ -439,7 +443,25 @@ function Window:CreateClearButton(frame)
 end
 
 function Window:UpdateClearButton()
-  if self.clearButton then self.clearButton:SetShown(self.tab == "COLLECTOR") end
+  local button, list, scrollBox = self.clearButton, self.list, self.scrollBox
+  local search, toggle = self.searchBox, self.toggleButton
+  if not (button and list and scrollBox and search and toggle) then return end
+  local shown = self.tab == "COLLECTOR"
+  button:SetShown(shown)
+  -- On this tab it spans the top of the list; the search row comes under it, and the list under that.
+  local drop = shown and 26 or 0
+  button:ClearAllPoints()
+  button:SetPoint("TOPLEFT", list, "TOPLEFT", 8, -10)
+  button:SetPoint("TOPRIGHT", list, "TOPRIGHT", -8, -10)
+  button:SetFrameLevel(list:GetFrameLevel() + 10)
+  toggle:ClearAllPoints()
+  toggle:SetPoint("TOPRIGHT", -8, -10 - drop)
+  search:ClearAllPoints()
+  search:SetPoint("TOPLEFT", 13, -11 - drop)
+  search:SetPoint("RIGHT", toggle, "LEFT", -4, 0)
+  scrollBox:ClearAllPoints()
+  scrollBox:SetPoint("TOPLEFT", 8, -38 - drop)
+  scrollBox:SetPoint("BOTTOMRIGHT", -20, 5)
 end
 
 -- ----------------------------------------------------------------------------
