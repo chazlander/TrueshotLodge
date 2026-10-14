@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.60.1.19] - 2026-10-14
+
+- New **Families** tab, as on the website: every pet family by type with its number of tameable creatures; select one
+  for its unique ability, type and diet, the common and passive abilities it learns, and all its tameable creatures
+  with their Map buttons (the Zone and Level filters narrow them)
+- The filters are buttons now, at the top right: **Level**, **Zone**, **Pet** and, on the Trainers tab, **Faction**,
+  each tab showing the ones it can use. Grey while off, red and glowing while on. They replace the Filter menu and
+  the Zone Filter checkbox in the title bar
+- Passive Attack Speed tab: every speed starts open, and the **Level** filter keeps the beasts you can tame now
+- The right-hand pane is tighter
+- New pet bounties, as on the website: **Missing Normal**, the creatures that are not rares and nobody has tamed yet,
+  and **Missing Forever**, the creatures new in WoW Forever nobody has tamed yet. The Bounties tab's first heading is
+  now "Wanted Tames"
+- Data: 758 tameable creatures (2 new: Bloodsnout and Empyrean Galestrider), and 2 more verified by a tame (63 in
+  all): Elder Ashenvale Bear and Ornery Galestrider
+- Data: 4 more creatures with a known attack speed, 10 more with a known zone, and 24,435 map points (up from 23,856)
+
+**Still missing** (as of this release):
+
+- 152 of 758 creatures have no known attack speed, 82 no level and 62 no zone (145 have no map points)
+
 ## [1.60.1.17] - 2026-10-14
 
 - New **Bounties** tab, with the same bounties as the website: Missing Tamed Rares, Missing Attack Speed, Missing Zone,

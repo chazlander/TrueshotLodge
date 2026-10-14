@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: TrueshotLodge
 ## Author: Chazlander
-## Version: 1.60.1.17
+## Version: 1.60.1.19
 ## Notes: A guide to tamed pet abilities.
 ## SavedVariables: TrueshotLodgeDB, TrueshotLodgeCollected
 ## IconTexture: Interface\AddOns\TrueshotLodge\media\logo
