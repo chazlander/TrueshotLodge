@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.60.1.17] - 2026-10-14
+
+- New **Bounties** tab, with the same bounties as the website: Missing Tamed Rares, Missing Attack Speed, Missing Zone,
+  and the Unique Abilities without Source with their Potential Tameable Targets, each listing its creatures with a Map
+  Location button (the Zone Filter and Filter by Level narrow them), plus How to Claim, step by step. Right-click a
+  heading to sort its bounties by number of creatures instead of alphabetically. It replaces the Bounties entry of the
+  Collected Data tab, and shows whether Collect Mode is on or not
+- With Send Name off, a one-time chat tip says how to turn it on, so your tames credit you on the website's Tamed badge
+  (Send Name stays off until you turn it on)
+- Collect Mode keeps only what is new: a wild sighting of a creature that the addon's data already holds completely
+  (same family and classification, every level seen inside its level range, the same attack speed and zones seen on its
+  maps) is no longer kept in your collected data or sent to other players, since it tells the website nothing new. It
+  is kept as soon as you see that creature at another level or in another zone. Tames, trainers and Beast Training are
+  always kept. When the addon loads, wild sightings that a new release's data now holds are removed from your collected
+  data the same way, so your next upload carries only what is still new
+- Shared sightings and tames leave out the creature's name when the addon's data has the creature, which makes them
+  shorter; whoever receives one names the creature from its id, with the game's own name in their language (so a name
+  in another player's language no longer ends up in your collected data)
+- When other TrueshotLodge users are on a newer version, a chat message says so once a session, so you know to update
+  (it needs two players reporting the same newer version)
+- `/tsl debug npc <id>` (Debug Mode) shows what the game, the addon's data and your collected data say about a creature
+- Data: 756 tameable creatures (2 new: Enraged Stanley and Gray Fox)
+- Data: 24 more creatures verified by a tame (61 in all), among them Goretusk, Venom Web Spider, Black Widow Hatchling,
+  Highland Raptor, Elder Gray Bear, Dreadmaw Crocolisk, Bloodtalon Scythemaw, Savannah Huntress, Mazzranache,
+  Ghostpaw Alpha, Chakuyak and Maddened Rotclaw
+- Data: 17 more creatures with a known attack speed
+
+**Still missing** (as of this release):
+
+- 154 of 756 creatures have no known attack speed, 85 no level and 70 no zone (161 have no map points)
+
 ## [1.60.1.15] - 2026-10-12
 
 - A tame shared with other players now carries your credit when Send Name is on, so the website names you as the
