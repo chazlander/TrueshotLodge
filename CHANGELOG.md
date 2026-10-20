@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.60.1.21] - 2026-10-19
+
+- New on the website: the **Hall of Fame** (TrueshotLodge.com/hall-of-fame), the hunters who tamed the most, with
+  their Forever, normal, elite and rare tames. Turn on Send Name (Options tab, Collection) to be on it
+- Data: the unique abilities as WoW Forever has them now: **Dismember** heals 25% less for 6 sec (was 50% for 10 sec),
+  15 sec cooldown; **Mine!** disarms for 3 sec, 90 sec cooldown; **Sonic Blast** slows casting by 30% for 20 sec, 60 sec
+  cooldown; **Furious Howl** reaches the whole party or raid
+- Data: 761 tameable creatures (3 new: Tainted Hyjal Bear, Enraged Panther and Grinning Dog); Bloodshrike is a Bird of
+  Prey now, as WoW Forever has it
+- Data: 70 more creatures verified by a tame (133 in all), among them Echeyakee, Sarkoth, Mystmane, Besseleth,
+  Ukorsbane, Snapjaw, Matriarch Bristlefur, Bloodtalon Matriarch and the Cloud Serpents
+- Data: 8 more creatures with a known attack speed, 5 more with a known zone
+
+**Still missing** (as of this release):
+
+- 147 of 761 creatures have no known attack speed, 77 no level and 60 no zone (141 have no map points)
+
 ## [1.60.1.19] - 2026-10-14
 
 - New **Families** tab, as on the website: every pet family by type with its number of tameable creatures; select one
