@@ -28,6 +28,7 @@ local DEBUG_COMMANDS = {
   { "collect check", "why nothing is being collected" },
   { "collect count", "how many creatures are collected" },
   { "collect clear", "delete everything collected" },
+  { "collect sample", "add sample sightings and tames (each NEW badge style, one the data has) and show the NEW chat notices; again to remove them" },
   { "shared", "what Data Sharing is doing" },
   { "shared ping", "test who hears you" },
   { "stable", "what the game says about your pets, next to the Stable tab's copies" },
@@ -36,6 +37,9 @@ local DEBUG_COMMANDS = {
   { "training scan", "globals that might belong to the Beast Training window" },
   { "training events", "print each event as it first fires (again to stop)" },
   { "icon", "the parts of the details icon" },
+  { "tabs", "the parts of a side tab (a left-side one if any), to check its mirroring" },
+  { "tabs art|mask|icon", "change how the left tabs are mirrored, live (art on/off, mask flip/keep/off, icon on/off)" },
+  { "tabs right|left", "move the left tab column 1 pixel right or left, live" },
 }
 
 local Debug = {}
@@ -50,11 +54,77 @@ function Debug.collect(option)
     return Say("collect:", Collector:Count(), "creatures")
   elseif option == "check" then
     return Collector:Diagnose()
+  elseif option == "sample" then
+    return Debug.collectSample()
   end
   global.collect = not global.collect
   Collector:SetEnabled(global.collect)
   Addon:GetModule("Window"):OnCollectChanged()
   return Say("collect:", global.collect and "on" or "off", "(" .. Collector:Count() .. " creatures)")
+end
+
+-- `/tsl debug collect sample`: four sample entries in the Collected Data tab, to see how an entry the addon's data
+-- lacks looks (the NEW badge, tan name, tooltip and details note) next to one it has. Run again to remove them. They
+-- are marked `debug_sample` and named "(debug sample)"; only those are ever removed. Remove them before uploading.
+-- One creature the data lacks per badge style (npc ids no creature has), named after its style.
+local SAMPLE_STYLES = {
+  { id = 999991, style = "tan", name = "New Beast: tan" },
+  { id = 999992, style = "small", name = "New Beast: small" },
+  { id = 999993, style = "sparkles", name = "New Beast: sparkles" },
+  { id = 999994, style = "legendary", name = "New Beast: legendary" },
+}
+function Debug.collectSample()
+  local DB = Addon:GetModule("DB")
+  local collected = DB.collected
+  collected.creatures = collected.creatures or {}
+  collected.tames = collected.tames or {}
+
+  -- Already there: remove them (only the entries this command made).
+  local removed = 0
+  for key, c in pairs(collected.creatures) do
+    if type(c) == "table" and c.debug_sample then collected.creatures[key] = nil; removed = removed + 1 end
+  end
+  for i = #collected.tames, 1, -1 do
+    if type(collected.tames[i]) == "table" and collected.tames[i].debug_sample then table.remove(collected.tames, i); removed = removed + 1 end
+  end
+  if removed > 0 then
+    Addon:GetModule("Collector"):NotifyChanged()
+    return Say("collect sample: removed", removed, "sample entries")
+  end
+
+  -- A creature the data has, for the side by side: the first one it lists.
+  local knownId, known
+  for id, npc in pairs(Addon.TameableNPCs or {}) do
+    if not Addon.IGNORED_NPC_IDS[id] and npc.family then knownId, known = id, npc; break end
+  end
+  local now = time()
+  local function sighting(id, name, family, level, style)
+    collected.creatures[tostring(id) .. ":sample"] = {
+      id = id, name = name, family = family, level_min = level, level_max = level, collected = now, debug_sample = true,
+      debug_badge = style,
+    }
+  end
+  local function tame(id, name, family, level, style)
+    table.insert(collected.tames, { npc_id = id, name = name, family = family, level = level, tamed = now, debug_sample = true,
+      debug_badge = style })
+  end
+  for _, sample in ipairs(SAMPLE_STYLES) do
+    sighting(sample.id, sample.name .. " (debug sample)", "Wolf", 10, sample.style)
+    tame(sample.id, sample.name .. " (debug sample)", "Wolf", 10, sample.style)
+  end
+  -- The chat notices a new sighting and a new tame give (once, for the first sample).
+  local Collector = Addon:GetModule("Collector")
+  local first = SAMPLE_STYLES[1]
+  Collector:NotifyNew("sighting", { id = first.id, name = first.name .. " (debug sample)", family = "Wolf", level_min = 10 }, true)
+  Collector:NotifyNew("tame", { npc_id = first.id, name = first.name .. " (debug sample)", family = "Wolf", level = 10 }, true)
+  if knownId then
+    sighting(knownId, known.name .. " (debug sample)", known.family, known.min or 1)
+    tame(knownId, known.name .. " (debug sample)", known.family, known.min or 1)
+  end
+  Addon:GetModule("Collector"):NotifyChanged()
+  Say("collect sample: added a sighting and a tame per NEW badge style (tan, small, sparkles, legendary)"
+    .. (knownId and (" and of one it has (" .. known.name .. ", without)") or "")
+    .. ". See the Collected Data tab (Collect Mode on). Run it again to remove them before uploading.")
 end
 
 function Debug.shared(option)
@@ -100,6 +170,13 @@ end
 
 function Debug.icon()
   return Addon:GetModule("Window"):DescribeIcon()
+end
+
+function Debug.tabs(option)
+  if option == "art" or option == "mask" or option == "icon" or option == "right" or option == "left" then
+    return Addon:GetModule("Window"):SetTabMirror(option)
+  end
+  return Addon:GetModule("Window"):DescribeTab()
 end
 
 -- Lists globals that might belong to the Beast Training UI.
@@ -189,7 +266,7 @@ end
 -- `/tsl debug [command] [option]`: works only while Debug Mode (Options > Advanced) is on.
 function Commands:HandleDebug(command, option)
   if not Addon:GetModule("DB").global.debug then
-    return print(Addon.TITLE .. ": the debug commands need Debug Mode on (Options tab, Advanced).")
+    return print(Addon.TITLE .. ": the debug commands need Debug Mode on (Options, the gear by the close button: Advanced).")
   end
   local run = command and Debug[command]
   if run then return run(option) end
@@ -205,6 +282,10 @@ function Commands:Handle(message)
   local cmd = args[1]
   if cmd == "clear" then
     return PinHelper:Clear()
+  elseif cmd == "options" then
+    return UI:ShowSection("OPTIONS")
+  elseif cmd == "help" then
+    return UI:ShowSection("HELP")
   elseif cmd == "debug" then
     return self:HandleDebug(args[2], args[3])
   end

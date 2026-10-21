@@ -5,6 +5,15 @@ manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
 
+# The libraries in libs/, by their CurseForge project slugs: CurseForge lists them as this project's embedded
+# libraries (the files themselves stay in libs/; update them there).
+embedded-libraries:
+  - libstub
+  - callbackhandler
+  - herebedragons
+  - libdatabroker-1-1
+  - libdbicon-1-0
+
 # Not part of the addon: the personal development tools.
 ignore:
   - tools

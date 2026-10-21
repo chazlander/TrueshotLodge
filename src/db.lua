@@ -20,6 +20,8 @@ local defaults = {
     -- `slots` is what the stable held the last time it was opened, `active` the key of the pet last seen out.
     stable = { pets = {}, slots = {} },
     tab_order = {}, -- the side tabs' keys in the order the character put them (drag a tab); empty = the usual order
+    tab_side = {}, -- key -> "left": the side tabs the character dragged to the window's left edge (the rest: right)
+    tab_hidden = {}, -- key -> true: the side tabs the character turned off (Options, Tab Organization)
   },
   global = {
     minimapIcon = { hide = false },
@@ -41,6 +43,7 @@ local defaults = {
     selections = {}, -- tab -> { ability = slug, rank = n } or the trainer's id
     bounty_sort = {}, -- Bounties tab: heading key -> "count" when sorted by number of entries (right-click the heading)
     debug = false,
+    debug_on = {}, -- debug message areas shown (Options > Advanced > Debug Mode): area -> true; none by default
     collect = true, -- Collect Mode: record (and share) what is seen; on by default
     send_name = false, -- Send Name: put your character's name on the beasts you tame (tamed_by); off = anonymous
   },

@@ -67,7 +67,7 @@ local function OnTooltipSetUnit(self, data)
   -- Get unit type and id.
   local unitType, _, _, _, _, id = strsplit("-", guid)
   if not (id and (unitType == "Creature" or unitType == "Pet")) then
-    return Addon:Debug("tooltip: not a creature", guid)
+    return -- (players, objects, ...: nothing to add, and too common to report)
   end
 
   -- Get live unit info.

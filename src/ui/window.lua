@@ -63,7 +63,9 @@ local TABS = {
   { key = "TRAINERS", label = L.TRAINERS, title = L.TRAINERS, icon = "Interface\\Icons\\Ability_Hunter_BeastTraining" },
   { key = "BOUNTIES", label = L.BOUNTIES, title = L.BOUNTIES, icon = Window.BOUNTY_ICON },
   { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall" },
-  { key = "OPTIONS", label = L.OPTIONS, title = L.OPTIONS, icon = "Interface\\Icons\\INV_Misc_Gear_01" },
+  -- No side tabs: the gear and the "?" by the close button open these (Window:CreateTitleButtons).
+  { key = "OPTIONS", label = L.OPTIONS, title = L.OPTIONS, icon = "Interface\\Icons\\INV_Misc_Gear_01", noSideTab = true },
+  { key = "HELP", label = L.HELP, title = L.HELP, icon = "Interface\\Icons\\INV_Misc_QuestionMark", noSideTab = true },
   -- Last, so the tabs above never move: it is only shown while collecting is on.
   { key = "COLLECTOR", label = L.COLLECTED_DATA, title = L.COLLECTED_DATA, icon = "Interface\\Icons\\INV_Misc_Note_02" },
 }
@@ -129,6 +131,14 @@ function UI:Toggle()
   if Window:IsShown() then Window:Hide() else Window:Show() end
 end
 
+-- Opens the window on a section (`/tsl options`, `/tsl help`); the title bar's button then goes back to the tab before.
+function UI:ShowSection(key)
+  Window:Show()
+  if not Window:IsShown() then return end
+  if not (Window.titleSections or {})[Window.tab] then Window.tabBeforeTitle = Window.tab end
+  Window:SelectTab(key)
+end
+
 -- ============================================================================
 -- Helpers
 -- ============================================================================
@@ -190,6 +200,7 @@ function Window:Create()
   frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
   frame:SetTitle(("%s %s"):format(Addon.TITLE, Colors.Primary(Addon.VERSION or "")))
   self:CreatePortrait(frame)
+  self:CreateTitleButtons(frame) -- the gear (Options) and "?" (Help) by the close button
   self:CreateFilterButtons(frame) -- Level, Zone, Pet (and Faction) at the right of the header
   self:CreateZoneFilter(frame) -- the Zone Filter follows you into a new zone (zone-filter.lua)
   frame:SetScale(self:SavedScale())
@@ -250,10 +261,13 @@ function Window:Sticky()
   return DB.global.sticky_selections ~= false
 end
 
+-- The tab to show for `key`: it, when it exists and shows (a title bar section always does), else the first that shows.
 function Window:KnownTab(key)
-  if key == "COLLECTOR" and not DB.global.collect then return "UNIQUE" end
   for _, info in ipairs(TABS) do
-    if info.key == key then return key end
+    if info.key == key and (info.noSideTab or self:TabShown(key)) then return key end
+  end
+  for _, key2 in ipairs(self.TabOrder and self:TabOrder() or {}) do
+    if self:TabShown(key2) then return key2 end
   end
   return "UNIQUE"
 end
@@ -268,6 +282,8 @@ function Window:Remember()
     selections.BOUNTIES = self.selectedBounty
   elseif self.tab == "FAMILIES" then
     selections.FAMILIES = self.selectedFamily
+  elseif self.tab == "HELP" then
+    selections.HELP = self.selectedHelp
   elseif self.tab == "OPTIONS" then
     selections.OPTIONS = self.selectedOption
   elseif self.selected then
@@ -286,6 +302,77 @@ function Window:SelectTab(key)
   if not self:Sticky() then self.selectedTrainer = nil end
   self:UpdateTabs()
   self:Refresh()
+end
+
+-- The title bar's buttons left of the close button, as Baganator has them: square red buttons with a gold symbol.
+-- The gear (next to the X) opens Options and the "?" opens Help, sections with no side tab. Clicked again (or while
+-- the section shows), each goes back to the tab you were on; it stays lit while its section shows.
+local TITLE_BUTTON_EXTRA = 1 -- how much taller than the close button's frame these are drawn (more and the red art stops staying square)
+local TITLE_BUTTON_WIDER = 1 -- and how much wider than tall: the red art draws a little narrow, so this looks square
+local TITLE_BUTTON_RAISE = 2 -- how far above the close button's middle they sit, to line up with its art
+-- What is on them: the gear's margin inside the button and the "?"'s size over the large font, each with its offset
+-- from the button's middle (x, y) to sit centered on the red art.
+local GEAR_MARGIN, GEAR_OFFSET = 6, { 0, 0 }
+local HELP_GROW, HELP_OFFSET = 2, { 0, 1 }
+local TITLE_SECTIONS = {
+  { key = "OPTIONS", title = L.OPTIONS, icon = "Interface\\WorldMap\\Gear_64Grey" },
+  { key = "HELP", title = L.HELP, text = "?" },
+}
+
+function Window:CreateTitleButtons(frame)
+  local close = frame.CloseButton
+  -- As big as the close button looks: its art is drawn larger than its frame (TITLE_BUTTON_EXTRA over its height).
+  local size = close and math.max(20, math.floor((close:GetHeight() or 24) + TITLE_BUTTON_EXTRA)) or 30
+  local anchor = close
+  self.titleButtons = {}
+  for _, section in ipairs(TITLE_SECTIONS) do
+    local button = CreateFrame("Button", nil, frame.TitleContainer or frame, "UIPanelButtonTemplate")
+    button:SetSize(size + TITLE_BUTTON_WIDER, size)
+    if anchor then
+      button:SetPoint("RIGHT", anchor, "LEFT", anchor == close and -3 or -2, anchor == close and TITLE_BUTTON_RAISE or 0) -- (clear of the close button's larger art)
+      button:SetFrameStrata(close:GetFrameStrata())
+      button:SetFrameLevel(close:GetFrameLevel() + 1)
+    else
+      button:SetPoint("TOPRIGHT", -28, -2)
+      button:SetFrameLevel(frame:GetFrameLevel() + 500)
+    end
+    anchor = button
+    if section.icon then
+      local icon = button:CreateTexture(nil, "OVERLAY")
+      icon:SetPoint("CENTER", button, "CENTER", GEAR_OFFSET[1], GEAR_OFFSET[2])
+      icon:SetSize(size - 2 * GEAR_MARGIN, size - 2 * GEAR_MARGIN)
+      icon:SetTexture(section.icon)
+      icon:SetVertexColor(1, 0.82, 0) -- the gold of the game's button text
+      button.icon = icon
+    else
+      -- Its own text, centered on the button (the button's own text is placed and padded by the template).
+      local text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+      local font, fontSize, flags = text:GetFont()
+      if font and fontSize then text:SetFont(font, fontSize + HELP_GROW, flags) end
+      text:SetPoint("CENTER", button, "CENTER", HELP_OFFSET[1], HELP_OFFSET[2])
+      text:SetJustifyH("CENTER")
+      text:SetText(section.text)
+      button.label = text
+    end
+    button:SetScript("OnClick", function()
+      if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
+      if self.tab == section.key then
+        self:SelectTab(self:KnownTab(self.tabBeforeTitle))
+      else
+        if not self.titleSections[self.tab] then self.tabBeforeTitle = self.tab end
+        self:SelectTab(section.key)
+      end
+    end)
+    button:SetScript("OnEnter", function(this)
+      GameTooltip:SetOwner(this, "ANCHOR_BOTTOM")
+      GameTooltip:SetText(section.title, 1, 1, 1)
+      GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+    button.section = section.key
+    self.titleButtons[#self.titleButtons + 1] = button
+  end
+  self.titleSections = { OPTIONS = true, HELP = true }
 end
 
 -- The name and the line under it, right of the icon: up to the facts column, or with `wide` (no facts: a pet bounty,
@@ -318,7 +405,7 @@ end
 function Window:UpdateTabs()
   for _, tab in ipairs(self.tabs) do
     tab:SetChecked(tab.key == self.tab)
-    if tab.key == "COLLECTOR" then tab:SetShown(DB.global.collect == true) end
+    tab:SetShown(self:TabShown(tab.key)) -- (turned off, or Collected Data without Collect Mode: hidden)
   end
   -- The Families tab's own parts of the details (tab-families.lua): only there, with the creatures under its ability
   -- rows; on the other tabs the creatures go under the description.
@@ -335,6 +422,10 @@ function Window:UpdateTabs()
     self.npcLabel:SetPoint("RIGHT", self.details, "RIGHT", -20, 0)
   end
   self:UpdateFilterButtons() -- the tab's own filters
+  for _, button in ipairs(self.titleButtons or {}) do
+    -- Lit while its section shows, as a side tab is checked.
+    if button.section == self.tab then button:LockHighlight() else button:UnlockHighlight() end
+  end
   if not self.dragTab then self:LayoutTabs() end -- (a tab being dragged is placed by the cursor)
   for _, info in ipairs(TABS) do
     if info.key == self.tab then self.header:SetText(info.title) end
@@ -454,17 +545,19 @@ function Window:CreateList(frame)
         end)
       end)
     elseif data.rankInfo then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitRankButton(button, data.rankInfo) end)
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitRankButton(button, data.rankInfo) end)
     elseif data.setting then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitOptionButton(button, data.setting) end)
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitOptionButton(button, data.setting) end)
     elseif data.trainer then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitTrainerButton(button, data.trainer) end)
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitTrainerButton(button, data.trainer) end)
     elseif data.collected then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitCollectedButton(button, data.collected) end)
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitCollectedButton(button, data.collected) end)
     elseif data.bounty then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitBountyButton(button, data.bounty) end)
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitBountyButton(button, data.bounty) end)
     elseif type(data.family) == "table" then -- (a header's `family` is a name: the unique abilities' tooltip)
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:InitFamilyButton(button, data.family) end)
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitFamilyButton(button, data.family) end)
+    elseif data.help then
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitHelpButton(button, data.help) end)
     else
       factory("Frame")
     end
@@ -613,6 +706,13 @@ function Window:UpdateFilterButtons()
   end
 end
 
+-- The list rows are shared by every tab: what one tab adds to a row (the Collected Data tab's small NEW badge and
+-- sparkles) is hidden before any tab fills it in again.
+function Window:ResetRowExtras(button)
+  if button.ftSmallBadge then button.ftSmallBadge:Hide() end
+  if button.ftSparkles then button.ftSparkles:Hide() end
+end
+
 -- Whether a header of the current list is open, and opening or closing them all.
 function Window:AnyExpanded()
   for _, key in ipairs(self.listKeys or {}) do
@@ -671,6 +771,10 @@ function Window:Refresh()
   end
   if self.tab == "FAMILIES" then
     self:RefreshFamilies()
+    return
+  end
+  if self.tab == "HELP" then
+    self:RefreshHelp()
     return
   end
   self:RefreshAbilities() -- the ability tabs (tab-abilities.lua)
@@ -958,6 +1062,10 @@ function Window:UpdateDetails()
   end
   if self.tab == "FAMILIES" then
     self:UpdateFamilyDetails()
+    return
+  end
+  if self.tab == "HELP" then
+    self:UpdateHelpDetails()
     return
   end
   if self.tab == "OPTIONS" then

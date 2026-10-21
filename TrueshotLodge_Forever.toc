@@ -1,0 +1,53 @@
+## Interface: 16001
+## Title: TrueshotLodge
+## Author: Chazlander
+## Version: 1.60.1.21
+## Notes: A guide to tamed pet abilities.
+## SavedVariables: TrueshotLodgeDB, TrueshotLodgeCollected
+## IconTexture: Interface\AddOns\TrueshotLodge\media\logo
+## X-Website: https://trueshotlodge.com
+## X-Curse-Project-ID: 1736050
+
+# Libraries
+libs\LibStub.lua
+libs\CallbackHandler-1.0.lua
+libs\HereBeDragons-2.0.lua
+libs\HereBeDragons-Pins-2.0.lua
+libs\LibDataBroker-1.1.lua
+libs\LibDBIcon-1.0.lua
+
+# Data
+data\ForeverTameableAbilities.lua
+data\ForeverTameableFamilies.lua
+data\ForeverTameableNPCs.lua
+data\ForeverTameableTrainers.lua
+
+# General
+src\_init.lua
+src\locale.lua
+src\colors.lua
+src\data.lua
+src\commands.lua
+src\db.lua
+src\integrity.lua
+src\tooltips.lua
+src\training.lua
+src\collector.lua
+src\share.lua
+src\stable.lua
+
+# UI
+src\ui\helpers.lua
+src\ui\minimap-icon.lua
+src\ui\pin-helper.lua
+src\ui\window.lua
+src\ui\window-tabs.lua
+src\ui\tab-abilities.lua
+src\ui\tab-trainers.lua
+src\ui\zone-filter.lua
+src\ui\tab-options.lua
+src\ui\tab-collector.lua
+src\ui\tab-bounties.lua
+src\ui\tab-families.lua
+src\ui\tab-help.lua
+src\ui\tab-stable.lua

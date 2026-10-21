@@ -116,6 +116,26 @@ Collector.InData = inData -- (data sharing leaves out received sightings the dat
 -- At load: drops the wild sightings the addon's data now holds completely (inData). A new release brings in what
 -- players found, and those records would only be uploaded and reviewed again for nothing. Tames (each one verifies its
 -- creature), trainers and Beast Training (their prices are not in the data) are always kept. Returns how many went.
+-- Shared trainers collected before they were named from their id (their name and title were in the sender's
+-- language): named again, in yours, as a shared trainer is now. Returns how many changed.
+function Collector:RenameSharedTrainers()
+  local renamed = 0
+  for id, r in pairs(DB.collected.trainers or {}) do
+    if type(r) == "table" and r.shared_by then
+      local name, title = Addon:TrainerNameAndTitle(r.id or id)
+      if (name and name ~= r.name) or (title and title ~= r.title) then
+        r.name, r.title = name or r.name, title or r.title
+        renamed = renamed + 1
+      end
+    end
+  end
+  if renamed > 0 then
+    Addon:Debug("collector:", renamed, "shared trainers named in your language")
+    changed()
+  end
+  return renamed
+end
+
 function Collector:PurgeKnown()
   local creatures = DB.collected and DB.collected.creatures
   if type(creatures) ~= "table" then return 0 end
@@ -263,6 +283,7 @@ function Collector:Record(unit)
 
   creatures[id] = c
   share("creature", c)
+  Collector:NotifyNew("sighting", c)
   Addon:Debug("collector: recorded", c.name, "(" .. id .. ")", family, "level " .. tostring(level),
     c.classification or "", "speed " .. tostring(mainhand), "zone " .. tostring(zoneId))
   changed()
@@ -702,6 +723,7 @@ function Collector:PetChanged()
   }
   DB.collected.tames = DB.collected.tames or {}
   table.insert(DB.collected.tames, entry)
+  Collector:NotifyNew("tame", entry)
   Addon:Debug("collector: tame of", tame.name, "(" .. tame.npc_id .. ") confirmed - reading the new pet")
   changed()
   for i, delay in ipairs(READ_DELAYS) do
@@ -750,6 +772,24 @@ end
 -- on for them: it puts their name on the website. The first load decides it either way (`send_name_tip`), so whoever
 -- turns Send Name off later never gets it.
 local SEND_NAME_TIP_DELAY = 15 -- seconds after loading in, past the login messages
+
+-- A chat notice when Collect Mode records a creature the addon's data does not have: a sighting of it, or a tame of
+-- it (the most wanted: a new tameable beast, and what it comes with). Once per creature and kind a session, so a beast
+-- in view does not repeat it. `force`: always (the debug samples).
+local announced = {}
+function Collector:NotifyNew(kind, entry, force)
+  local id = tonumber(entry and (entry.npc_id or entry.id))
+  if not id or (Addon.TameableNPCs and Addon.TameableNPCs[id]) then return end
+  local key = kind .. ":" .. id
+  if announced[key] and not force then return end
+  announced[key] = true
+  local L = Addon:GetModule("Locale")
+  local level = entry.level or entry.level_min
+  local about = ("|cFF1FA5D1%s|r (%s%s)"):format(entry.name or "?", entry.family or L.UNKNOWN,
+    level and (", " .. L.LEVEL:lower() .. " " .. level) or "")
+  local text = (kind == "tame" and L.NEW_TAME_NOTICE or L.NEW_SIGHTING_NOTICE):format(about)
+  print(("|cFF007EA6%s|r: |cFFFF8000%s|r %s"):format(Addon.TITLE, L.NEW_BADGE, text))
+end
 
 function Collector:SendNameTip()
   local global = DB.global

@@ -174,7 +174,8 @@ end
 -- The details
 -- ----------------------------------------------------------------------------
 
--- The controls under a setting's description: a checkbox, the UI Scale slider, the Reset Tab Order button. Made the
+-- The controls under a setting's description: a checkbox, the UI Scale slider, Tab Organization's reset button and
+-- tab checkboxes. Made the
 -- first time the tab is shown.
 function Window:GetOptionControls()
   if self.optionControls then return self.optionControls end
@@ -197,11 +198,71 @@ function Window:GetOptionControls()
   if controls.Slider then controls.Slider:SetPoint("TOPLEFT", 0, -4) end
 
   local reset = CreateFrame("Button", nil, controls, "UIPanelButtonTemplate")
-  reset:SetSize(160, 22)
-  reset:SetPoint("TOPLEFT", 0, -2)
+  reset:SetHeight(22)
+  reset:SetPoint("TOPLEFT", 0, -2) -- (across the whole pane: the controls reach its right edge)
+  reset:SetPoint("TOPRIGHT", 0, -2)
   reset:SetText(L.RESET_TAB_ORDER)
   reset:SetScript("OnClick", function() self:ResetTabOrder() end)
   controls.Reset = reset
+
+  -- Tab Organization: a checkbox per side tab to show or hide it, in two columns under the reset button (Collected Data
+  -- is not among them: Collect Mode shows it).
+  local tabChecks = CreateFrame("Frame", nil, controls)
+  tabChecks:SetPoint("TOPLEFT", reset, "BOTTOMLEFT", 0, -14)
+  tabChecks:SetPoint("TOPRIGHT", reset, "BOTTOMRIGHT", 0, -14)
+  tabChecks:SetHeight(10)
+  tabChecks.boxes = {}
+  for i, info in ipairs(self:OrganizableTabs()) do
+    local box = CreateFrame("CheckButton", nil, tabChecks, "CheckboxWithLabelTemplate")
+    local column, row = (i - 1) % 2, math.floor((i - 1) / 2)
+    -- The first column at the left, the second from the middle of the pane on (room for the longest name).
+    if column == 0 then
+      box:SetPoint("TOPLEFT", tabChecks, "TOPLEFT", -4, -row * 26)
+    else
+      box:SetPoint("TOPLEFT", tabChecks, "TOP", 16, -row * 26)
+    end
+    box.Text:SetFontObject("GameFontHighlight")
+    box.Text:SetText(("|T%s:16:16:0:0|t %s"):format(info.icon, info.label))
+    box.key = info.key
+    box:SetScript("OnClick", function(this)
+      if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
+      if not self:SetTabShown(this.key, this:GetChecked() and true or false) then
+        this:SetChecked(true) -- (the last tab showing stays)
+      end
+    end)
+    tabChecks.boxes[#tabChecks.boxes + 1] = box
+  end
+  controls.TabChecks = tabChecks
+
+  -- Debug Mode: a checkbox per area of debug messages (collector, share, ...), to silence the noisy ones. Under the
+  -- Enabled checkbox, in two columns.
+  local debugChecks = CreateFrame("Frame", nil, controls)
+  debugChecks:SetPoint("TOPLEFT", check, "BOTTOMLEFT", 4, -12)
+  debugChecks:SetPoint("RIGHT", controls, "RIGHT")
+  debugChecks:SetHeight(10)
+  local heading = debugChecks:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  heading:SetPoint("TOPLEFT", 0, 0)
+  heading:SetText(L.DEBUG_MESSAGES)
+  debugChecks.boxes = {}
+  for i, area in ipairs(Addon.DEBUG_AREAS) do
+    local box = CreateFrame("CheckButton", nil, debugChecks, "CheckboxWithLabelTemplate")
+    local column, row = (i - 1) % 2, math.floor((i - 1) / 2)
+    if column == 0 then
+      box:SetPoint("TOPLEFT", debugChecks, "TOPLEFT", -4, -20 - row * 26)
+    else
+      box:SetPoint("TOPLEFT", debugChecks, "TOP", 16, -20 - row * 26)
+    end
+    box.Text:SetFontObject("GameFontHighlight")
+    box.Text:SetText(L["DEBUG_AREA_" .. area:upper()] or area)
+    box.area = area
+    box:SetScript("OnClick", function(this)
+      if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
+      DB.global.debug_on = DB.global.debug_on or {}
+      DB.global.debug_on[this.area] = this:GetChecked() and true or nil
+    end)
+    debugChecks.boxes[#debugChecks.boxes + 1] = box
+  end
+  controls.DebugChecks = debugChecks
 
   self.optionControls = controls
   return controls
@@ -235,6 +296,7 @@ function Window:UpdateOptionDetails()
 
   controls:ClearAllPoints()
   controls:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", 0, -16)
+  controls:SetPoint("RIGHT", self.details, "RIGHT", -20, 0) -- (the reset button and the tab checkboxes use the width)
   controls:Show()
   controls.Check:SetShown(setting.kind == "check")
   if setting.kind == "check" then controls.Check:SetChecked(setting.get() and true or false) end
@@ -243,4 +305,14 @@ function Window:UpdateOptionDetails()
     if setting.kind == "scale" then controls.Slider:SetValue(self:SavedScale()) end
   end
   controls.Reset:SetShown(setting.kind == "taborder")
+  controls.TabChecks:SetShown(setting.kind == "taborder")
+  controls.DebugChecks:SetShown(setting.key == "debug")
+  if setting.key == "debug" then
+    for _, box in ipairs(controls.DebugChecks.boxes) do
+      box:SetChecked((DB.global.debug_on or {})[box.area] == true)
+    end
+  end
+  if setting.kind == "taborder" then
+    for _, box in ipairs(controls.TabChecks.boxes) do box:SetChecked(self:TabShown(box.key)) end
+  end
 end

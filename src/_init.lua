@@ -185,12 +185,27 @@ end
 do -- Addon:Debug()
   local DB = Addon:GetModule("DB")
 
-  -- Prints only when debug mode is on (the Debug Mode option, Options > Advanced).
+  -- The areas a debug message can come from: its first word ("collector: ...", "share error: ..."), with Options >
+  -- Advanced > Debug Mode's checkboxes to show each one (DB.global.debug_on[area] = true; none until ticked).
+  Addon.DEBUG_AREAS = { "collector", "share", "integrity", "training", "stable", "tooltip", "window" }
+  local AREA_ALIASES = { collected = "collector" } -- ("collected beast training ...")
+  local DEBUG_AREA = {}
+  for _, area in ipairs(Addon.DEBUG_AREAS) do DEBUG_AREA[area] = true end
+
+  local function Area(first)
+    local word = type(first) == "string" and first:match("^(%a+)") or nil
+    word = word and word:lower()
+    return word and (AREA_ALIASES[word] or word) or nil
+  end
+
+  -- Prints only when debug mode is on (the Debug Mode option, Options > Advanced), and its area is ticked.
   function Addon:Debug(...)
     local global = DB.global
-    if global and global.debug then
-      print("|cFFFF8800[" .. Addon.TITLE .. " debug]|r", ...)
-    end
+    if not (global and global.debug) then return end
+    local area = Area((...))
+    -- (an area the list does not name prints whenever Debug Mode is on)
+    if area and DEBUG_AREA[area] and not (global.debug_on and global.debug_on[area]) then return end
+    print("|cFFFF8800[" .. Addon.TITLE .. " debug]|r", ...)
   end
 end
 
@@ -220,6 +235,9 @@ do -- Initialization, once this addon's saved variables are loaded.
     -- Wild sightings the addon's data now holds (a new release brought them in) are dropped (src/collector.lua).
     ok, err = pcall(Addon:GetModule("Collector").PurgeKnown, Addon:GetModule("Collector"))
     if not ok then Addon:Debug("collector: cleanup failed:", err) end
+    -- Shared trainers named in another player's language: named in yours (src/collector.lua).
+    ok, err = pcall(Addon:GetModule("Collector").RenameSharedTrainers, Addon:GetModule("Collector"))
+    if not ok then Addon:Debug("collector: trainer names failed:", err) end
     Addon:GetModule("MinimapIcon"):Initialize()
     Addon:GetModule("Commands"):Initialize()
     Addon:GetModule("Collector"):SendNameTip()

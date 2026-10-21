@@ -207,8 +207,10 @@ local ENCODE = {
       .. ";" .. table.concat(spells, "/")
   end,
   trainer = function(r)
-    return Join("R", Pack(r.id, r.name, r.title, r.level, r.faction, r.ui_map_id, r.x, r.y, r.subzone,
-      r.unconfirmed and 1 or nil))
+    -- As a creature's: no name or title when the data has the trainer (whoever receives it names it from its id).
+    local known = Addon.TameableTrainers and Addon.TameableTrainers[tonumber(r.id) or 0]
+    return Join("R", Pack(r.id, not known and r.name or nil, not known and r.title or nil, r.level, r.faction,
+      r.ui_map_id, r.x, r.y, r.subzone, r.unconfirmed and 1 or nil))
   end,
   service = function(s)
     return Join("S", Pack(s.trainer_id, s.spell_id, s.name, s.rank, s.cost, s.required_level, s.category,
@@ -712,7 +714,9 @@ local MERGE = {
     if r and not r.shared_by then return end -- your own
     r = r or { id = id, services = {}, first_seen = time() }
     trainers[id] = r
-    r.name, r.title, r.level, r.faction = Text(f[2]), Text(f[3]), Number(f[4]), Text(f[5])
+    -- Named in your language from its id (the game, else the data); the sender's words only when neither knows it.
+    local name, title = Addon:TrainerNameAndTitle(id)
+    r.name, r.title, r.level, r.faction = name or Text(f[2]), title or Text(f[3]), Number(f[4]), Text(f[5])
     r.ui_map_id, r.x, r.y, r.subzone = Number(f[6]), Number(f[7]), Number(f[8]), Text(f[9])
     r.unconfirmed = f[10] == "1" or nil -- the sender could not confirm it is a pet trainer (see the collector)
     r.last_seen, r.shared_by = time(), sender

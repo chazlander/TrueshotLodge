@@ -232,6 +232,24 @@ function Addon:NPCGameName(id)
   return nil
 end
 
+-- An NPC's title from its npc id, as the game shows it under the name in your language ("Pet Trainer" from
+-- "<Pet Trainer>"), or nil.
+function Addon:NPCGameTitle(id)
+  id = tonumber(id)
+  if not (id and C_TooltipInfo and C_TooltipInfo.GetHyperlink) then return nil end
+  local ok, data = pcall(C_TooltipInfo.GetHyperlink, ("unit:Creature-0-0-0-0-%d-0"):format(id))
+  local line = ok and type(data) == "table" and type(data.lines) == "table" and data.lines[2]
+  local text = type(line) == "table" and Addon:Plain(line.leftText) or nil
+  return type(text) == "string" and text:match("^<(.+)>$") or nil
+end
+
+-- A trainer's name and title from its npc id: the game's (in your language), else the data's (English); nil for what
+-- neither has. As for creatures, what a shared entry says is another player's language, so it comes last.
+function Addon:TrainerNameAndTitle(id)
+  local known = Addon.TameableTrainers and Addon.TameableTrainers[tonumber(id) or 0]
+  return self:NPCGameName(id) or (known and known.name), self:NPCGameTitle(id) or (known and known.tag)
+end
+
 -- A creature's name from its npc id: the game's (in your language, as the creatures you meet yourself are saved),
 -- else the English name in the data; nil when neither has it. What a shared entry says is another player's language,
 -- so it is only used when this finds nothing.

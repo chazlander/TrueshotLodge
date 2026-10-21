@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased]
+
+- The addon has its own .toc for WoW Forever (TrueshotLodge_Forever.toc), the one the WoW Forever client loads
+- Options and the new **Help** have their own buttons beside the close button: the gear opens Options, the **?** opens
+  Help (click either again to go back to your tab). Options is no longer a side tab
+- Help: **How to Claim** (moved here from the Bounties tab), what the filters do, the slash commands, and **Tab
+  Descriptions**, what each tab is for
+- `/tsl options` and `/tsl help` open the window straight on Options or Help
+- Debug Mode (Options, Advanced): a checkbox per area of debug messages (Collector, Data Sharing, Integrity, Beast
+  Training, Stable, NPC Tooltips, Window), all off until you tick the ones you want; NPC tooltips no longer report
+  every player or object you hover
+- Side tabs on both sides: hold a tab and drag it across the window, and it snaps to the window's left edge (or back to
+  the right). Each side keeps its own order (drag up or down), saved for each character
+- **Tab Organization** (Options, Visual, was Tab Order): a checkbox per side tab to show or hide it, and Reset Tab Order
+  to put them all back on the right in their usual order. The Collected Data tab still shows with Collect Mode
+- With Collect Mode on, a chat message says so when you see or tame a creature that is not in TrueshotLodge yet (once
+  per creature a session), so you know that one is worth uploading
+- Library Dependancy Updates and Attribution  
+- Data: 12 more creatures verified by a tame (145 in all), among them Dishu, Black Ravager, Longsnout, Moonstalker
+  Runt, Nightsaber Stalker, Black Bear Patriarch and Wood Lurker
+- Data: 8 more creatures with a known attack speed (among them the Shriekling Fledgling and Matriarch, Elder Snow
+  Leopard, Famished Blackworg and Greater Tarantula); Young Fleshripper and Young Goretusk attack at 2.5, and Forest
+  Spider, Mangy Wolf, Pygmy Tide Crawler and Gray Fox have a wider level range
+
+**Still missing** (as of this release):
+
+- 139 of 761 creatures have no known attack speed, 77 no level and 60 no zone (141 have no map points)
+
 ## [1.60.1.21] - 2026-10-19
 
 - New on the website: the **Hall of Fame** (TrueshotLodge.com/hall-of-fame), the hunters who tamed the most, with

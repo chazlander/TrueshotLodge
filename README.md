@@ -36,6 +36,8 @@ you like (saved for each character). At the top right, across from the tab's tit
 Each tab shows the filters it can use: **Level** (what your level reaches, or the
 creatures you can tame now), **Zone** (only the zone you are standing in), **Pet** (only what your active pet's
 family can learn) and, on the Trainers tab, **Faction**. A filter is grey while off, and red and glowing while on.
+Beside the close button, the **gear** opens Options and the **?** opens Help (click either again to go back to your
+tab).
 
 ## ![Families](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_pet_wolf.jpg) Families
 
@@ -96,10 +98,9 @@ A pet is remembered the last time it was out, so even a pet sitting in the stabl
 ## ![Bounties](https://wow.zamimg.com/images/wow/icons/medium/inv_inscription_80_contract_embers.jpg) Bounties
 
 The beasts and abilities hunters most need found, posted as bounties: the same list as
-[TrueshotLodge.com/bounties](https://trueshotlodge.com/bounties), worked out from the addon's data.
+[TrueshotLodge.com/bounties](https://trueshotlodge.com/bounties), worked out from the addon's data. How to claim one
+is in Help (the **?** by the close button).
 
-- **How to Claim**: whether Collect Mode and Send Name are on, how many tames you have collected, and how a bounty is
-  claimed
 - **Pet Bounties**:
   - **Missing Rares**: rares no TrueshotLodge hunter has tamed yet
   - **Missing Normal**: every other creature no TrueshotLodge hunter has tamed yet
@@ -117,12 +118,23 @@ alphabetically; right-click the heading to list them by number of creatures inst
 To claim one: turn on Collect Mode, track the beast down (a look at its nameplate records its attack speed and where it
 lives; a tame records the abilities it came with), then upload your `TrueshotLodge.lua` at
 [TrueshotLodge.com](https://trueshotlodge.com/collector). We check what you found and add it for every hunter. With
-**Send Name** on (Options tab, Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
+**Send Name** on (Options, the gear by the close button: Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
 date by *your name*".
+
+## ![Help](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_questionmark.jpg) Help
+
+Opened with the **?** by the close button:
+
+- **How to Claim**: whether Collect Mode and Send Name are on, how many tames you have collected, and how a bounty is
+  claimed
+- **Filters**: what Level, Zone, Pet and Faction do
+- **Commands**: the slash commands
+- **Tab Descriptions**: what each tab is for
 
 ## ![Options](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_gear_01.jpg) Options
 
-The settings, grouped and explained, in the same list-and-details layout:
+Opened with the **gear** by the close button. The settings, grouped and explained, in the same list-and-details
+layout:
 
 - **General**: the minimap icon, NPC tooltips, and remembering your selections between tabs and sessions
 - **Visual**: the window's UI scale (50% to 150%) and resetting the tab order

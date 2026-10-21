@@ -1,5 +1,4 @@
 local _, Addon = ...
-local Colors = Addon:GetModule("Colors")
 local DB = Addon:GetModule("DB")
 local Helpers = Addon:GetModule("Helpers")
 local L = Addon:GetModule("Locale")
@@ -165,12 +164,7 @@ function Window:GetBountyGroups()
   local zone, level = self:ZoneFilter(), UnitLevel("player") or 1
   local groups = {}
 
-  -- How to claim one, and whether Collect Mode and Send Name are on. Left out while searching.
-  if search == "" then
-    groups[#groups + 1] = { key = "bounties:claim", name = L.BOUNTIES_ROW, rows = {
-      { key = "claim", kind = "claim", label = L.BOUNTY_HOW_TO_CLAIM },
-    } }
-  end
+  -- (How to claim one is in the Help section: tab-help.lua.)
 
   -- Which creatures each pet bounty wants (the raw data is enough to tell; only those are made ready to show).
   local wanted = {}
@@ -359,20 +353,7 @@ function Window:UpdateBountyDetails()
   local lines = {}
   local description -- each kind below sets it
   local function add(line) if line then lines[#lines + 1] = line end end
-  if row.kind == "claim" then
-    self.icon:SetTexture(Window.BOUNTY_ICON)
-    self.name:SetText(L.BOUNTY_HOW_TO_CLAIM)
-    self.subtitle:SetText(L.BOUNTIES_SITE)
-    local sendName = DB.global.send_name == true
-    add(Line(L.COLLECT_MODE, DB.global.collect and L.ON or L.OFF))
-    add(Line(L.SEND_NAME, sendName and L.ON or L.OFF))
-    add(Line(L.TAMED_CREATURES, #(DB.collected.tames or {})))
-    description = L.BOUNTIES_TEXT .. "\n\n" .. L.BOUNTY_CLAIM_STEPS .. "\n\n"
-      .. (sendName and L.BOUNTIES_NAME_ON:format(Addon:PlayerName() or "?") or Colors.Highlight(L.BOUNTIES_NAME_OFF))
-    self.npcLabel:Hide()
-    self.npcBox:Hide()
-    self.npcBar:Hide()
-  elseif row.kind == "pet" then
+  if row.kind == "pet" then
     self.icon:SetTexture(Window.BOUNTY_ICON)
     self.name:SetText(row.bounty.name)
     self.subtitle:SetText(row.bounty.text)

@@ -25,6 +25,16 @@ end
 -- collector is for.
 
 local NEW_COLOR = CreateColorFromHexString and CreateColorFromHexString("FFC6AF8D")
+-- An entry the addon's data does not have gets a "NEW" badge (NEW_STYLE). `/tsl debug collect sample` shows the
+-- styles side by side (an entry's `debug_badge` picks one):
+--   tan        "NEW" before the name, in tan
+--   small      a small "NEW" at the right end of the row
+--   sparkles   tan "NEW" before the name, with sparkles twinkling across the row
+--   legendary  "NEW" before the name, in the legendary orange (the website's --color-rarity-legendary, #ff8000)
+local NEW_STYLE = "tan"
+local TINT_NEW_NAMES = false -- the name of a new entry in tan too (it also tints the badge: off while trying the styles)
+local BADGE_COLORS = { tan = "FFC6AF8D", sparkles = "FFC6AF8D", legendary = "FFFF8000" }
+local SPARKLE_TEXTURE = "Interface\\Cooldown\\star4"
   or { GetRGB = function() return 0.776, 0.686, 0.553 end }
 -- In front of an entry another TrueshotLodge user shared (`shared_by`): a blue dot.
 local SHARED_DOT = "|cFF3FA9F5\226\128\162|r " -- U+2022 BULLET
@@ -58,7 +68,7 @@ function Window:GetCollectedGroups()
       group.rows[#group.rows + 1] = {
         key = "c:" .. tostring(id), kind = "creature", data = c, isNew = Addon.TameableNPCs[c.id] == nil,
         store = "creatures", storeKey = id,
-        label = ("%s  |cFF9D9D9D%s %s|r"):format(c.name or "?", L.LEVEL, LevelText(c.level_min, c.level_max)),
+        name = c.name or "?", level = ("|cFF9D9D9D%s %s|r"):format(L.LEVEL, LevelText(c.level_min, c.level_max)),
       }
     end
   end
@@ -72,9 +82,11 @@ function Window:GetCollectedGroups()
   local tames = { rows = {} }
   for index, tame in ipairs(DB.collected.tames or {}) do
     if matches((tame.name or "") .. " " .. (tame.family or "")) then
+      -- A tame of a creature the data does not have: the most wanted kind (a new tameable beast, and what it comes with).
+      local isNew = Addon.TameableNPCs[tonumber(tame.npc_id)] == nil
       tames.rows[#tames.rows + 1] = {
-        key = "m:" .. index, kind = "tame", data = tame, index = index, store = "tames", storeKey = index,
-        label = ("%s  |cFF9D9D9D%s %s|r"):format(tame.name or "?", L.LEVEL, tostring(tame.level or "?")),
+        key = "m:" .. index, kind = "tame", data = tame, index = index, store = "tames", storeKey = index, isNew = isNew,
+        name = tame.name or "?", level = ("|cFF9D9D9D%s %s|r"):format(L.LEVEL, tostring(tame.level or "?")),
       }
     end
   end
@@ -154,17 +166,86 @@ local function CollectedOnEnter(button)
   GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
   GameTooltip:SetText(row.data.name or "?")
   if row.kind == "creature" then
-    GameTooltip:AddLine(row.isNew and "Not in the data yet" or "In the data, with something new", 1, 1, 1)
+    GameTooltip:AddLine(row.isNew and L.NOT_IN_DATA_SHORT or L.IN_DATA_SHORT, 1, 1, 1)
+  elseif row.kind == "tame" and row.isNew then
+    GameTooltip:AddLine(L.NOT_IN_DATA_SHORT, 1, 1, 1)
   end
   if row.data.shared_by then GameTooltip:AddLine(("%s: %s"):format(L.SHARED_BY, row.data.shared_by), 1, 1, 1) end
   if row.store then GameTooltip:AddLine(L.RIGHT_CLICK_TO_DELETE, 0.6, 0.6, 0.6) end
   GameTooltip:Show()
 end
 
+-- The small "NEW" at the right end of a row (made once per row button, hidden by Window:ResetRowExtras).
+local function SmallBadge(button)
+  if not button.ftSmallBadge then
+    local text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
+    text:SetPoint("RIGHT", button, "RIGHT", -8, 0)
+    text:SetText(L.NEW_BADGE)
+    text:SetTextColor(0.78, 0.69, 0.55)
+    button.ftSmallBadge = text
+  end
+  return button.ftSmallBadge
+end
+
+-- Sparkles twinkling across a row: a few stars, each fading in and out on its own beat.
+local function Sparkles(button)
+  if not button.ftSparkles then
+    local frame = CreateFrame("Frame", nil, button)
+    frame:SetAllPoints()
+    frame:SetFrameLevel(button:GetFrameLevel() + 2)
+    for i, spot in ipairs({ { 0.18, 4 }, { 0.42, -3 }, { 0.63, 3 }, { 0.86, -2 } }) do
+      local star = frame:CreateTexture(nil, "OVERLAY")
+      star:SetTexture(SPARKLE_TEXTURE)
+      star:SetBlendMode("ADD")
+      star:SetVertexColor(1, 0.85, 0.45)
+      star:SetSize(14, 14)
+      star:SetPoint("CENTER", frame, "LEFT", 0, spot[2])
+      star.spot, star.dy = spot[1], spot[2]
+      star:SetAlpha(0)
+      local twinkle = star:CreateAnimationGroup()
+      twinkle:SetLooping("REPEAT")
+      local show = twinkle:CreateAnimation("Alpha")
+      show:SetFromAlpha(0); show:SetToAlpha(1); show:SetDuration(0.35); show:SetStartDelay(i * 0.3); show:SetOrder(1)
+      local hide = twinkle:CreateAnimation("Alpha")
+      hide:SetFromAlpha(1); hide:SetToAlpha(0); hide:SetDuration(0.5); hide:SetOrder(2)
+      local rest = twinkle:CreateAnimation("Alpha")
+      rest:SetFromAlpha(0); rest:SetToAlpha(0); rest:SetDuration(0.9); rest:SetOrder(3)
+      star.twinkle = twinkle
+    end
+    -- Spread along the row (re-placed when its width is known or changes).
+    local function place(this)
+      for _, star in ipairs({ this:GetRegions() }) do
+        star:ClearAllPoints()
+        star:SetPoint("CENTER", this, "LEFT", this:GetWidth() * star.spot, star.dy)
+      end
+    end
+    frame:SetScript("OnSizeChanged", place)
+    frame:SetScript("OnShow", function(this)
+      place(this)
+      for _, star in ipairs({ this:GetRegions() }) do star.twinkle:Play() end
+    end)
+    frame:SetScript("OnHide", function(this)
+      for _, star in ipairs({ this:GetRegions() }) do star.twinkle:Stop(); star:SetAlpha(0) end
+    end)
+    frame:Hide()
+    button.ftSparkles = frame
+  end
+  return button.ftSparkles
+end
+
 function Window:InitCollectedButton(button, row)
-  button.Label:SetText((row.data.shared_by and SHARED_DOT or "") .. row.label)
-  button.Label:SetWidth(button:GetWidth() - 20)
-  button.Label:SetVertexColor((row.isNew and NEW_COLOR or HIGHLIGHT_FONT_COLOR):GetRGB())
+  -- The NEW badge by style: before the name (tan, sparkles, legendary), or small at the row's end.
+  local style = row.isNew and (row.data.debug_badge or NEW_STYLE) or nil
+  local inline = style and BADGE_COLORS[style] and ("|c%s%s|r  "):format(BADGE_COLORS[style], L.NEW_BADGE) or ""
+  -- (sightings and tames: badge, name, level; Beast Training and trainers: their own label)
+  local text = row.name and (inline .. row.name .. "  " .. row.level) or row.label or "?" -- (NEW first: a long name is cut short at the end)
+  button.Label:SetText((row.data.shared_by and SHARED_DOT or "") .. text)
+  button.Label:SetWidth(button:GetWidth() - (style == "small" and 46 or 20))
+  if style == "small" then SmallBadge(button):Show() end
+  if style == "sparkles" then Sparkles(button):Show() end
+  -- (TINT_NEW_NAMES: the name of a new entry in tan. Off for now: the label's tint also colors the inline badge, so
+  -- every badge style looked tan.)
+  button.Label:SetVertexColor((TINT_NEW_NAMES and row.isNew and NEW_COLOR or HIGHLIGHT_FONT_COLOR):GetRGB())
   button.SkillUps:Hide()
   button.LockedIcon:Hide()
   button.Count:Hide()
@@ -307,6 +388,7 @@ function Window:UpdateCollectedDetails()
         spell.rank and (" " .. spell.rank) or "", spell.passive and (" |cFF9D9D9D(" .. L.PASSIVE .. ")|r") or "")
     end
     description = #spells > 0 and table.concat(spells, "\n") or Colors.Highlight(L.NO_PET_SPELLS)
+    if row.isNew then description = Colors.Highlight(L.NOT_IN_DATA_TAME) .. "\n\n" .. description end
   elseif row.kind == "trainer" then
     self.icon:SetTexture(QUESTION_MARK_ICON)
     self.name:SetText(d.name or "?")
