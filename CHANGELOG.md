@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.60.1.25] - 2026-10-21
+## [1.60.1.26] - 2026-10-21
 
 - The addon has its own .toc for WoW Forever (TrueshotLodge_Forever.toc), the one the WoW Forever client loads
 - Options and the new **Help** have their own buttons beside the close button: the gear opens Options, the **?** opens
