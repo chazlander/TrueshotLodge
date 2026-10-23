@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.28] - 2026-10-22
 
 - **Final Release before Live!!!**
 - **Pet Ability Tooltips**: a pet ability's own tooltip (in the spellbook, on the pet bar, in Beast Training, in chat
