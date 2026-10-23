@@ -285,6 +285,100 @@ end
 -- The details
 -- ----------------------------------------------------------------------------
 
+-- Learnable By: a row at the top of the pane, above the icon and name, with every pet family's icon spread evenly
+-- across the pane's whole width, then a line under it; the families that cannot learn the ability are greyed out.
+-- Hover one for its name.
+local LEARNABLE_ICON = 24 -- at most: smaller when the pane is too narrow for them all
+local LEARNABLE_MIN_GAP = 2
+local LEARNABLE_TOP = 4 -- the room above the icons
+local LEARNABLE_LINE_GAP = 0 -- between the icons and the line under them (right under them)
+local LEARNABLE_BELOW = 12 -- between the line and the ability's icon and name
+local LEARNABLE_HEIGHT = LEARNABLE_ICON + LEARNABLE_LINE_GAP + 1 -- the icons, then the line
+
+local function LearnableOnEnter(button)
+  GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+  GameTooltip:SetText(Addon:FamilyLabel(button.family))
+  if button.learns then
+    GameTooltip:AddLine(L.CAN_LEARN, 0.25, 1, 0.25)
+  else
+    GameTooltip:AddLine(L.CANNOT_LEARN, 0.6, 0.6, 0.6)
+  end
+  GameTooltip:Show()
+end
+
+-- Spreads the icons across the row, the same gap between each and before the first and after the last (and shrinks
+-- them when they would not fit with a small gap).
+local function SpreadIcons(row)
+  local icons, width = row.icons, row:GetWidth() or 0
+  local count = #icons
+  if count == 0 or width <= 0 then return end
+  local size = math.min(LEARNABLE_ICON, math.floor((width - (count + 1) * LEARNABLE_MIN_GAP) / count))
+  local gap = (width - count * size) / (count + 1)
+  for index, button in ipairs(icons) do
+    button:SetSize(size, size)
+    button:ClearAllPoints()
+    button:SetPoint("TOPLEFT", row, "TOPLEFT", gap + (index - 1) * (size + gap), 0)
+  end
+end
+
+function Window:LearnableRow()
+  if self.learnableRow then return self.learnableRow end
+  local row = CreateFrame("Frame", nil, self.details)
+  row:SetHeight(LEARNABLE_HEIGHT)
+  -- The line between it and the ability's details: the pane's own inner border (its top edge), across the whole pane,
+  -- or a plain grey line when the client has no such piece.
+  row.line = row:CreateTexture(nil, "ARTWORK")
+  local edge = self.detailsBorder and self.detailsBorder.TopEdge
+  local atlas = edge and edge.GetAtlas and edge:GetAtlas()
+  if atlas and row.line:SetAtlas(atlas, true) ~= false then
+    row.line:SetHorizTile(true)
+  else
+    row.line:SetHeight(2)
+    row.line:SetColorTexture(0.25, 0.25, 0.25, 0.9)
+  end
+  row.line:SetPoint("BOTTOMLEFT", 0, 0)
+  row.line:SetPoint("BOTTOMRIGHT", 0, 0)
+  row.icons = {}
+  local families = {}
+  for family in pairs(Addon.TameableFamilies or {}) do families[#families + 1] = family end
+  table.sort(families)
+  for _, family in ipairs(families) do
+    local button = CreateFrame("Button", nil, row)
+    button:SetSize(LEARNABLE_ICON, LEARNABLE_ICON)
+    button.texture = button:CreateTexture(nil, "ARTWORK")
+    button.texture:SetAllPoints()
+    button.texture:SetTexture(Addon.TameableFamilies[family].icon or Helpers.QUESTION_MARK_ICON)
+    button.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    button.family = family
+    button:SetScript("OnEnter", LearnableOnEnter)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+    row.icons[#row.icons + 1] = button
+  end
+  row:SetPoint("TOPLEFT", self.details, "TOPLEFT", 0, -LEARNABLE_TOP)
+  row:SetPoint("RIGHT", self.details, "RIGHT", 0, 0) -- the pane's whole width
+  row:SetScript("OnSizeChanged", SpreadIcons)
+  row:Hide()
+  self.learnableRow = row
+  return row
+end
+
+-- Shows the row for an ability: lit for the families that learn it (all of them when it names none: the passives).
+function Window:ShowLearnableRow(ability)
+  local row = self:LearnableRow()
+  local learners = {}
+  for _, family in ipairs(ability.learned_by or {}) do learners[family] = true end
+  local all = next(learners) == nil
+  for _, button in ipairs(row.icons) do
+    button.learns = all or learners[button.family] == true
+    button.texture:SetDesaturated(not button.learns)
+    button:SetAlpha(button.learns and 1 or 0.35)
+  end
+  row:Show()
+  SpreadIcons(row)
+  -- The icon, name and facts under it.
+  self:SetTopOffset(LEARNABLE_TOP + LEARNABLE_HEIGHT + LEARNABLE_BELOW - Window.DETAILS_TOP)
+end
+
 function Window:UpdateAbilityDetails()
   local sel = self.selected
   if not sel then
@@ -322,15 +416,17 @@ function Window:UpdateAbilityDetails()
   if ability.attack_speed then
     -- The creatures' own attack speed, which this passive stands for.
     self.facts:SetText(("%s: %s"):format(Colors.Label(L.ATTACK_SPEED), L.ATTACK_SECONDS:format(ability.attack_speed)))
+    self:LearnableRow():Hide()
+    self:SetTopOffset(0)
   else
-    local learnedBy = #ability.learned_by > 0 and table.concat(ability.learned_by, ", ") or L.ALL_PET_FAMILIES
     self.facts:SetText(table.concat({
       ("%s: %s"):format(Colors.Label(L.PET_LEVEL), rank.pet_level or 1),
       ("%s: %s"):format(Colors.Label(L.TRAINING_COST), rank.training_cost or 0),
-      ("%s: %s"):format(Colors.Label(L.LEARNABLE_BY), learnedBy),
     }, "\n"))
+    self:ShowLearnableRow(ability)
   end
 
+  self.descriptionBeside = true -- (under the rank, right of the icon: Window:PlaceDescription)
   self:PlaceDescription()
 
   -- Trainer passives are not learned from creatures.

@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+- **Final Release before Live!!!**
+- **Pet Ability Tooltips**: a pet ability's own tooltip (in the spellbook, on the pet bar, in Beast Training, in chat
+  links) shows the pet level it needs and its training point cost
+- Options: a new **Tooltips** group with Pet Tooltips (was NPC Tooltips, under General) and Pet Ability Tooltips, each
+  on by default
+- Unique, Common and Passive Abilities: **Learnable By** is a row of every family's icon at the top of the
+  ability's details, the families that cannot learn it greyed out (hover one for its name)
+
 ## [1.60.1.26] - 2026-10-21
 
 - The addon has its own .toc for WoW Forever (TrueshotLodge_Forever.toc), the one the WoW Forever client loads

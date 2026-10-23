@@ -28,9 +28,13 @@ local function Groups()
       Setting("minimap", L.MINIMAP_ICON, L.MINIMAP_ICON_TOOLTIP, "Interface\\Icons\\INV_Misc_Map_01",
         function() return not DB.global.minimapIcon.hide end,
         function() Addon:GetModule("MinimapIcon"):Toggle() end),
-      GlobalSetting("npc_tooltips", L.NPC_TOOLTIPS, L.NPC_TOOLTIPS_TOOLTIP, "Interface\\Icons\\INV_Misc_Note_01", true),
       GlobalSetting("sticky_selections", L.STICKY_SELECTIONS, L.STICKY_SELECTIONS_TOOLTIP,
         "Interface\\Icons\\INV_Misc_PocketWatch_02", true),
+    } },
+    { key = "options:tooltips", name = L.TOOLTIPS, settings = {
+      GlobalSetting("npc_tooltips", L.PET_TOOLTIPS, L.PET_TOOLTIPS_TOOLTIP, "Interface\\Icons\\Ability_Hunter_BeastTaming", true),
+      GlobalSetting("ability_tooltips", L.PET_ABILITY_TOOLTIPS, L.PET_ABILITY_TOOLTIPS_TOOLTIP,
+        "Interface\\Icons\\Ability_Hunter_BeastTraining", true),
     } },
     { key = "options:visual", name = L.VISUAL, settings = {
       { key = "ui_scale", label = L.UI_SCALE, description = L.UI_SCALE_TOOLTIP, icon = "Interface\\Icons\\INV_Misc_Spyglass_02",

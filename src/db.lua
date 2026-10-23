@@ -25,7 +25,8 @@ local defaults = {
   },
   global = {
     minimapIcon = { hide = false },
-    npc_tooltips = true,
+    npc_tooltips = true, -- Pet Tooltips (Options, Tooltips): the lines under a tameable creature's or a pet's tooltip
+    ability_tooltips = true, -- Pet Ability Tooltips: a pet ability's pet level and training points under its tooltip
     sticky_selections = true,
     -- Data Sharing (Options tab): who your collected data is sent to, each on its own, and taking in what others send.
     share_shard = true, -- the hidden TrueshotLodge channel, and the users you have heard from (by whisper)

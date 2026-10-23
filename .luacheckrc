@@ -29,7 +29,7 @@ read_globals = {
   -- Frames, mixins and UI utilities
   "ChatFrameUtil", "ClassTrainerFrame", "CreateColor", "CreateColorFromHexString", "CreateDataProvider", "CreateFrame",
   "CreateScrollBoxListLinearView", "CreateScrollBoxListTreeListView", "CreateTreeDataProvider", "DEFAULT_CHAT_FRAME",
-  "Enum", "GameTooltip", "GameTooltip_Hide", "GameTooltip_SetTitle", "ListHeaderMixin", "MinimalSliderWithSteppersMixin",
+  "Enum", "GameTooltip", "GameTooltip_Hide", "ItemRefTooltip", "GameTooltip_SetTitle", "ListHeaderMixin", "MinimalSliderWithSteppersMixin",
   "NineSliceUtil", "ScrollUtil", "Spell", "StaticPopup_Show", "TooltipDataProcessor", "UIParent", "UISpecialFrames",
   "WorldMapFrame", "OpenWorldMap", "ToggleWorldMap",
 

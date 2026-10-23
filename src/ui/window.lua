@@ -313,7 +313,7 @@ local TITLE_BUTTON_RAISE = 2 -- how far above the close button's middle they sit
 -- What is on them: the gear's margin inside the button and the "?"'s size over the large font, each with its offset
 -- from the button's middle (x, y) to sit centered on the red art.
 local GEAR_MARGIN, GEAR_OFFSET = 6, { 0, 0 }
-local HELP_GROW, HELP_OFFSET = 2, { 0, 1 }
+local HELP_GROW, HELP_OFFSET = 2, { 0, -1 }
 local TITLE_SECTIONS = {
   { key = "OPTIONS", title = L.OPTIONS, icon = "Interface\\WorldMap\\Gear_64Grey" },
   { key = "HELP", title = L.HELP, text = "?" },
@@ -411,6 +411,11 @@ function Window:UpdateTabs()
   -- rows; on the other tabs the creatures go under the description.
   local families = self.tab == "FAMILIES"
   if self.iconButton then self:SetTopWide(false) end -- (a pet bounty widens it again)
+  self.descriptionBeside = nil -- (an ability's details set it again)
+  if self.learnableRow then -- (an ability's details show it again)
+    self.learnableRow:Hide()
+    self:SetTopOffset(0)
+  end
   if self.familyWidgets then self.familyWidgets:SetShown(families) end
   if self.npcLabel then
     self.npcLabel:ClearAllPoints()
@@ -798,6 +803,7 @@ function Window:CreateDetails(frame)
   if NineSliceUtil and NineSliceUtil.ApplyLayoutByName then
     NineSliceUtil.ApplyLayoutByName(border, "InsetFrameTemplate")
   end
+  self.detailsBorder = border -- (the Learnable By row's line copies its top edge)
 
   -- Round icon in a bronze ring, like the profession recipe's output icon. See BLIZZARD_ICON_RING: while the client draws
   -- that template's ring wrong, the ring is drawn here: three circles, each masked round (the bronze ring, a dark gap,
@@ -1111,12 +1117,38 @@ function Window:DescribeIcon()
   end
 end
 
+-- Moves the top row (the icon, name and facts) down by `offset`, to make room above it: the ability tabs' Learnable
+-- By row (tab-abilities.lua) sits at the top of the pane. 0 puts it back.
+function Window:SetTopOffset(offset)
+  offset = offset or 0
+  if self.topOffset == offset then return end
+  self.topOffset = offset
+  self.iconButton:ClearAllPoints()
+  self.iconButton:SetPoint("TOPLEFT", DETAILS_LEFT, -(DETAILS_TOP + offset))
+  self.facts:ClearAllPoints()
+  self.facts:SetPoint("TOPLEFT", self.details, "TOPLEFT", FACTS_X, -(DETAILS_TOP + 4 + offset))
+  self.facts:SetPoint("RIGHT", -20, 0)
+end
+
 -- The description starts under the taller part of the top row: the icon (with the name and subtitle
--- beside it) or the details, which can run to several lines (a long family list, for instance).
+-- beside it) or the details, which can run to several lines. On the ability tabs (`descriptionBeside`) it goes under
+-- the name and rank instead, right of the icon, across to the pane's right edge (under the facts), and the creatures'
+-- heading comes back to the pane's left edge under it.
 function Window:PlaceDescription()
-  local iconBottom = DETAILS_TOP + self.iconButton:GetHeight()
-  local factsBottom = DETAILS_TOP + 4 + (self.facts:GetStringHeight() or 0)
+  local top = DETAILS_TOP + (self.topOffset or 0)
+  local iconBottom = top + self.iconButton:GetHeight()
+  local factsBottom = top + 4 + (self.facts:GetStringHeight() or 0)
   self.description:ClearAllPoints()
+  if self.descriptionBeside then
+    local indent = DETAILS_LEFT + self.iconButton:GetWidth() + 12 -- where the name starts (SetTopWide)
+    local rankBottom = top + 6 + (self.name:GetStringHeight() or 0) + 6 + (self.subtitle:GetStringHeight() or 0)
+    self.description:SetPoint("TOPLEFT", self.details, "TOPLEFT", indent, -(math.max(rankBottom, factsBottom) + 10))
+    self.description:SetPoint("RIGHT", -20, 0)
+    self.npcLabel:ClearAllPoints()
+    self.npcLabel:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", DETAILS_LEFT - indent, -14)
+    self.npcLabel:SetPoint("RIGHT", -20, 0)
+    return
+  end
   self.description:SetPoint("TOPLEFT", self.details, "TOPLEFT", DETAILS_LEFT, -(math.max(iconBottom, factsBottom) + 14))
   self.description:SetPoint("RIGHT", -20, 0)
 end

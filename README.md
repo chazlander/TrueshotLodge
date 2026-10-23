@@ -20,7 +20,9 @@ Built for WoW Forever:
 - **New in Forever**: creatures and families added in WoW Forever carry the ∞ mark
 - **Verified tames**: a green dot marks creatures TrueshotLodge users have actually tamed, with the date on hover
 - **Rare and elite** creatures stand out: rares glow gold, elites carry a skull
-- **NPC tooltips**: hover a tameable beast in the world to see its family, attack speed and the abilities it teaches
+- **Pet tooltips**: hover a tameable beast in the world to see its family, attack speed and the abilities it teaches
+- **Pet ability tooltips**: a pet ability's tooltip (spellbook, pet bar, Beast Training, chat links) adds the pet
+  level it needs and its training point cost
 - Colors that mean the same thing everywhere: **yellow** is known, **green** is ready to learn, **grey** is not yet
   within reach
 
@@ -136,7 +138,8 @@ Opened with the **?** by the close button:
 Opened with the **gear** by the close button. The settings, grouped and explained, in the same list-and-details
 layout:
 
-- **General**: the minimap icon, NPC tooltips, and remembering your selections between tabs and sessions
+- **General**: the minimap icon, and remembering your selections between tabs and sessions
+- **Tooltips**: Pet Tooltips (tameable creatures and pets) and Pet Ability Tooltips (pet level and training points)
 - **Visual**: the window's UI scale (50% to 150%) and resetting the tab order
 - **Collection**: Collect Mode (see below), and Send Name: put your character's name on the beasts you tame, to be
   credited on the website (off by default: your finds stay anonymous)

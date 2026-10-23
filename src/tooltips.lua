@@ -107,6 +107,52 @@ local function OnTooltipSetUnit(self, data)
   AddAbilityLines(self, npc)
 end
 
+-- Pet Ability Tooltips: under a pet ability's own tooltip (the spellbook, the pet bar, Beast Training, a chat link, the
+-- addon's tabs), the pet level and training points its rank needs, from the addon's data. Other spells are left alone.
+local function AddSpellLines(tooltip, spellId)
+  if not DB.global.ability_tooltips then return end
+  local ability = spellId and Addon:AbilityOfSpell(spellId)
+  Addon:Debug("tooltip: spell", spellId, ability and ability.name or "(not a pet ability)")
+  if not ability or ability.attack_speed or not (ability.pet_level or ability.training_cost) then return end
+  tooltip:AddLine(TITLE)
+  if ability.pet_level then
+    tooltip:AddDoubleLine("  " .. L.REQUIRED_PET_LEVEL, ability.pet_level, nil, nil, nil, R, G, B)
+  end
+  if ability.training_cost then
+    tooltip:AddDoubleLine("  " .. L.TRAINING_COST, ability.training_cost, nil, nil, nil, R, G, B)
+  end
+  tooltip:Show() -- (resized for the new lines)
+end
+
+-- The spell a tooltip shows: from the tooltip data, else the tooltip itself.
+local function TooltipSpell(tooltip, data)
+  if data and type(data.id) == "number" then return data.id end
+  if tooltip.GetSpell then
+    local _, spellId = tooltip:GetSpell()
+    return spellId
+  end
+end
+
+local function OnTooltipSetSpell(tooltip, data)
+  local ok, err = pcall(function() AddSpellLines(tooltip, TooltipSpell(tooltip, data)) end)
+  if not ok then Addon:Debug("tooltip error:", err) end
+end
+
+if TooltipDataProcessor and Enum and Enum.TooltipDataType then
+  -- Spells, and the pet bar's buttons where the client gives them their own type.
+  for _, kind in ipairs({ "Spell", "PetAction" }) do
+    local id = Enum.TooltipDataType[kind]
+    if id then
+      TooltipDataProcessor.AddTooltipPostCall(id, function(tooltip, data)
+        if tooltip == GameTooltip or tooltip == ItemRefTooltip then OnTooltipSetSpell(tooltip, data) end
+      end)
+    end
+  end
+else
+  GameTooltip:HookScript("OnTooltipSetSpell", OnTooltipSetSpell)
+  if ItemRefTooltip then ItemRefTooltip:HookScript("OnTooltipSetSpell", OnTooltipSetSpell) end
+end
+
 if TooltipDataProcessor and Enum and Enum.TooltipDataType then
   -- Newer clients no longer fire the `OnTooltipSetUnit` script.
   TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data)
