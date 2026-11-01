@@ -37,6 +37,7 @@ local REQUIRED_TEMPLATES = {
 local WIDTH, HEIGHT = 671, 594
 -- UI Scale on the Options tab: the window's own scale, in steps of 5%.
 local MIN_SCALE, MAX_SCALE, SCALE_STEP = 0.5, 1.5, 0.05
+local SEARCH_DELAY = 0.15 -- seconds of no typing before the list follows the search box
 local LIST_WIDTH = Helpers.LIST_WIDTH
 local HEADER_X = 84 -- where the tab's title and count start: clear of the logo, with some room
 local DETAILS_TOP = 12 -- the room above the details pane's top row (the icon, name and facts)
@@ -56,6 +57,8 @@ Window.BOUNTY_ICON = (GetFileIDFromPath and GetFileIDFromPath("Interface\\Icons\
 local TABS = {
   -- First, as on the website (which opens on it).
   { key = "FAMILIES", label = L.FAMILIES, title = L.PET_FAMILIES, icon = "Interface\\Icons\\Ability_Hunter_Pet_Wolf" },
+  -- The website's Looks tab icon (Trade_Archaeology_HighborneSoulMirror), by file id.
+  { key = "LOOKS", label = L.LOOKS, title = L.LOOKS, icon = 458243 },
   { key = "UNIQUE", label = L.UNIQUE, title = L.UNIQUE_ABILITIES, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming" },
   { key = "COMMON", label = L.COMMON, title = L.COMMON_ABILITIES, icon = "Interface\\Icons\\Ability_Racial_Cannibalize" },
   { key = "PASSIVE", label = L.PASSIVE, title = L.PASSIVE_ABILITIES, icon = "Interface\\Icons\\Spell_Nature_UnyeildingStamina" },
@@ -282,6 +285,8 @@ function Window:Remember()
     selections.BOUNTIES = self.selectedBounty
   elseif self.tab == "FAMILIES" then
     selections.FAMILIES = self.selectedFamily
+  elseif self.tab == "LOOKS" then
+    selections.LOOKS = self.selectedLook
   elseif self.tab == "HELP" then
     selections.HELP = self.selectedHelp
   elseif self.tab == "OPTIONS" then
@@ -417,10 +422,15 @@ function Window:UpdateTabs()
     self:SetTopOffset(0)
   end
   if self.familyWidgets then self.familyWidgets:SetShown(families) end
+  -- The Looks tab's model (tab-looks.lua): only there, with the creatures under it.
+  local looks = self.tab == "LOOKS"
+  if self.lookWidgets then self.lookWidgets:SetShown(looks) end
   if self.npcLabel then
     self.npcLabel:ClearAllPoints()
     if families then
       self.npcLabel:SetPoint("TOPLEFT", self:FamilyWidgets().abilities, "BOTTOMLEFT", 0, -14)
+    elseif looks then
+      self.npcLabel:SetPoint("TOPLEFT", self:LookWidgets(), "BOTTOMLEFT", 0, -10)
     else
       self.npcLabel:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", 0, -14)
     end
@@ -475,9 +485,22 @@ function Window:CreateList(frame)
   search:SetAutoFocus(false)
   search:SetHeight(20)
   search:SetPoint("TOPLEFT", 13, -8)
+  -- The list follows the search once typing pauses (SEARCH_DELAY), not on every key: each refresh rebuilds the whole
+  -- list, and "tallstrider" would otherwise rebuild it eleven times. Clearing the box shows everything at once.
+  local pending
   search:HookScript("OnTextChanged", function(box)
-    self.search = (box:GetText() or ""):lower()
-    self:Refresh()
+    local text = (box:GetText() or ""):lower()
+    if pending then pending:Cancel() pending = nil end
+    if text == "" or not (C_Timer and C_Timer.NewTimer) then
+      self.search = text
+      self:Refresh()
+      return
+    end
+    pending = C_Timer.NewTimer(SEARCH_DELAY, function()
+      pending = nil
+      self.search = text
+      self:Refresh()
+    end)
   end)
   self.search = ""
 
@@ -559,6 +582,8 @@ function Window:CreateList(frame)
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitCollectedButton(button, data.collected) end)
     elseif data.bounty then
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitBountyButton(button, data.bounty) end)
+    elseif data.look then
+      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitLookButton(button, data.look) end)
     elseif type(data.family) == "table" then -- (a header's `family` is a name: the unique abilities' tooltip)
       factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitFamilyButton(button, data.family) end)
     elseif data.help then
@@ -580,9 +605,9 @@ end
 -- DB.global[key]; the Zone Filter's own rules are in zone-filter.lua.
 local FILTER_BUTTONS = {
   { key = "filter_by_level", label = L.FILTER_LEVEL, title = L.FILTER_BY_LEVEL, slot = 1,
-    tabs = { UNIQUE = true, COMMON = true, PASSIVE = true, ATTACK = true, BOUNTIES = true, FAMILIES = true } },
+    tabs = { UNIQUE = true, COMMON = true, PASSIVE = true, ATTACK = true, BOUNTIES = true, FAMILIES = true, LOOKS = true } },
   { key = "zone_filter", label = L.FILTER_ZONE, title = L.ZONE_FILTER_TITLE, slot = 2,
-    tabs = { UNIQUE = true, COMMON = true, ATTACK = true, TRAINERS = true, BOUNTIES = true, FAMILIES = true } },
+    tabs = { UNIQUE = true, COMMON = true, ATTACK = true, TRAINERS = true, BOUNTIES = true, FAMILIES = true, LOOKS = true } },
   { key = "filter_by_pet", label = L.FILTER_PET, title = L.FILTER_BY_PET, slot = 3, tabs = { UNIQUE = true, COMMON = true } },
   -- (the Pet place: the two never show on the same tab)
   { key = "filter_by_faction", label = L.FILTER_FACTION, title = L.FILTER_BY_FACTION, slot = 3, tabs = { TRAINERS = true } },
@@ -776,6 +801,10 @@ function Window:Refresh()
   end
   if self.tab == "FAMILIES" then
     self:RefreshFamilies()
+    return
+  end
+  if self.tab == "LOOKS" then
+    self:RefreshLooks()
     return
   end
   if self.tab == "HELP" then
@@ -1068,6 +1097,10 @@ function Window:UpdateDetails()
   end
   if self.tab == "FAMILIES" then
     self:UpdateFamilyDetails()
+    return
+  end
+  if self.tab == "LOOKS" then
+    self:UpdateLookDetails()
     return
   end
   if self.tab == "HELP" then

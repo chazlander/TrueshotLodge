@@ -77,7 +77,7 @@ end
 -- UnitClassification() => the data's classification text (nil: a plain creature), as in the website's pets table.
 local CLASSIFICATIONS = { elite = "Elite", rare = "Rare", rareelite = "Rare Elite", worldboss = "Boss" }
 
--- Whether the addon's data (data/ForeverTameableNPCs.lua, from the website's database) already holds everything a
+-- Whether the addon's data (data/NPCs.lua, from the website's database) already holds everything a
 -- sighting says: the creature is in it, with the same family and classification, every level seen inside its level
 -- range, the same attack speed, and each zone seen among its map zones. Such a sighting tells the website nothing new,
 -- so it is neither kept nor sent to other players (Collector:Record). A sighting with anything the data lacks or has
@@ -179,20 +179,25 @@ function Collector:Record(unit)
   -- range and add the zone.
   local c = creatures[id] or waiting[id]
   if c then
-    local updates = {}
+    -- What changed, made only when something did: a creature in view is seen again on every scan, and most of
+    -- those sightings change nothing.
+    local updates
     if c.shared_by then
       -- Shared by another user, and now seen yourself: it is your own record from here on.
       c.shared_by = nil
+      updates = {}
       updates[#updates + 1] = "seen yourself (was shared)"
     end
     local level = Addon:Plain(UnitLevel(unit)) -- (secret in combat: not compared or saved)
     if level and level > 0 then
       if not c.level_min or level < c.level_min then
         c.level_min = level
+        updates = updates or {}
         updates[#updates + 1] = "lowest level " .. level
       end
       if not c.level_max or level > c.level_max then
         c.level_max = level
+        updates = updates or {}
         updates[#updates + 1] = "highest level " .. level
       end
     end
@@ -201,11 +206,12 @@ function Collector:Record(unit)
       c.zones = c.zones or {}
       if not c.zones[zoneId] then
         c.zones[zoneId] = true
+        updates = updates or {}
         updates[#updates + 1] = "new zone " .. zoneId
       end
     end
     -- Only a change is reported: a creature in view is seen again on every scan.
-    if #updates > 0 and waiting[id] then
+    if updates and waiting[id] then
       -- One the data held completely: kept once it adds something the data lacks.
       if inData(c) then return end
       waiting[id] = nil
@@ -215,7 +221,7 @@ function Collector:Record(unit)
       share("creature", c)
       return
     end
-    if #updates > 0 then
+    if updates then
       Addon:Debug("collector: updated", c.name, "(" .. id .. "):", table.concat(updates, ", "))
       changed()
       if not c.shared_by then shareCreature(c) end
@@ -224,14 +230,14 @@ function Collector:Record(unit)
   end
 
   -- Only the beasts of the pet families in the data (not demons, humanoids or critters, nor families that are not
-  -- out yet), matched by family id so that every client language counts. The English name is saved.
+  -- out yet), matched by family id so that every client language counts. The English name is saved. One already
+  -- found to be none of those is passed over before asking the game again (in a city, most nameplates are).
+  if ignored[id] then return end
   local family, familyId, familyText = Addon:UnitFamily(unit)
   if not family then
-    if not ignored[id] then
-      ignored[id] = true
-      Addon:Debug("collector: ignored", UnitName(unit), "(" .. id .. "):",
-        familyText and ("family " .. familyText .. " is not in the data") or "no pet family")
-    end
+    ignored[id] = true -- (reported once: the next sighting stops at the check above)
+    Addon:Debug("collector: ignored", UnitName(unit), "(" .. id .. "):",
+      familyText and ("family " .. familyText .. " is not in the data") or "no pet family")
     return
   end
   local creatureType, creatureTypeId = Addon:UnitCreatureType(unit)

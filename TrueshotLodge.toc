@@ -2,7 +2,7 @@
 ## Title: TrueshotLodge
 ## Author: Chazlander
 ## Version: 1.60.1.28
-## Notes: A guide to tamed pet abilities.
+## Notes: The hunter's field guide to every tameable beast in WoW Forever: what each one teaches, where to find it, its look and the pet trainers.
 ## SavedVariables: TrueshotLodgeDB, TrueshotLodgeCollected
 ## IconTexture: Interface\AddOns\TrueshotLodge\media\logo
 ## X-Website: https://trueshotlodge.com
@@ -17,10 +17,11 @@ libs\LibDataBroker-1.1.lua
 libs\LibDBIcon-1.0.lua
 
 # Data
-data\ForeverTameableAbilities.lua
-data\ForeverTameableFamilies.lua
-data\ForeverTameableNPCs.lua
-data\ForeverTameableTrainers.lua
+data\Abilities.lua
+data\Families.lua
+data\NPCs.lua
+data\Trainers.lua
+data\Looks.lua
 
 # General
 src\_init.lua
@@ -49,5 +50,6 @@ src\ui\tab-options.lua
 src\ui\tab-collector.lua
 src\ui\tab-bounties.lua
 src\ui\tab-families.lua
+src\ui\tab-looks.lua
 src\ui\tab-help.lua
 src\ui\tab-stable.lua

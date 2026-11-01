@@ -119,7 +119,7 @@ for id, trainer in pairs(Addon.TameableTrainers or {}) do trainer.id = id end
 -- Creatures, built on demand
 -- ============================================================================
 
--- The creature data stays as generated (data/ForeverTameableNPCs.lua). What the tooltips, the window and
+-- The creature data stays as generated (data/NPCs.lua). What the tooltips, the window and
 -- the map pins show (level range, zone names, diet, abilities, map points) is worked out the first time a
 -- creature is asked for, through Addon:GetNPC, and kept on it.
 

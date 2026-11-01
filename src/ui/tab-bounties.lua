@@ -85,6 +85,23 @@ local function UniqueRanksWithoutSource()
   return uniqueEntries
 end
 
+-- Which creatures each pet bounty wants (the raw data is enough to tell; only those are made ready to show). The
+-- tests read only the data file, which does not change while playing, so this is done once.
+local wantedIds
+local function WantedIds()
+  if wantedIds then return wantedIds end
+  wantedIds = {}
+  for _, bounty in ipairs(PET_BOUNTIES) do wantedIds[bounty.key] = {} end
+  for id, npc in pairs(Addon.TameableNPCs or {}) do
+    if not Addon.IGNORED_NPC_IDS[id] then
+      for _, bounty in ipairs(PET_BOUNTIES) do
+        if bounty.wants(npc) then table.insert(wantedIds[bounty.key], id) end
+      end
+    end
+  end
+  return wantedIds
+end
+
 -- "level 24 (Rank 3)", or "level 1" for no rank before.
 local function LevelAt(level, neighbour)
   return neighbour and L.BOUNTY_LEVEL_RANK:format(level, L.RANK, neighbour.number) or L.BOUNTY_LEVEL:format(level)
@@ -166,16 +183,7 @@ function Window:GetBountyGroups()
 
   -- (How to claim one is in the Help section: tab-help.lua.)
 
-  -- Which creatures each pet bounty wants (the raw data is enough to tell; only those are made ready to show).
-  local wanted = {}
-  for _, bounty in ipairs(PET_BOUNTIES) do wanted[bounty.key] = {} end
-  for id, npc in pairs(Addon.TameableNPCs or {}) do
-    if not Addon.IGNORED_NPC_IDS[id] then
-      for _, bounty in ipairs(PET_BOUNTIES) do
-        if bounty.wants(npc) then table.insert(wanted[bounty.key], id) end
-      end
-    end
-  end
+  local wanted = WantedIds()
   local pets = { key = "bounties:pets", name = L.PET_BOUNTIES, rows = {} }
   for _, bounty in ipairs(PET_BOUNTIES) do
     if matches(bounty.name) then

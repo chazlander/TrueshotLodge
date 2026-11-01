@@ -5,6 +5,8 @@ manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
 
-# Not part of the addon: the personal development tools.
+# Not part of the addon: the development tools and settings (git leaves out .tools and .release already).
 ignore:
-  - tools
+  - .tools
+  - .release
+  - .luacheckrc

@@ -15,7 +15,8 @@ included, so you can check it from anywhere.
 
 Built for WoW Forever:
 
-- **750 tameable creatures** across **18 pet families**, with their levels, zones and map locations
+- **750+ tameable creatures** across **18 pet families**, with their levels, zones and map locations
+- **Every look in 3D**: the 155 skins pets come in, each turnable in 3D, and which beasts wear it
 - **Every pet ability and rank**: what it does, the pet level it needs, its training point cost and who can learn it
 - **New in Forever**: creatures and families added in WoW Forever carry the ∞ mark
 - **Verified tames**: a green dot marks creatures TrueshotLodge users have actually tamed, with the date on hover
@@ -28,7 +29,7 @@ Built for WoW Forever:
 
 Open it from the minimap button or with **/tsl** (or **/trueshotlodge**).
 
-Browse the same pets, abilities and trainers on the web at **[TrueshotLodge.com](https://trueshotlodge.com)**.
+Browse the same pets, abilities, looks and trainers on the web at **[TrueshotLodge.com](https://trueshotlodge.com)**.
 
 ## The UI
 
@@ -47,6 +48,16 @@ Every pet family, by type (Cunning, Ferocity, Tenacity), with its number of tame
 unique ability and what it does, its type and diet, the common and passive abilities it learns, and **all its tameable
 creatures**, each with a **Map Location** button. The **Zone** and **Level** filters narrow the creatures to the
 zone you are in and the ones you can tame now.
+
+## ![Looks](https://wow.zamimg.com/images/wow/icons/medium/trade_archaeology_highbornesoulmirror.jpg) Looks
+
+Every look each pet family comes in: the beasts that look alike (the same model and skin, whatever their size), the
+same as [TrueshotLodge.com/looks](https://trueshotlodge.com/looks). Each family is a heading with its looks under it
+and how many creatures have each; a look in **gold** has only one creature, the only place to get it. Select one to
+see it in **3D**: drag to turn it, scroll to zoom, and (where the game client can play them) watch it stand, walk, run
+or attack. Under the model are the
+creatures with that look, each with a **Map Location** button. The **Zone** and **Level** filters narrow them to the
+zone you are in and the ones you can tame now, and the search finds a look by its name, its family or a creature.
 
 ## ![Unique Abilities](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beasttaming.jpg) Unique Abilities
 

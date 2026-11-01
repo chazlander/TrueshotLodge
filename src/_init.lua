@@ -72,7 +72,7 @@ Addon.QUESTION_MARK_ICON = 134400
 -- ----------------------------------------------------------------------------
 -- Pet families, whatever the client's language
 -- ----------------------------------------------------------------------------
--- The family data (data/ForeverTameableFamilies.lua) is keyed by the English family name, with the game's family id
+-- The family data (data/Families.lua) is keyed by the English family name, with the game's family id
 -- (CreatureFamily, the website's pet_families.id). The game names a unit's family in the client's language
 -- ("Кошка" on a Russian client), so families are matched by that id: UnitCreatureFamily gives it after the name, and
 -- C_CreatureInfo.GetCreatureFamilyInfo names each id in the client's language. What is saved and shared is the
