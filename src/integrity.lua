@@ -15,7 +15,7 @@ local Integrity = Addon:GetModule("Integrity")
 
 local KEY = "TrueshotLodge|collected|v1|3f9c1e7a"
 -- The collected data's parts; records in a list (tames) are tagged without their position, which moves.
-local KINDS = { "creatures", "tames", "trainers", "beast_training", "pets" }
+local KINDS = { "creatures", "tames", "trainers", "beast_training", "pets", "tame_checks" }
 local LISTS = { tames = true }
 
 local floor, format, concat, sort = math.floor, string.format, table.concat, table.sort

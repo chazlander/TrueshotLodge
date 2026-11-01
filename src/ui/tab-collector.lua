@@ -92,6 +92,22 @@ function Window:GetCollectedGroups()
   end
   table.sort(tames.rows, function(a, b) return a.index > b.index end)
 
+  -- Tame Beast's verdicts the data did not have (the collector's tame checks): green when it can be tamed (a creature
+  -- not listed yet), red when the game refused one that is listed. Newest first.
+  local checks = { rows = {} }
+  for id, check in pairs(DB.collected.tame_checks or {}) do
+    if matches((check.name or "") .. " " .. (check.family or "")) then
+      local verdict = check.result == "tameable" and ("|cFF40C040%s|r"):format(L.TAME_CHECK_TAMEABLE)
+        or ("|cFFE04030%s|r"):format(L.TAME_CHECK_NOT_TAMEABLE)
+      checks.rows[#checks.rows + 1] = {
+        key = "k:" .. tostring(id), kind = "check", data = check, store = "tame_checks", storeKey = id,
+        isNew = check.result == "tameable", -- (a tameable creature the data does not list: NEW, as a new sighting)
+        name = check.name or "?", level = verdict,
+      }
+    end
+  end
+  table.sort(checks.rows, function(a, b) return (a.data.collected or 0) > (b.data.collected or 0) end)
+
   local training = { key = "training", name = ("%s (%%d)"):format(L.BEAST_TRAINING), rows = {} }
   for key, entry in pairs(DB.collected.beast_training or {}) do
     if matches(entry.name or "") then
@@ -124,12 +140,16 @@ function Window:GetCollectedGroups()
   end
   table.sort(trainers.rows, function(a, b) return (a.data.name or "") < (b.data.name or "") end)
 
-  -- The three sections (each only when it has something): Tamed Creatures, Wild Sightings with a header per family,
-  -- and Trainers with Beast Training as a header of its own under the trainers.
+  -- The sections (each only when it has something): Tamed Creatures, Tame Beast Checks, Wild Sightings with a header
+  -- per family, and Trainers with Beast Training as a header of its own under the trainers.
   local sections = {}
   if #tames.rows > 0 then
     sections[#sections + 1] = { key = "section:tamed", section = true, rows = tames.rows,
       name = ("%s (%d)"):format(L.TAMED_CREATURES, #tames.rows) }
+  end
+  if #checks.rows > 0 then
+    sections[#sections + 1] = { key = "section:checks", section = true, rows = checks.rows,
+      name = ("%s (%d)"):format(L.TAME_CHECKS, #checks.rows) }
   end
   local wild = 0
   for _, group in ipairs(groups) do wild = wild + #group.rows end
@@ -304,8 +324,9 @@ function Window:RefreshCollector()
   self.noResults:SetShown(first == nil)
   local creatures, training = Collector:Count(), self:CountOf(DB.collected.beast_training)
   local trainers, tames = self:CountOf(DB.collected.trainers), #(DB.collected.tames or {})
-  self.headerCount:SetFormattedText(L.COLLECTED_COUNTS, creatures + tames + training + trainers, creatures, tames, training,
-    trainers)
+  local checks = self:CountOf(DB.collected.tame_checks)
+  self.headerCount:SetFormattedText(L.COLLECTED_COUNTS, creatures + tames + checks + training + trainers, creatures, tames,
+    checks, training, trainers)
   self:UpdateToggleButton()
   self:UpdateCollectedDetails()
 end
@@ -389,6 +410,22 @@ function Window:UpdateCollectedDetails()
     end
     description = #spells > 0 and table.concat(spells, "\n") or Colors.Highlight(L.NO_PET_SPELLS)
     if row.isNew then description = Colors.Highlight(L.NOT_IN_DATA_TAME) .. "\n\n" .. description end
+  elseif row.kind == "check" then
+    -- What the game said to your Tame Beast, where it disagrees with the data.
+    local tameable = d.result == "tameable"
+    self.icon:SetTexture(FamilyIcon(d.family))
+    self.name:SetText(d.name or "?")
+    self.subtitle:SetText((tameable and L.TAME_CHECK_TAMEABLE or L.TAME_CHECK_NOT_TAMEABLE) .. (d.family and (" - " .. d.family) or ""))
+    local where = {}
+    if d.ui_map_id then where[#where + 1] = ZoneNames({ [d.ui_map_id] = true }) end
+    if d.subzone and d.subzone ~= "" then where[#where + 1] = d.subzone end
+    lines = {
+      Line(L.NPC_ID, d.npc_id),
+      Line(L.LEVEL, d.level),
+      Line(L.LOCATION, table.concat(where, " - ")),
+      Line(L.COLLECTED_AT, d.collected and date("%Y-%m-%d %H:%M", d.collected) or nil),
+    }
+    description = Colors.Highlight(tameable and L.TAME_CHECK_TAMEABLE_TEXT or L.TAME_CHECK_NOT_TAMEABLE_TEXT)
   elseif row.kind == "trainer" then
     self.icon:SetTexture(QUESTION_MARK_ICON)
     self.name:SetText(d.name or "?")

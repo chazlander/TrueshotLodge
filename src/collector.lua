@@ -113,9 +113,6 @@ local function shareCreature(c)
 end
 Collector.InData = inData -- (data sharing leaves out received sightings the data already holds, too)
 
--- At load: drops the wild sightings the addon's data now holds completely (inData). A new release brings in what
--- players found, and those records would only be uploaded and reviewed again for nothing. Tames (each one verifies its
--- creature), trainers and Beast Training (their prices are not in the data) are always kept. Returns how many went.
 -- Shared trainers collected before they were named from their id (their name and title were in the sender's
 -- language): named again, in yours, as a shared trainer is now. Returns how many changed.
 function Collector:RenameSharedTrainers()
@@ -136,10 +133,34 @@ function Collector:RenameSharedTrainers()
   return renamed
 end
 
+-- Tame Beast's verdicts (tame checks, below). A verdict is news when the data says otherwise: a creature the data does
+-- not list that can be tamed, or one it lists that cannot. ("Lists" means shown as tameable: a creature the website has
+-- marked Not tameable (its data's not_tameable) counts as not listed.)
+local TAMEABLE, NOT_TAMEABLE = "tameable", "not_tameable"
+
+local function tameCheckIsNews(id, result)
+  local npc = Addon:GetNPC(id)
+  local listed = npc ~= nil and not npc.not_tameable
+  return listed ~= (result == TAMEABLE)
+end
+
+-- At load: drops the wild sightings the addon's data now holds completely (inData), and the Tame Beast verdicts it now
+-- agrees with. A new release brings in what players found, and those records would only be uploaded and reviewed again
+-- for nothing. Tames (each one verifies its creature), trainers and Beast Training (their prices are not in the data)
+-- are always kept. Returns how many went.
 function Collector:PurgeKnown()
-  local creatures = DB.collected and DB.collected.creatures
-  if type(creatures) ~= "table" then return 0 end
   local removed = 0
+  local checks = DB.collected and DB.collected.tame_checks
+  if type(checks) == "table" then
+    for key, check in pairs(checks) do
+      if type(check) == "table" and not tameCheckIsNews(check.npc_id or key, check.result) then
+        checks[key] = nil
+        removed = removed + 1
+      end
+    end
+  end
+  local creatures = DB.collected and DB.collected.creatures
+  if type(creatures) ~= "table" then return removed end
   for key, c in pairs(creatures) do
     if type(c) == "table" and c.id and inData(c) then
       creatures[key] = nil -- (clearing a field while traversing is allowed)
@@ -147,7 +168,7 @@ function Collector:PurgeKnown()
     end
   end
   if removed > 0 then
-    Addon:Debug("collector:", removed, "sighting(s) the addon's data now holds were removed from the collected data")
+    Addon:Debug("collector:", removed, "sighting(s) and Tame Beast verdict(s) the addon's data now holds were removed from the collected data")
   end
   return removed
 end
@@ -307,6 +328,7 @@ function Collector:Clear()
   DB.collected.beast_training = {}
   DB.collected.trainers = {}
   DB.collected.tames = {}
+  DB.collected.tame_checks = {}
 end
 
 -- ============================================================================
@@ -615,6 +637,65 @@ local function readPetSpellbook()
 end
 Collector.ReadPetSpellbook = readPetSpellbook -- also used by the Stable tab (src/stable.lua)
 
+-- Whether the game lets a creature be tamed, from the hunter's own Tame Beast: the channel starting proves it can be
+-- (even when the hunter then cancels it), and the game's "Creature not tameable" error proves it cannot. Kept in
+-- `DB.collected.tame_checks` by npc id (the newest verdict), and only when it is news: a creature the data does not
+-- list that can be tamed, or one it lists that cannot (tameCheckIsNews). The website shows them on the uploads page.
+
+-- `id`: the target's npc id, when the caller has read it already.
+local function recordTameCheck(result, id)
+  if not (DB.global and DB.global.collect) or not UnitExists("target") then return end
+  if not id then
+    local kind, _, _, _, _, guidId = strsplit("-", UnitGUID("target") or "")
+    if kind ~= "Creature" or not guidId then return end
+    id = guidId
+  end
+  if not tameCheckIsNews(id, result) then return end -- (what the data says already)
+
+  local checks = DB.collected.tame_checks
+  if not checks then
+    checks = {}
+    DB.collected.tame_checks = checks
+  end
+  if checks[id] and checks[id].result == result then return end
+  local level = Addon:Plain(UnitLevel("target"))
+  local family, familyId, familyText = Addon:UnitFamily("target")
+  local check = {
+    npc_id = tonumber(id),
+    name = Addon:Plain(UnitName("target")),
+    family = family or familyText,
+    family_id = familyId,
+    level = level and level > 0 and level or nil,
+    classification = Addon:Plain(UnitClassification("target")),
+    ui_map_id = getZoneMapId(),
+    subzone = GetSubZoneText(),
+    result = result,
+    collected = time(),
+  }
+  checks[id] = check
+  changed()
+  local L = Addon:GetModule("Locale")
+  local about = ("|cFF1FA5D1%s|r"):format(check.name or "?")
+  print(("|cFF007EA6%s|r: %s"):format(Addon.TITLE,
+    (result == TAMEABLE and L.TAME_CHECK_YES_NOTICE or L.TAME_CHECK_NO_NOTICE):format(about)))
+  Addon:Debug("collector: tame check", check.name, "(" .. id .. "):", result)
+end
+
+-- The game's error for a creature that cannot be tamed, in the client's own language (its global string), else the
+-- English text; compared without case, edge spaces or a closing full stop. Worked out once: every UI error is checked.
+local function plainError(text) return (text:lower():gsub("^%s+", ""):gsub("[%s%.]+$", "")) end
+local NOT_TAMEABLE_ERROR = plainError(SPELL_FAILED_NOT_TAMEABLE or "Creature not tameable")
+
+local function isNotTameableError(message)
+  return type(message) == "string" and plainError(message) == NOT_TAMEABLE_ERROR
+end
+
+function Collector:UIError(errorType, message)
+  -- (the client passes the error's type and its text; older ones only the text)
+  local text = type(message) == "string" and message or errorType
+  if isNotTameableError(text) then recordTameCheck(NOT_TAMEABLE) end
+end
+
 local pendingTame -- the creature being tamed: from the channel's start until its pet appears, or it times out
 
 local function dropTame(tame, why)
@@ -631,6 +712,7 @@ function Collector:TameStarted(spellId, castGUID)
   if kind ~= "Creature" or not id then
     return Addon:Debug("collector: Tame Beast started on", UnitName("target"), "but it is not a creature (" .. tostring(kind) .. ")")
   end
+  recordTameCheck(TAMEABLE, id) -- (the channel started: it can be tamed, whether or not this tame finishes)
 
   local level = Addon:Plain(UnitLevel("target"))
   local mapId, x, y = getZonePosition() -- on the zone's map: where the beast is (see getZonePosition)
@@ -864,6 +946,7 @@ local EVENTS = {
   "TRAINER_SHOW",
   "TRAINER_UPDATE",
   "MERCHANT_SHOW",
+  "UI_ERROR_MESSAGE", -- (Tame Beast's "Creature not tameable")
 }
 
 -- Your own spells and pet, for taming (only the player's are wanted).
@@ -926,6 +1009,8 @@ frame:SetScript("OnEvent", function(_, event, unit, castGUID, spellId)
     schedule("trainer_npc", Collector.RecordTrainer)
   elseif event == "MERCHANT_SHOW" then
     schedule("merchant", Collector.RecordMerchant)
+  elseif event == "UI_ERROR_MESSAGE" then
+    safely("tame", Collector.UIError, Collector, unit, castGUID) -- (its arguments: the error's type and text)
   elseif event == "PLAYER_LOGIN" then
     -- Collecting is on by default and remembered (the Collect Mode option).
     frame:UnregisterEvent("PLAYER_LOGIN")

@@ -31,11 +31,12 @@ local ANIMATIONS = {
   { label = L.LOOK_ATTACK, id = 16 },
 }
 
--- A look's name: its texture's (in the data), else its creature's when it has one, else how many have it.
-local function LookName(look)
+-- A look's name: its texture's (in the data), else its creature's when only one has it, else the family's ("Bat": the
+-- family's own look, with no colour of its own). As the website's look_name().
+local function LookName(look, family)
   if look.name then return look.name end
   local first = #look.npcs == 1 and Addon:GetNPC(look.npcs[1])
-  return first and first.name or L.LOOK_UNNAMED:format(#look.npcs)
+  return first and first.name or Addon:FamilyLabel(family)
 end
 
 -- ----------------------------------------------------------------------------
@@ -180,7 +181,7 @@ function Window:GetLookGroups()
       local familyMatch = search == "" or family:lower():find(search, 1, true) ~= nil
       local group = { key = "looks:" .. family, family = family, info = info, rows = {} }
       for _, look in ipairs(looks) do
-        local name = LookName(look)
+        local name = LookName(look, family)
         local creatures = self:BountyCreatures(look.npcs, zone, level) -- (with the filters)
         local match = familyMatch or name:lower():find(search, 1, true) ~= nil
         if not match then
