@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.60.1.30] - 2026-10-31
+
+- **Looks**: a new tab with every look each pet family comes in (the beasts that look alike: the same model and skin, whatever their size), as on TrueshotLodge.com/looks. Select a look to see it in 3D (drag to turn it, scroll to zoom, and its Stand, Walk, Run and Attack animations where the game client can play them) with every creature that has it and their Map buttons. A look in gold has only one creature. The Zone and Level filters and the search work here too
+- Look names no longer carry the numbers from the game's file names ("Brown", not "Brown01")
+- Data: 3 more creatures verified by a tame (148 in all): Plainstrider, Elder Plainstrider and Prairie Stalker;
+  Ghostfang's attack speed is known; 6 entries that are not tameable beasts were removed (among them Cooking Bear,
+  Skinning Bear and Cooking Wolf)
+
+**Still missing** (as of this release):
+
+- 134 of 755 creatures have no known attack speed, 73 no level and 56 no zone (137 have no map points)
+
 ## [1.60.1.28] - 2026-10-22
 
 - **Final Release before Live!!!**
