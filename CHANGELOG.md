@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.60.1.32] - 2026-11-01
+
+- Looks: clearer names for the looks borrowed from other creatures (Vuldren, Shriekling, Shrieker, Prideclaw,
+  Galestrider, Frost, Dark Diamond), and a family's own unnamed look is named after the family ("Bat")
+- Collect Mode notes what Tame Beast tells you: a creature TrueshotLodge does not list yet is recorded as tameable as
+  soon as the channel starts (even if you cancel it), and one it lists is recorded when the game answers "Creature not
+  tameable". Either one prints a message and is listed under **Tame Beast Checks** on the Collected Data tab; upload
+  your file and we check it. A creature the website has marked Not tameable is known to the addon too
+- Data: no changes since 1.60.1.30 (755 creatures, 148 verified by a tame)
+
+**Still missing** (as of this release):
+
+- 134 of 755 creatures have no known attack speed, 73 no level and 56 no zone (137 have no map points)
+
 ## [1.60.1.30] - 2026-10-31
 
 - **Looks**: a new tab with every look each pet family comes in (the beasts that look alike: the same model and skin, whatever their size), as on TrueshotLodge.com/looks. Select a look to see it in 3D (drag to turn it, scroll to zoom, and its Stand, Walk, Run and Attack animations where the game client can play them) with every creature that has it and their Map buttons. A look in gold has only one creature. The Zone and Level filters and the search work here too
