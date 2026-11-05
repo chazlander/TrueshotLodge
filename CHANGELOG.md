@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.34] - 2026-11-04
 
 - Looks: the tab now sits below Trainers (unless you have put your tabs in an order of your own), and the Stand, Walk,
   Run and Attack buttons under the model are gone for now. Right-drag the model to move it around its frame.
