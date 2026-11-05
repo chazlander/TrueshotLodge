@@ -41,6 +41,7 @@ local DB = Addon:GetModule("DB")
 -- The moderators: characters that are whispered every update whenever they are online (they collect the data for
 -- the website). One name per line, e.g.  "Name",
 local MODERATORS = {
+  "Trueshot Lodge",
 }
 
 local PREFIX = "TrueshotLodge"

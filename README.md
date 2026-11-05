@@ -49,16 +49,6 @@ unique ability and what it does, its type and diet, the common and passive abili
 creatures**, each with a **Map Location** button. The **Zone** and **Level** filters narrow the creatures to the
 zone you are in and the ones you can tame now.
 
-## ![Looks](https://wow.zamimg.com/images/wow/icons/medium/trade_archaeology_highbornesoulmirror.jpg) Looks
-
-Every look each pet family comes in: the beasts that look alike (the same model and skin, whatever their size), the
-same as [TrueshotLodge.com/looks](https://trueshotlodge.com/looks). Each family is a heading with its looks under it
-and how many creatures have each; a look in **gold** has only one creature, the only place to get it. Select one to
-see it in **3D**: drag to turn it, scroll to zoom, and (where the game client can play them) watch it stand, walk, run
-or attack. Under the model are the
-creatures with that look, each with a **Map Location** button. The **Zone** and **Level** filters narrow them to the
-zone you are in and the ones you can tame now, and the search finds a look by its name, its family or a creature.
-
 ## ![Unique Abilities](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beasttaming.jpg) Unique Abilities
 
 The abilities only one pet family can learn: Charge for boars, Prowl for cats, Lightning Breath for wind serpents, Web
@@ -95,6 +85,15 @@ you want. Every speed starts open, and the **Level** filter keeps the beasts you
 The pet trainers, grouped by zone and colored by faction. Select one to see their
 title, level, location and coordinates, with a small map of the zone and a pin on the trainer; click it to open your
 world map there. Turn on **Faction** to see only the trainers who will teach you.
+
+## ![Looks](https://wow.zamimg.com/images/wow/icons/medium/trade_archaeology_highbornesoulmirror.jpg) Looks
+
+Every look each pet family comes in: the beasts that look alike (the same model and skin, whatever their size), the
+same as [TrueshotLodge.com/looks](https://trueshotlodge.com/looks). Each family is a heading with its looks under it
+and how many creatures have each; a look in **gold** has only one creature, the only place to get it. Select one to
+see it in **3D**: drag to turn it, right-drag to move it and scroll to zoom. Under the model are the
+creatures with that look, each with a **Map Location** button. The **Zone** and **Level** filters narrow them to the
+zone you are in and the ones you can tame now, and the search finds a look by its name, its family or a creature.
 
 ## ![Stable](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beastcall.jpg) Stable
 

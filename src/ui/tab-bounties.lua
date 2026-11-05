@@ -5,7 +5,7 @@ local L = Addon:GetModule("Locale")
 local Window = Addon:GetModule("Window")
 
 -- The "Bounties" tab: what we still want hunters to find, as on TrueshotLodge.com/bounties, worked out from the
--- addon's data. On the left: How to Claim; the Pet Bounties (Missing Rares, Missing Normal, Missing Forever, Missing
+-- addon's data. On the left: How to Claim; the Pet Bounties (Missing Rares, Missing Normals, Missing Forever, Missing
 -- Attack Speed, Missing Zone);
 -- and the Unique Abilities without Source (ranks of a family's unique ability that no known tameable creature has). On
 -- the right, the selected one with its creatures and their Map Location buttons. The title bar's Zone Filter keeps the

@@ -57,13 +57,13 @@ Window.BOUNTY_ICON = (GetFileIDFromPath and GetFileIDFromPath("Interface\\Icons\
 local TABS = {
   -- First, as on the website (which opens on it).
   { key = "FAMILIES", label = L.FAMILIES, title = L.PET_FAMILIES, icon = "Interface\\Icons\\Ability_Hunter_Pet_Wolf" },
-  -- The website's Looks tab icon (Trade_Archaeology_HighborneSoulMirror), by file id.
-  { key = "LOOKS", label = L.LOOKS, title = L.LOOKS, icon = 458243 },
   { key = "UNIQUE", label = L.UNIQUE, title = L.UNIQUE_ABILITIES, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming" },
   { key = "COMMON", label = L.COMMON, title = L.COMMON_ABILITIES, icon = "Interface\\Icons\\Ability_Racial_Cannibalize" },
   { key = "PASSIVE", label = L.PASSIVE, title = L.PASSIVE_ABILITIES, icon = "Interface\\Icons\\Spell_Nature_UnyeildingStamina" },
   { key = "ATTACK", label = L.ATTACK_SPEEDS, title = L.ATTACK_SPEEDS, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
   { key = "TRAINERS", label = L.TRAINERS, title = L.TRAINERS, icon = "Interface\\Icons\\Ability_Hunter_BeastTraining" },
+  -- The website's Looks tab icon (Trade_Archaeology_HighborneSoulMirror), by file id.
+  { key = "LOOKS", label = L.LOOKS, title = L.LOOKS, icon = 458243 },
   { key = "BOUNTIES", label = L.BOUNTIES, title = L.BOUNTIES, icon = Window.BOUNTY_ICON },
   { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall" },
   -- No side tabs: the gear and the "?" by the close button open these (Window:CreateTitleButtons).
@@ -422,15 +422,19 @@ function Window:UpdateTabs()
     self:SetTopOffset(0)
   end
   if self.familyWidgets then self.familyWidgets:SetShown(families) end
-  -- The Looks tab's model (tab-looks.lua): only there, with the creatures under it.
+  -- The Looks tab's model (tab-looks.lua): only there, at the top in place of the icon, name and facts, with the
+  -- creatures under it (below its hint).
   local looks = self.tab == "LOOKS"
   if self.lookWidgets then self.lookWidgets:SetShown(looks) end
+  if self.iconButton then
+    for _, part in ipairs({ self.iconButton, self.name, self.subtitle, self.facts }) do part:SetShown(not looks) end
+  end
   if self.npcLabel then
     self.npcLabel:ClearAllPoints()
     if families then
       self.npcLabel:SetPoint("TOPLEFT", self:FamilyWidgets().abilities, "BOTTOMLEFT", 0, -14)
     elseif looks then
-      self.npcLabel:SetPoint("TOPLEFT", self:LookWidgets(), "BOTTOMLEFT", 0, -10)
+      self.npcLabel:SetPoint("TOPLEFT", self:LookWidgets(), "BOTTOMLEFT", 0, -26)
     else
       self.npcLabel:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", 0, -14)
     end
@@ -903,8 +907,9 @@ function Window:CreateDetails(frame)
   ScrollUtil.InitScrollBoxListWithScrollBar(npcBox, npcBar, npcView)
   self.npcBox, self.npcBar = npcBox, npcBar
 
-  -- Trainers tab: one "Map Location" button where the creature list would be.
-  local mapButton = CreateFrame("Button", nil, details, "UIPanelButtonTemplate")
+  -- Trainers tab: one "Map Location" button where the creature list would be. (The Abilities tab's empty unique
+  -- ranks use it too, to lead to their bounty.)
+  local mapButton = Helpers.NewOutlineButton(details)
   mapButton:SetSize(140, 22)
   mapButton:SetPoint("TOPLEFT", self.npcLabel, "TOPLEFT", 0, 0)
   mapButton:Hide()
@@ -946,7 +951,7 @@ function Window:InitNPCRow(row, npc)
     row.InfoText:SetPoint("TOPLEFT", 4, -18)
     row.InfoText:SetPoint("RIGHT", -112, 0)
     row.InfoText:SetWordWrap(false)
-    row.MapButton = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    row.MapButton = Helpers.NewOutlineButton(row)
     row.MapButton:SetSize(104, 22)
     row.MapButton:SetPoint("RIGHT", -2, 0)
     row.MapButton:SetScript("OnClick", function(button) PinHelper:ShowOnMap(button.npc) end)

@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+- Looks: the tab now sits below Trainers (unless you have put your tabs in an order of your own), and the Stand, Walk,
+  Run and Attack buttons under the model are gone for now. Right-drag the model to move it around its frame.
+  The model now sits at the top of the details, with its hint under it
+- Unique Abilities: a rank nobody has found on a tameable beast yet says so, with a button to its pet bounty (the
+  likeliest beasts to have it). The Bounties tab's "Missing Normal" is now "Missing Normals", and the creature lists
+  are headed "Tameable beasts"
+- Reminder: you can put the side tabs in any order you like. Hold a tab for a moment, then drag it up or down the
+  column (saved for each character; Options can reset it)
+- Data: no changes since 1.60.1.30 (755 creatures, 148 verified by a tame)
+
+**Still missing** (as of this release):
+
+- 134 of 755 creatures have no known attack speed, 73 no level and 56 no zone (137 have no map points)
+
 ## [1.60.1.32] - 2026-11-01
 
 - Looks: clearer names for the looks borrowed from other creatures (Vuldren, Shriekling, Shrieker, Prideclaw,

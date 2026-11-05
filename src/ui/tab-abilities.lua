@@ -451,9 +451,25 @@ function Window:UpdateAbilityDetails()
   end
 
   local fromTrainer = ability.passive and not ability.unique and not ability.attack_speed
+  -- A unique rank no known creature has is a bounty (tab-bounties.lua): say so, and lead to it.
+  local bounty = ability.unique and total == 0 and ("unique:%s:%d"):format(ability.key, rank.rank or rankIndex)
   self.npcLabel:SetText(fromTrainer and L.LEARNED_FROM_TRAINER
+    or bounty and ("%s (0): %s"):format(L.TAMEABLE_NPCS, L.UNIQUE_RANK_NONE)
     or zone and L.TAMEABLE_IN_ZONE:format(L.TAMEABLE_NPCS, #npcs, total, zone.name)
     or ("%s (%d):"):format(L.TAMEABLE_NPCS, #npcs))
+  if bounty then
+    local button = self.mapButton
+    button:ClearAllPoints()
+    button:SetPoint("TOPLEFT", self.npcLabel, "BOTTOMLEFT", 0, -8)
+    button:SetText(L.UNIQUE_RANK_BOUNTY)
+    button:SetWidth(math.ceil((button:GetTextWidth() or 200) + 24))
+    button:SetScript("OnClick", function()
+      PlayClick()
+      self.selectedBounty = bounty
+      self:SelectTab("BOUNTIES")
+    end)
+    button:Show()
+  end
   local provider = CreateDataProvider(fromTrainer and {} or npcs)
   self.npcBox:SetDataProvider(provider)
   self.npcBox:SetShown(not fromTrainer)

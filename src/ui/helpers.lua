@@ -51,6 +51,36 @@ function Helpers.AddEdges(frame, size, layer, sublevel)
   return edges
 end
 
+-- A quiet button, as the website's Map buttons: a dark fill with a bronze edge and tan text, both gold under the
+-- pointer, grey text when disabled. So a long list of creatures leads with their names, not a column of red buttons.
+-- The game swaps the fonts and shows the gold edge (its highlight layer) by itself: no scripts to keep.
+local OUTLINE_BRONZE, OUTLINE_GOLD = { 0.42, 0.31, 0.15, 1 }, { 1, 0.82, 0, 1 } -- the website's --ft-metal and gold
+local outlineFonts
+function Helpers.NewOutlineButton(parent)
+  if not outlineFonts then
+    outlineFonts = {}
+    for name, color in pairs({ Normal = { 0.78, 0.69, 0.55 }, Highlight = { 1, 0.82, 0 }, Disable = { 0.5, 0.5, 0.5 } }) do
+      local font = CreateFont("TrueshotLodgeOutlineButton" .. name .. "Font")
+      font:CopyFontObject(GameFontNormalSmall)
+      font:SetTextColor(color[1], color[2], color[3])
+      outlineFonts[name] = font
+    end
+  end
+  local button = CreateFrame("Button", nil, parent)
+  local fill = button:CreateTexture(nil, "BACKGROUND")
+  fill:SetAllPoints()
+  fill:SetColorTexture(0, 0, 0, 0.35)
+  for _, line in ipairs(Helpers.AddEdges(button, 1, "BORDER")) do line:SetColorTexture(unpack(OUTLINE_BRONZE)) end
+  for _, line in ipairs(Helpers.AddEdges(button, 1, "HIGHLIGHT")) do line:SetColorTexture(unpack(OUTLINE_GOLD)) end
+  local text = button:CreateFontString(nil, "OVERLAY")
+  text:SetPoint("CENTER")
+  button:SetFontString(text)
+  button:SetNormalFontObject(outlineFonts.Normal)
+  button:SetHighlightFontObject(outlineFonts.Highlight)
+  button:SetDisabledFontObject(outlineFonts.Disable)
+  return button
+end
+
 function Helpers.TemplateExists(name)
   if C_XMLUtil and C_XMLUtil.GetTemplateInfo then
     return C_XMLUtil.GetTemplateInfo(name) ~= nil
