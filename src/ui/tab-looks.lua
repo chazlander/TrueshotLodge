@@ -8,157 +8,27 @@ local Window = Addon:GetModule("Window")
 -- alike: the same model and textures, whatever their size; data/Looks.lua). On the left the families,
 -- each a heading with its looks under it (the number of its creatures beside each; gold when only one creature has
 -- it, the only place to get that look); on the right the selected look: its 3D model, drawn by the game from its
--- display id (drag to turn it, right-drag to move it, the mouse wheel to zoom), then the creatures with that look and
--- their Map buttons. The title bar's Zone Filter and Filter by Level narrow the creatures, as on the Families tab: a
+-- display id (model-viewer.lua: drag to turn it, right-drag to move it, the mouse wheel to zoom), then the creatures
+-- with that look and their Map buttons. The title bar's Zone Filter and Filter by Level narrow the creatures, as on the Families tab: a
 -- look none of whose creatures are left is not listed.
 
 local PlayClick = Helpers.PlayClick
-local NewText = Helpers.NewText
 local QUESTION_MARK_ICON = Helpers.QUESTION_MARK_ICON
 local COUNT_COLOR = { 0.78, 0.69, 0.55 } -- the tan of the website's count badges
 local UNIQUE_COLOR = { 1, 0.82, 0 } -- gold, as the website's edge on a look only one creature has
 
-local MODEL_HEIGHT = 190
-local MODEL_FACING = math.rad(35) -- turned a little, as the website's 3D views start
-local ZOOM_MIN, ZOOM_MAX, ZOOM_STEP = 0.6, 2.5, 0.1 -- the camera's distance against the frame's own framing
-local TURN_SPEED = 0.012 -- radians per pixel the cursor moves while turning a model
--- Moving a model: how much of the scene the frame shows from top to bottom, against how far the camera stands from
--- the model (about the game's model camera's field of view), so the model keeps up with the cursor whatever its size;
--- and the camera's distance when the client cannot tell it.
-local PAN_VIEW = 0.9
-local PAN_DISTANCE = 4
-
 -- A look's name: its texture's (in the data), else its creature's when only one has it, else the family's ("Bat": the
--- family's own look, with no colour of its own). As the website's look_name().
-local function LookName(look, family)
+-- family's own look, with no colour of its own). As the website's look_name(). The pet profile names its looks so too.
+function Addon:LookName(look, family)
   if look.name then return look.name end
   local first = #look.npcs == 1 and Addon:GetNPC(look.npcs[1])
   return first and first.name or Addon:FamilyLabel(family)
 end
 
--- ----------------------------------------------------------------------------
--- The model and its controls (made once, shown only on this tab: Window:UpdateTabs)
--- ----------------------------------------------------------------------------
-
--- The model shows `look`, facing as it starts, at the zoom the player left it at (Window.lookZoom), moved where the
--- player dragged it (model.panY, model.panZ: back to the middle for each new look).
-local function ApplyZoom(model)
-  local zoom = Window.lookZoom or 1
-  model.zoomedByCamera = model.SetCamDistanceScale and pcall(model.SetCamDistanceScale, model, zoom) or false
-  if not model.zoomedByCamera then
-    pcall(model.SetModelScale, model, 1 / zoom) -- (where the camera cannot be moved, the model shrinks instead)
-  end
-end
-
-local function ApplyPan(model)
-  pcall(model.SetPosition, model, 0, model.panY or 0, model.panZ or 0)
-end
-
--- How far the model moves for each pixel the cursor does: the part of the scene the frame shows, from the camera's
--- distance (times the zoom, when the zoom moves the camera), spread over the frame's height.
-local function PanPerPixel(model)
-  local ok, distance = pcall(model.GetCameraDistance, model)
-  if not (ok and type(distance) == "number" and distance > 0) then distance = PAN_DISTANCE end
-  if model.zoomedByCamera then distance = distance * (Window.lookZoom or 1) end
-  local height = model:GetHeight()
-  return distance * PAN_VIEW / ((height and height > 0) and height or MODEL_HEIGHT)
-end
-
--- While a mouse button is held on the model: the left turns it with the cursor, the right moves it with the cursor
--- (never so far that its middle leaves the frame).
-local function DragOnUpdate(model)
-  local x, y = GetCursorPosition()
-  local scale = model:GetEffectiveScale() or 1
-  local dx, dy = (x - model.dragX) / scale, (y - model.dragY) / scale
-  model.dragX, model.dragY = x, y
-  if model.dragButton == "LeftButton" then
-    model.facing = (model.facing or MODEL_FACING) + dx * TURN_SPEED
-    pcall(model.SetFacing, model, model.facing)
-  else
-    local unit = PanPerPixel(model)
-    local maxY, maxZ = unit * model:GetWidth() / 2, unit * model:GetHeight() / 2
-    model.panY = math.max(-maxY, math.min(maxY, (model.panY or 0) + dx * unit))
-    model.panZ = math.max(-maxZ, math.min(maxZ, (model.panZ or 0) + dy * unit))
-    ApplyPan(model)
-  end
-end
-
+-- The model (model-viewer.lua), made once and shown only on this tab (Window:UpdateTabs).
 function Window:LookWidgets()
-  if self.lookWidgets then return self.lookWidgets end
-  local details = self.details
-  local box = CreateFrame("Frame", nil, details)
-  box:SetHeight(MODEL_HEIGHT)
-  local background = box:CreateTexture(nil, "BACKGROUND")
-  background:SetAllPoints()
-  background:SetColorTexture(0.04, 0.035, 0.03, 0.85)
-  for _, edge in ipairs(Helpers.AddEdges(box, 1, "BORDER")) do edge:SetColorTexture(0.42, 0.31, 0.15, 0.8) end -- bronze
-
-  local ok, model = pcall(CreateFrame, "PlayerModel", nil, box)
-  if ok and model then
-    model:SetPoint("TOPLEFT", 1, -1)
-    model:SetPoint("BOTTOMRIGHT", -1, 1)
-    model:EnableMouse(true)
-    model:EnableMouseWheel(true)
-    -- Drag to turn the model, right-drag to move it: one button at a time, the one pressed first.
-    model:SetScript("OnMouseDown", function(this, button)
-      if this.dragButton or (button ~= "LeftButton" and button ~= "RightButton") then return end
-      this.dragButton = button
-      this.dragX, this.dragY = GetCursorPosition()
-      this:SetScript("OnUpdate", DragOnUpdate)
-    end)
-    model:SetScript("OnMouseUp", function(this, button)
-      if button ~= this.dragButton then return end
-      this.dragButton = nil
-      this:SetScript("OnUpdate", nil)
-    end)
-    model:SetScript("OnHide", function(this)
-      this.dragButton = nil
-      this:SetScript("OnUpdate", nil)
-    end)
-    -- The wheel zooms: up closer, down farther. Kept for the next look.
-    model:SetScript("OnMouseWheel", function(this, delta)
-      Window.lookZoom = math.max(ZOOM_MIN, math.min(ZOOM_MAX, (Window.lookZoom or 1) - delta * ZOOM_STEP))
-      ApplyZoom(this)
-    end)
-    -- A model's framing is set again once it has loaded (setting a model resets it).
-    pcall(model.SetScript, model, "OnModelLoaded", function(this)
-      pcall(this.SetFacing, this, this.facing or MODEL_FACING)
-      ApplyZoom(this)
-      ApplyPan(this)
-    end)
-    box.model = model
-  end
-
-  box.noModel = NewText(box, "GameFontDisable", "CENTER")
-  box.noModel:SetPoint("CENTER")
-  box.noModel:SetText(L.LOOK_NO_MODEL)
-
-  -- Under the frame, on the right.
-  box.hint = NewText(box, "GameFontDisableSmall", "RIGHT")
-  box.hint:SetPoint("TOPRIGHT", box, "BOTTOMRIGHT", 0, -5)
-  box.hint:SetText(L.LOOK_HINT)
-
-  self.lookWidgets = box
-  return box
-end
-
-local function ShowModel(box, look)
-  local model = box.model
-  local shown = false
-  if model and look then
-    pcall(model.ClearModel, model)
-    shown = (pcall(model.SetDisplayInfo, model, look.display))
-    if shown then
-      model.facing = MODEL_FACING
-      pcall(model.SetFacing, model, MODEL_FACING)
-      ApplyZoom(model)
-      model.panY, model.panZ = 0, 0
-      ApplyPan(model)
-    end
-    model:SetShown(shown)
-  end
-  box.noModel:SetShown(not shown)
-  box.hint:SetShown(shown)
+  if not self.lookWidgets then self.lookWidgets = Helpers.NewModelViewer(self.details) end
+  return self.lookWidgets
 end
 
 -- ----------------------------------------------------------------------------
@@ -178,7 +48,7 @@ function Window:GetLookGroups()
       local familyMatch = search == "" or family:lower():find(search, 1, true) ~= nil
       local group = { key = "looks:" .. family, family = family, info = info, rows = {} }
       for _, look in ipairs(looks) do
-        local name = LookName(look, family)
+        local name = Addon:LookName(look, family)
         local creatures = self:BountyCreatures(look.npcs, zone, level) -- (with the filters)
         local match = familyMatch or name:lower():find(search, 1, true) ~= nil
         if not match then
@@ -323,7 +193,7 @@ function Window:UpdateLookDetails()
   box:ClearAllPoints()
   box:SetPoint("TOPLEFT", self.details, "TOPLEFT", Window.DETAILS_LEFT, -Window.DETAILS_TOP)
   box:SetPoint("RIGHT", self.details, "RIGHT", -20, 0)
-  ShowModel(box, row.look)
+  box:ShowModel(row.look.display)
 
   self:ShowBountyCreatures(row.creatures, L.LOOK_CREATURES, L.LOOK_NONE)
 end

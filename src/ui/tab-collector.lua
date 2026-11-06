@@ -477,6 +477,8 @@ function Window:UpdateCollectedDetails()
   if description and description ~= "" then text = text .. "\n\n" .. description end
   self.description:SetText(text)
   self:PlaceDescription()
+  -- A creature the data has: its name opens its profile (sized to the name, once it is placed).
+  self:SetNameLink((row.kind == "creature" and d.id) or ((row.kind == "tame" or row.kind == "check") and d.npc_id) or nil)
 end
 
 -- ----------------------------------------------------------------------------

@@ -69,6 +69,8 @@ local TABS = {
   -- No side tabs: the gear and the "?" by the close button open these (Window:CreateTitleButtons).
   { key = "OPTIONS", label = L.OPTIONS, title = L.OPTIONS, icon = "Interface\\Icons\\INV_Misc_Gear_01", noSideTab = true },
   { key = "HELP", label = L.HELP, title = L.HELP, icon = "Interface\\Icons\\INV_Misc_QuestionMark", noSideTab = true },
+  -- No side tab either: a creature's name opens its profile (tab-pet.lua).
+  { key = "PET", label = L.PET_PROFILE, title = L.PET_PROFILE, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming", noSideTab = true },
   -- Last, so the tabs above never move: it is only shown while collecting is on.
   { key = "COLLECTOR", label = L.COLLECTED_DATA, title = L.COLLECTED_DATA, icon = "Interface\\Icons\\INV_Misc_Note_02" },
 }
@@ -249,6 +251,7 @@ function Window:Create()
   self:CreateList(frame)
   self:CreateDetails(frame)
   self:CreateStable(frame)
+  self:CreatePetProfile(frame)
 
   self.tab = self:Sticky() and self:KnownTab(DB.global.last_tab) or "UNIQUE"
   self.expanded = {} -- ability -> true for headers the player opened
@@ -301,8 +304,10 @@ end
 
 function Window:SelectTab(key)
   if key == self.tab then return end
+  -- A side tab forgets the way back from a pet profile; Options and Help keep it (their button returns to the profile).
+  if key ~= "PET" and not (self.titleSections or {})[key] then self.petHistory = nil end
   self.tab = key
-  DB.global.last_tab = key
+  if key ~= "PET" then DB.global.last_tab = key end -- (a profile is not where the window opens)
   self.selected = nil
   if not self:Sticky() then self.selectedTrainer = nil end
   self:UpdateTabs()
@@ -403,6 +408,7 @@ end
 function Window:OnHide()
   if self:Sticky() then return end
   self.selected, self.selectedTrainer = nil, nil
+  self.petHistory = nil
   self.tab = "UNIQUE"
   self:UpdateTabs()
 end
@@ -416,6 +422,7 @@ function Window:UpdateTabs()
   -- rows; on the other tabs the creatures go under the description.
   local families = self.tab == "FAMILIES"
   if self.iconButton then self:SetTopWide(false) end -- (a pet bounty widens it again)
+  self:SetNameLink(nil) -- (Collected Data's creatures link their name again)
   self.descriptionBeside = nil -- (an ability's details set it again)
   if self.learnableRow then -- (an ability's details show it again)
     self.learnableRow:Hide()
@@ -450,11 +457,12 @@ function Window:UpdateTabs()
     if info.key == self.tab then self.header:SetText(info.title) end
   end
   self:UpdateClearButton()
-  -- Stable fills the window beside the side tabs; the other tabs use the list and the details.
-  local stable = self.tab == "STABLE"
+  -- Stable and the pet profile fill the window beside the side tabs; the other tabs use the list and the details.
+  local stable, profile = self.tab == "STABLE", self.tab == "PET"
   self.stable:SetShown(stable)
-  self.list:SetShown(not stable)
-  if stable then
+  if self.profile then self.profile:SetShown(profile) end
+  self.list:SetShown(not (stable or profile))
+  if stable or profile then
     self.details:Hide()
     self.headerCount:SetText("")
   end
@@ -791,6 +799,10 @@ function Window:Refresh()
     self:RefreshStable()
     return
   end
+  if self.tab == "PET" then
+    self:RefreshPetProfile()
+    return
+  end
   if self.tab == "TRAINERS" then
     self:RefreshTrainers()
     return
@@ -887,6 +899,27 @@ function Window:CreateDetails(frame)
   self.iconButton = iconButton
   self:SetTopWide(false)
 
+  -- Over the name when it is a creature the data has (Collected Data): clicking it opens its profile. Window:SetNameLink.
+  local nameLink = CreateFrame("Button", nil, details)
+  nameLink:SetPoint("TOPLEFT", self.name, "TOPLEFT")
+  nameLink:SetScript("OnClick", function(this)
+    Helpers.PlayClick()
+    self:ShowPetProfile(this.npcId)
+  end)
+  nameLink:SetScript("OnEnter", function(this)
+    GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L.PROFILE_CLICK, 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  nameLink:SetScript("OnLeave", GameTooltip_Hide)
+  local underline = nameLink:CreateTexture(nil, "HIGHLIGHT")
+  underline:SetPoint("BOTTOMLEFT", 0, -1)
+  underline:SetPoint("BOTTOMRIGHT", 0, -1)
+  underline:SetHeight(1)
+  underline:SetColorTexture(1, 0.82, 0, 0.8)
+  nameLink:Hide()
+  self.nameLink = nameLink
+
   self.description = NewText(details, "GameFontHighlight")
   -- Placed in UpdateDetails, under whichever part of the top row is taller.
   self.description:SetPoint("RIGHT", -20, 0)
@@ -964,18 +997,29 @@ function Window:InitNPCRow(row, npc)
       GameTooltip:Show()
     end)
     row.MapButton:SetScript("OnLeave", GameTooltip_Hide)
-    -- Hovering the row shows the creature's details, its attack speed among them.
+    -- Hovering the row shows the creature's details, its attack speed among them; clicking it opens its profile
+    -- (tab-pet.lua).
     row:EnableMouse(true)
     row:SetScript("OnEnter", function(this)
       if not this.npc then return end
       GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
       PinHelper:AddTooltipLines(this.npc)
+      GameTooltip:AddLine(L.PROFILE_CLICK, 0.6, 0.6, 0.6)
       GameTooltip:Show()
     end)
     row:SetScript("OnLeave", GameTooltip_Hide)
+    row:SetScript("OnMouseUp", function(this, button)
+      if button == "LeftButton" and this.npc and this:IsMouseOver() then
+        Helpers.PlayClick()
+        self:ShowPetProfile(this.npc.id)
+      end
+    end)
     local stripe = row:CreateTexture(nil, "BACKGROUND")
     stripe:SetAllPoints()
     stripe:SetColorTexture(1, 1, 1, 0.04)
+    local hover = row:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAllPoints()
+    hover:SetColorTexture(1, 0.82, 0, 0.1)
     -- A rare creature: the row glows gold from the left, with a gold edge (as on the website).
     row.RareGlow = row:CreateTexture(nil, "BACKGROUND", nil, 1)
     row.RareGlow:SetAllPoints()
@@ -1152,6 +1196,19 @@ function Window:DescribeIcon()
         and child:GetBottom() < top and child:GetTop() > bottom then
       describe("  over it: ", child)
     end
+  end
+end
+
+-- Makes the details' name a link to a creature's profile (its npc id), when the data has that creature; nil (or a
+-- creature the data lacks) takes the link away. Set after the name's text, which it is sized to.
+function Window:SetNameLink(npcId)
+  local link = self.nameLink
+  if not link then return end
+  link.npcId = npcId and Addon:GetNPC(npcId) and tonumber(npcId) or nil
+  link:SetShown(link.npcId ~= nil)
+  if link.npcId then
+    local width = self.name.GetUnboundedStringWidth and self.name:GetUnboundedStringWidth() or self.name:GetStringWidth()
+    link:SetSize(math.max(10, math.min(width or 0, self.name:GetWidth() or width or 0)), self.name:GetStringHeight() or 16)
   end
 end
 

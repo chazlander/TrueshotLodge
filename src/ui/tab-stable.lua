@@ -4,6 +4,7 @@ local Stable = Addon:GetModule("Stable")
 local Window = Addon:GetModule("Window")
 local Helpers = Addon:GetModule("Helpers")
 local AddEdges, CreatePanel, NewText, SpellIcon = Helpers.AddEdges, Helpers.CreatePanel, Helpers.NewText, Helpers.SpellIcon
+local PlayClick = Helpers.PlayClick
 local QUESTION_MARK_ICON = Helpers.QUESTION_MARK_ICON
 
 -- The "Stable" tab, laid out like the game's pet window and sized like the other tabs (a list-width pane on the left,
@@ -321,8 +322,29 @@ function Window:InitStableRow(row, data)
     row.Label = NewText(row, "GameFontNormal")
     row.Value = NewText(row, "GameFontHighlight", "RIGHT")
     row.Value:SetPoint("RIGHT", -8, 0)
+    -- A link (the pet profile's family, abilities and looks: `onClick`): lit while hovered, its `hint` in a tooltip.
+    row.Hover = row:CreateTexture(nil, "HIGHLIGHT")
+    row.Hover:SetAllPoints()
+    row.Hover:SetColorTexture(1, 0.82, 0, 0.12)
+    row:SetScript("OnMouseUp", function(this, button)
+      if button == "LeftButton" and this.ftData and this.ftData.onClick and this:IsMouseOver() then
+        PlayClick()
+        this.ftData.onClick()
+      end
+    end)
+    row:SetScript("OnEnter", function(this)
+      if not (this.ftData and this.ftData.hint) then return end
+      GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+      GameTooltip:SetText(this.ftData.label, 1, 1, 1)
+      GameTooltip:AddLine(this.ftData.hint, nil, nil, nil, true)
+      GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", GameTooltip_Hide)
   end
 
+  row.ftData = data
+  row:EnableMouse(data.onClick ~= nil)
+  row.Hover:SetShown(data.onClick ~= nil)
   row.Label:ClearAllPoints()
   row.Swatch:Hide()
   row.Value:SetText("")
@@ -362,6 +384,13 @@ local function StatRows(pet)
   local family = pet.family and Addon.TameableFamilies and Addon.TameableFamilies[pet.family]
   local stats = pet.stats or {}
   header(L.GENERAL)
+  -- The beast it was tamed from, when the stable says which and the data has it: a link to its profile (tab-pet.lua).
+  local origin = pet.creature_id and Addon:GetNPC(pet.creature_id)
+  if origin then
+    stat(L.TAMED_FROM, origin.name)
+    rows[#rows].onClick = function() Window:ShowPetProfile(origin.id) end
+    rows[#rows].hint = L.PROFILE_CLICK
+  end
   stat(L.FAMILY, pet.family and Addon:FamilyLabel(pet.family))
   stat(L.TYPE, family and family.type)
   stat(L.DIET, family and family.foods and table.concat(family.foods, ", "))

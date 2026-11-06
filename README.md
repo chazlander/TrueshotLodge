@@ -15,7 +15,7 @@ included, so you can check it from anywhere.
 
 Built for WoW Forever:
 
-- **750+ tameable creatures** across **18 pet families**, with their levels, zones and map locations
+- **765+ tameable creatures** across **18 pet families**, with their levels, zones and map locations
 - **Every look in 3D**: the 155 skins pets come in, each turnable in 3D, and which beasts wear it
 - **Every pet ability and rank**: what it does, the pet level it needs, its training point cost and who can learn it
 - **New in Forever**: creatures and families added in WoW Forever carry the ∞ mark
@@ -106,6 +106,18 @@ Your pets, cached and kept in the addon so you can look them over anywhere, laid
 - when you last visited a stable master
 
 A pet is remembered the last time it was out, so even a pet sitting in the stable shows its stats and abilities.
+When TrueshotLodge knows the beast a pet was tamed from, **Tamed From** names it, and clicking it opens its profile.
+
+## ![Pet Profile](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beasttaming.jpg) Pet Profile
+
+Click a creature's name anywhere in the window to open its profile: the creature lists under an ability, a family, a
+bounty or a look, the Collected Data tab, and Tamed From on the Stable tab. The profile shows:
+
+- its **3D model** (drag to turn it, right-drag to move it, scroll to zoom) and its **Map** button
+- its family, type, diet, level, attack speed and zone, whether it is new in Forever, its verified tame and its NPC ID
+- the **abilities** it teaches and its **looks**: click one to see it on its own tab (the family too)
+
+**Back** returns to the tab, selection or profile you came from.
 
 ## ![Bounties](https://wow.zamimg.com/images/wow/icons/medium/inv_inscription_80_contract_embers.jpg) Bounties
 

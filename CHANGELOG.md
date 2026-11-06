@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+- First off, thank you! The number of people downloading, using, taming and uploading has been phenomenal! The hunter community is strong! I'm going to try and push daily updates with all the valuable data everyone's been helping collect! Happy taming and safe leveling! - TSL
+- **Pet Profile**: click a creature's name anywhere in the window (the creature lists, Collected Data, and the Stable
+  tab's new Tamed From) to open its profile: its 3D model, family, level, attack speed, zone, verified tame, the
+  abilities it teaches and its looks, with its Map button. Click its family, an ability or a look to see it on its
+  own tab, and **Back** returns to where you were  
+- Data since 1.60.1.34:
+  - 9 new tames (157 in all)
+  - 10 new creatures (765 in all)
+  - 0 new sightings
+  - 2 new ability tames
+  - 2 new attack speeds
+  - 0 new levels
+  - 0 new zones
+
+**Still missing** (as of this release):
+
+- 132 of 765 creatures have no known attack speed, 73 no level and 56 no zone (147 have no map points)
+
 ## [1.60.1.34] - 2026-11-04
 
 - Looks: the tab now sits below Trainers (unless you have put your tabs in an order of your own), and the Stand, Walk,
@@ -69,7 +89,7 @@
   to put them all back on the right in their usual order. The Collected Data tab still shows with Collect Mode
 - With Collect Mode on, a chat message says so when you see or tame a creature that is not in TrueshotLodge yet (once
   per creature a session), so you know that one is worth uploading
-- Library Dependancy Updates and Attribution  
+- Library Dependency Updates and Attribution  
 - Data: 12 more creatures verified by a tame (145 in all), among them Dishu, Black Ravager, Longsnout, Moonstalker
   Runt, Nightsaber Stalker, Black Bear Patriarch and Wood Lurker
 - Data: 8 more creatures with a known attack speed (among them the Shriekling Fledgling and Matriarch, Elder Snow
@@ -173,7 +193,7 @@
 - A pet trainer the addon does not know yet, met on a client in another language, is recorded for us to confirm
   (its title cannot be read there)
 - Your collected file notes your client's language
-- TODO: Add multi language support on the website.
+- TODO: Add multi-language support on the website.
 - `/tsl debug collect check` shows each creature's family id
 
 ## [1.60.1.11] - 2026-10-12

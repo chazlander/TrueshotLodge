@@ -50,6 +50,8 @@ src\ui\tab-options.lua
 src\ui\tab-collector.lua
 src\ui\tab-bounties.lua
 src\ui\tab-families.lua
+src\ui\model-viewer.lua
 src\ui\tab-looks.lua
 src\ui\tab-help.lua
 src\ui\tab-stable.lua
+src\ui\tab-pet.lua

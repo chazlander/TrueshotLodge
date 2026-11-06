@@ -192,6 +192,7 @@ local function PrepareNPC(id, npc)
     if a.ability.name ~= b.ability.name then return a.ability.name < b.ability.name end
     return a.rankIndex < b.rankIndex
   end)
+  npc.taught = taught -- { ability, rankIndex }, for the pet profile
   npc.abilities = {}
   for i, entry in ipairs(taught) do
     npc.abilities[i] = ("|T%s:0|t %s |cFF9D9D9D(%s %s)|r"):format(

@@ -25,7 +25,7 @@ Addon.TameableAbilities = {
     { spell_id = 27685, rank = 6, pet_level = 60, training_cost = 25, npc_ids = { 16117 } }
   } },
   ["claw"] = { name = "Claw", learned_by = { "Bear", "Bird of Prey", "Carrion Bird", "Cat", "Crab", "Raptor", "Scorpid" }, ranks = {
-    { spell_id = 16827, rank = 1, pet_level = 1, training_cost = 1, npc_ids = { 3124, 250926, 3281, 250937, 1995, 3106, 251115, 1196 } },
+    { spell_id = 16827, rank = 1, pet_level = 1, training_cost = 1, npc_ids = { 3124, 250926, 3281, 250937, 1995, 3106, 251115, 1196, 250928 } },
     { spell_id = 16828, rank = 2, pet_level = 8, training_cost = 4, npc_ids = { 822, 1997, 254588, 3108, 3127, 250927, 276189, 1778, 1961, 2163, 5823, 1130, 2232 } },
     { spell_id = 16829, rank = 3, pet_level = 16, training_cost = 7, npc_ids = { 1189, 1216, 6788, 3619, 3812, 1225, 2351, 3809, 4821, 4822 } },
     { spell_id = 16830, rank = 4, pet_level = 24, training_cost = 10, npc_ids = { 3810, 4823, 4696, 4140 } },
@@ -120,7 +120,7 @@ Addon.TameableAbilities = {
     { spell_id = 25012, rank = 6, pet_level = 60, training_cost = 25, npc_ids = { 11357, 11359 } }
   } },
   ["mine"] = { name = "Mine!", learned_by = { "Bird of Prey" }, unique = true, ranks = {
-    { spell_id = 1265054, rank = 1, pet_level = 10, training_cost = 0 },
+    { spell_id = 1265054, rank = 1, pet_level = 10, training_cost = 0, npc_ids = { 270196 } },
     { spell_id = 1265055, rank = 2, pet_level = 20, training_cost = 0 },
     { spell_id = 1265056, rank = 3, pet_level = 30, training_cost = 0 },
     { spell_id = 1265057, rank = 4, pet_level = 40, training_cost = 0 },
