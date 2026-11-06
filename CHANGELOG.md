@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.60.1.36] - 2026-11-05
 
 - First off, thank you! The number of people downloading, using, taming and uploading has been phenomenal! The hunter community is strong! I'm going to try and push daily updates with all the valuable data everyone's been helping collect! Happy taming and safe leveling! - TSL
 - **Pet Profile**: click a creature's name anywhere in the window (the creature lists, Collected Data, and the Stable
