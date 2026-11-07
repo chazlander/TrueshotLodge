@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.60.1.38] - 2026-11-07
+
+- Collect Mode and Collected Data:
+  - Each creature's model (the look the game draws for it) is noted when you see it, so a creature new to
+    TrueshotLodge gets its 3D model and picture on the website and in the addon as soon as you upload, without
+    waiting for anyone else to list it. Shared sightings carry it too
+  - Collected Data shows what's new: in a sighting or tame of a creature TrueshotLodge already knows, each line that
+    differs from what the addon has (a level, attack speed, zone, model or ability rank) is in green, with what the
+    addon has beside it
+  - Far fewer sightings that tell the website nothing new are kept. A wild creature's attack speed no longer counts
+    once a tamed pet has confirmed it (a tamed pet attacks at its own speed), a dungeon (where the game only reports
+    the continent) is no longer a new zone, and creatures we've hidden are left alone. Sightings like these already
+    saved are cleared when you log in
+- Data since 1.60.1.36:
+  - 12 new tames (169 in all)
+  - 0 new creatures (765 in all)
+  - 0 new sightings
+  - 4 new ability tames
+  - 2 new attack speeds
+  - 0 new levels
+  - 0 new zones
+  - 9 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 130 of 765 creatures have no known attack speed, 73 no level and 56 no zone (147 have no map points)
+
 ## [1.60.1.36] - 2026-11-05
 
 - First off, thank you! The number of people downloading, using, taming and uploading has been phenomenal! The hunter community is strong! I'm going to try and push daily updates with all the valuable data everyone's been helping collect! Happy taming and safe leveling! - TSL
