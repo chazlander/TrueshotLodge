@@ -80,7 +80,9 @@ Addon.TameableLooks = {
     { display = 979, name = "Saphire", npcs = { 3460, 2231, 254588, 3228, 2232, 831, 2233, 3812, 2544 } },
     { display = 1307, name = "Vermillian", npcs = { 272374, 252592, 3106, 3107, 3503, 260235 } },
     { display = 342, name = "Bronze", npcs = { 6250, 830, 1216, 255901, 922, 1088 } },
-    { display = 147042, name = "Dark Diamond", npcs = { 272377 } }
+    { display = 6296, name = "Frog Bluespots", npcs = { 259005, 259843 } },
+    { display = 147042, name = "Dark Diamond", npcs = { 272377 } },
+    { display = 6297, name = "Frogtropical", npcs = { 259006 } }
   },
   ["Crocolisk"] = {
     { display = 925, name = "Marsh", npcs = { 260798, 270693, 1417, 1400, 2089, 260796, 260797, 1151, 4342, 2635, 4344, 14233 } },
@@ -90,6 +92,7 @@ Addon.TameableLooks = {
   },
   ["Fox"] = {
     { display = 136536, name = "Vuldren Red", npcs = { 250873, 250868 } },
+    { display = 139280, name = "Vuldren Yellow", npcs = { 255887 } },
     { display = 136537, name = "Vuldren White", npcs = { 250874 } },
     { display = 148953, name = "Black", npcs = { 277645 } }
   },
@@ -107,7 +110,8 @@ Addon.TameableLooks = {
     { display = 2710, name = "Yellow", npcs = { 4127, 4129, 4128, 4660 } },
     { display = 2713, name = "Blue", npcs = { 5829, 4248, 4249, 8300 } },
     { display = 2709, name = "Red", npcs = { 6867, 4304, 10979 } },
-    { display = 1536, name = "Hyena", npcs = { 5426 } }
+    { display = 1536, name = "Hyena", npcs = { 5426 } },
+    { display = 2713, npcs = { 271036 } }
   },
   ["Raptor"] = {
     { display = 1959, name = "Red", npcs = { 260802, 260799, 3122, 3123, 3257, 856, 4351, 4352, 4355, 4356, 4357, 14821 } },
@@ -153,10 +157,15 @@ Addon.TameableLooks = {
     { display = 1281, name = "Purple", npcs = { 272392, 272391 } },
     { display = 144242, name = "Galestrider Gray", npcs = { 251707, 256492 } },
     { display = 143799, name = "Galestrider Mount White", npcs = { 267304 } },
+    { display = 143802, name = "Galestrider Mount Blue", npcs = { 267305 } },
+    { display = 143801, name = "Galestrider Mount Green", npcs = { 267306 } },
     { display = 144243, name = "Galestrider Green", npcs = { 251661 } },
     { display = 1961, name = "Pink", npcs = { 3068 } },
     { display = 144240, name = "Galestrider White", npcs = { 262523 } },
-    { display = 38, name = "Turquoise", npcs = { 2172 } }
+    { display = 38, name = "Turquoise", npcs = { 2172 } },
+    { display = 144244, name = "Galestrider Swiftmount White", npcs = { 265762 } },
+    { display = 144245, name = "Galestrider Swiftmount Blue", npcs = { 265761 } },
+    { display = 144247, name = "Galestrider Swiftmount Green", npcs = { 265760 } }
   },
   ["Turtle"] = {
     { display = 4829, name = "Grey", npcs = { 249224, 211951, 260809, 215108, 4396, 4397, 4398, 4400, 4399, 8213 } },

@@ -7,7 +7,7 @@ Addon.TameableAbilities = {
     { spell_id = 24501, rank = 4, pet_level = 50, training_cost = 90 }
   } },
   ["bite"] = { name = "Bite", learned_by = { "Bat", "Bear", "Boar", "Carrion Bird", "Cat", "Crocolisk", "Fox", "Gorilla", "Hyena", "Raptor", "Spider", "Tallstrider", "Turtle", "Wind Serpent", "Wolf" }, ranks = {
-    { spell_id = 17253, rank = 1, pet_level = 1, training_cost = 1, npc_ids = { 1509, 1505, 30, 1688, 1994, 2958, 1138, 250868, 1131, 1922, 1999, 2959, 266851, 3110 } },
+    { spell_id = 17253, rank = 1, pet_level = 1, training_cost = 1, npc_ids = { 1509, 1505, 30, 1688, 1994, 2958, 1138, 250868, 255887, 1131, 1922, 1999, 2959, 266851, 3110 } },
     { spell_id = 17255, rank = 2, pet_level = 8, training_cost = 4, npc_ids = { 1133, 2000, 254589, 118, 1555, 2960, 268530, 834, 1132, 1195, 1765, 2001, 833, 7319, 1693, 442, 3461 } },
     { spell_id = 17256, rank = 3, pet_level = 16, training_cost = 7, npc_ids = { 1923, 4005, 1185, 5053, 505, 3823, 4006, 14266, 2350, 3653, 569, 11921, 2476, 521, 616, 4824, 14279 } },
     { spell_id = 17257, rank = 4, pet_level = 24, training_cost = 10, npc_ids = { 628, 1112, 2349, 1258, 2089, 4887, 2348, 4825, 574, 3825, 3821, 2408, 14223 } },
@@ -35,10 +35,10 @@ Addon.TameableAbilities = {
     { spell_id = 3009, rank = 8, pet_level = 56, training_cost = 25, npc_ids = { 7445, 7456 } }
   } },
   ["cower"] = { name = "Cower", learned_by = {}, ranks = {
-    { spell_id = 1742, rank = 1, pet_level = 5, training_cost = 8, npc_ids = { 1199, 2042, 251245, 1553, 3035, 3121, 2957, 3068, 276198, 2070, 2321, 3246 } },
-    { spell_id = 1753, rank = 2, pet_level = 15, training_cost = 10, npc_ids = { 3241, 3245, 2237, 2323, 2384, 4067 } },
+    { spell_id = 1742, rank = 1, pet_level = 5, training_cost = 8, npc_ids = { 1199, 2042, 251245, 1553, 3035, 3121, 2957, 253282, 3068, 276198, 2070, 2321, 3246 } },
+    { spell_id = 1753, rank = 2, pet_level = 15, training_cost = 10, npc_ids = { 3245, 2237, 2323, 2384, 4067 } },
     { spell_id = 1754, rank = 3, pet_level = 25, training_cost = 12, npc_ids = { 4126, 2385, 681, 683, 4538, 736, 4425, 4539 } },
-    { spell_id = 1755, rank = 4, pet_level = 35, training_cost = 14, npc_ids = { 2731, 2732, 4861 } },
+    { spell_id = 1755, rank = 4, pet_level = 35, training_cost = 14, npc_ids = { 3241, 2731, 2732, 4861 } },
     { spell_id = 1756, rank = 5, pet_level = 45, training_cost = 16, npc_ids = { 2522, 8927, 8600, 8601 } },
     { spell_id = 16697, rank = 6, pet_level = 55, training_cost = 18, npc_ids = { 7430, 8602 } }
   } },
@@ -186,7 +186,7 @@ Addon.TameableAbilities = {
     { spell_id = 1264482, rank = 5, pet_level = 60, training_cost = 1 }
   } },
   ["swipe"] = { name = "Swipe", learned_by = { "Bear" }, unique = true, ranks = {
-    { spell_id = 1264494, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 1797, 259388 } },
+    { spell_id = 1264494, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 1797, 1188, 259388 } },
     { spell_id = 1264497, rank = 2, pet_level = 24, training_cost = 0, npc_ids = { 2356, 271334 } },
     { spell_id = 1264498, rank = 3, pet_level = 36, training_cost = 0 },
     { spell_id = 1264501, rank = 4, pet_level = 48, training_cost = 0 },

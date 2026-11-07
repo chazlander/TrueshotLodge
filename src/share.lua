@@ -25,7 +25,8 @@ local DB = Addon:GetModule("DB")
 --
 -- A message is lines of "<kind>|1,<field>,<field>,...", fields percent-escaped (so no field holds a line break):
 --   C  wild sighting   id, name (empty when the sender's data has the creature: the receiver names it from the id), family,
---                      level min, level max, classification, attack speed, uiMapID, x, y, type
+--                      level min, level max, classification, attack speed, uiMapID, x, y, type, display id (its
+--                      model; added last, so older addons read the rest as before)
 --   T  tame            npc id, name (as in C), family, level, classification, creature speed, pet level, pet family, pet attack
 --                      speed, uiMapID, x, y, tamed (time), credit (1: Send Name on, credit the sender); then ";" and
 --                      the spells: spell id:rank:passive, "/"-separated
@@ -195,7 +196,7 @@ end
 local ENCODE = {
   creature = function(c)
     return Join("C", Pack(c.id, NameIfNew(c.id, c.name), c.family, c.level_min, c.level_max, c.classification,
-      c.mainhand_speed, c.ui_map_id or next(c.zones or {}), c.x, c.y, c.creature_type))
+      c.mainhand_speed, c.ui_map_id or next(c.zones or {}), c.x, c.y, c.creature_type, c.display_id))
   end,
   tame = function(t)
     local spells = {}
@@ -648,10 +649,11 @@ local MERGE = {
     if not id or id <= 0 or Addon.IGNORED_NPC_IDS[id] or not family then return end
     local creatures = DB.collected.creatures
     local key = tostring(id)
-    local low, high, zone = Number(f[4]), Number(f[5]), Number(f[8])
+    local low, high, zone, display = Number(f[4]), Number(f[5]), Number(f[8]), Number(f[12])
+    if display and display <= 0 then display = nil end
     local c = creatures[key]
     if c then
-      -- Only widen what is there (the level range, the zones); your own record keeps the rest.
+      -- Only widen what is there (the level range, the zones) and fill in the model; your own record keeps the rest.
       local changed = false
       if low and (not c.level_min or low < c.level_min) then c.level_min, changed = low, true end
       if high and (not c.level_max or high > c.level_max) then c.level_max, changed = high, true end
@@ -659,13 +661,14 @@ local MERGE = {
         c.zones = c.zones or {}
         if not c.zones[zone] then c.zones[zone], changed = true, true end
       end
+      if display and not c.display_id then c.display_id, changed = display, true end
       return changed
     end
     local record = {
       id = id, family = family, family_id = Addon:FamilyId(family), level_min = low, level_max = high,
       classification = Text(f[6]), mainhand_speed = Number(f[7]), ui_map_id = zone, zones = zone and { [zone] = true } or {},
       x = Number(f[9]), y = Number(f[10]), creature_type = "Beast", -- a pet family's creatures are all beasts
-      collected = time(), shared_by = sender,
+      display_id = display, collected = time(), shared_by = sender,
     }
     -- As with your own sightings: one the addon's data already holds completely is not kept (older addons still send them).
     local Collector = Addon:GetModule("Collector")

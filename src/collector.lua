@@ -74,15 +74,76 @@ local function share(kind, entry)
   if Share.Send then Share:Send(kind, entry) end
 end
 
+-- A creature's model (its display id), read off the unit: the game draws it in a model frame of ours, too small to see,
+-- and says which display it drew. nil when this client cannot tell (or not yet: the model can still be loading, and a
+-- later sighting tries again). The website adds it to the creature's looks, so a new creature gets its 3D model and
+-- picture without waiting for Wowhead.
+local displayReader
+local function UnitDisplayId(unit)
+  if not displayReader then
+    local ok, model = pcall(CreateFrame, "PlayerModel", nil, UIParent)
+    if not (ok and model and model.GetDisplayInfo) then
+      displayReader = false
+      return nil
+    end
+    model:SetSize(1, 1)
+    model:SetAlpha(0)
+    model:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -10, 10) -- (off the screen's corner)
+    displayReader = model
+  end
+  if displayReader == false then return nil end
+  local ok = pcall(displayReader.SetUnit, displayReader, unit)
+  local readOk, display = pcall(displayReader.GetDisplayInfo, displayReader)
+  pcall(displayReader.ClearModel, displayReader)
+  display = ok and readOk and Addon:Plain(display) or nil
+  return (type(display) == "number" and display > 0) and display or nil
+end
+
+-- The creatures that have a look in the addon's data (data/Looks.lua): a model read off one of the others is news.
+local withLook
+local function HasLook(id)
+  if not withLook then
+    withLook = {}
+    for _, looks in pairs(Addon.TameableLooks or {}) do
+      for _, look in ipairs(looks) do
+        for _, npcId in ipairs(look.npcs or {}) do withLook[npcId] = true end
+      end
+    end
+  end
+  return withLook[tonumber(id) or 0] == true
+end
+
 -- UnitClassification() => the data's classification text (nil: a plain creature), as in the website's pets table.
 local CLASSIFICATIONS = { elite = "Elite", rare = "Rare", rareelite = "Rare Elite", worldboss = "Boss" }
 
--- Whether the addon's data (data/NPCs.lua, from the website's database) already holds everything a
--- sighting says: the creature is in it, with the same family and classification, every level seen inside its level
--- range, the same attack speed, and each zone seen among its map zones. Such a sighting tells the website nothing new,
--- so it is neither kept nor sent to other players (Collector:Record). A sighting with anything the data lacks or has
--- differently (a new level, zone or speed, or a value the data does not have yet) is kept and sent.
+-- Whether a world map the creature was seen on is a zone the data does not link it to yet. Only a map that is a zone
+-- of its own counts (data/NPCs.lua's TameableZoneMaps): a continent (as in a dungeon, which shows the continent's map)
+-- or a map the website has no zone for links nothing on an upload, so it is no news.
+local function newZone(npc, mapId)
+  local zoneId = Addon.TameableZoneMaps and Addon.TameableZoneMaps[tonumber(mapId) or 0]
+  if not zoneId then return false end
+  for _, linked in ipairs(npc.zones or {}) do
+    if linked == zoneId then return false end
+  end
+  return true
+end
+Collector.NewZone = newZone
+
+-- Whether a wild attack speed is news: the data has none, or a different one, unless the data's speed was read from a
+-- tame (speed_tamed), which wild sightings do not change (a tamed pet attacks at its own speed, not the creature's).
+local function newSpeed(npc, speed)
+  if not speed or npc.speed_tamed then return false end
+  return not npc.speed or math.abs(speed - npc.speed) > 0.05
+end
+Collector.NewSpeed = newSpeed
+
+-- Whether the addon's data (data/NPCs.lua, from the website's database) already holds everything a sighting says,
+-- compared as the website's upload page does (an upload's Commit changes only what this finds): the creature is in it
+-- (or we hid it), with the same family and classification, every level seen inside its level range, the same attack
+-- speed, and each zone seen linked. Such a sighting tells the website nothing new, so it is neither kept nor sent to
+-- other players (Collector:Record). A sighting with anything the data lacks or has differently is kept and sent.
 local function inData(c)
+  if Addon.TameableHidden and Addon.TameableHidden[tonumber(c.id) or 0] then return true end
   local npc = Addon.TameableNPCs and Addon.TameableNPCs[c.id]
   if not npc then return false end
   if npc.family ~= c.family then return false end
@@ -94,13 +155,12 @@ local function inData(c)
     if (c.level_min and c.level_min < low) or (c.level_max and c.level_max > high) then return false end
   end
   -- Attack speed, to a tenth as the website compares it (a speed hidden in combat is not compared).
-  if c.mainhand_speed then
-    if not npc.speed or math.abs(c.mainhand_speed - npc.speed) > 0.05 then return false end
+  if newSpeed(npc, c.mainhand_speed) then return false end
+  for mapId in pairs(c.zones or {}) do
+    if newZone(npc, mapId) then return false end
   end
-  -- Zones: the data's maps are its zones' world maps (a creature without map points has just `map`).
-  for zoneId in pairs(c.zones or {}) do
-    if not ((npc.maps and npc.maps[zoneId]) or npc.map == zoneId) then return false end
-  end
+  -- Its model: news for a creature with no look in the data yet.
+  if c.display_id and not HasLook(c.id) then return false end
   return true
 end
 
@@ -112,6 +172,7 @@ local function shareCreature(c)
   share("creature", c)
 end
 Collector.InData = inData -- (data sharing leaves out received sightings the data already holds, too)
+Collector.HasLook = HasLook -- (the Collected Data tab marks a model read off a creature without a look)
 
 -- Shared trainers collected before they were named from their id (their name and title were in the sender's
 -- language): named again, in yours, as a shared trainer is now. Returns how many changed.
@@ -180,6 +241,11 @@ local ignored = {}
 -- and is kept (and shared) as soon as a later sighting of it adds something the data lacks (another level or zone).
 local waiting = {}
 
+-- When each creature's model was last asked for (npc id -> GetTime()), so one whose model the game has not loaded yet
+-- is asked again now and then, not on every scan.
+local DISPLAY_RETRY = 5 -- seconds
+local displayAsked = {}
+
 function Collector:Record(unit)
   if not (DB.global and DB.global.collect) then return end
   if not UnitExists(unit) or UnitIsPlayer(unit) or UnitPlayerControlled(unit) then return end
@@ -229,6 +295,15 @@ function Collector:Record(unit)
         c.zones[zoneId] = true
         updates = updates or {}
         updates[#updates + 1] = "new zone " .. zoneId
+      end
+    end
+    -- Its model, when not read yet (a record from before the addon read models, or one still loading).
+    if not c.display_id and (GetTime() - (displayAsked[id] or 0)) > DISPLAY_RETRY then
+      displayAsked[id] = GetTime()
+      c.display_id = UnitDisplayId(unit)
+      if c.display_id then
+        updates = updates or {}
+        updates[#updates + 1] = "model " .. c.display_id
       end
     end
     -- Only a change is reported: a creature in view is seen again on every scan.
@@ -291,7 +366,9 @@ function Collector:Record(unit)
     mainhand_speed = mainhand,
     offhand_speed = offhand,
     instance_id = tonumber(instanceId),
+    display_id = UnitDisplayId(unit),
   }
+  displayAsked[id] = GetTime()
 
   local mapId, x, y = getObserverPosition()
   if mapId then
@@ -312,7 +389,7 @@ function Collector:Record(unit)
   share("creature", c)
   Collector:NotifyNew("sighting", c)
   Addon:Debug("collector: recorded", c.name, "(" .. id .. ")", family, "level " .. tostring(level),
-    c.classification or "", "speed " .. tostring(mainhand), "zone " .. tostring(zoneId))
+    c.classification or "", "speed " .. tostring(mainhand), "zone " .. tostring(zoneId), "model " .. tostring(c.display_id))
   changed()
 end
 

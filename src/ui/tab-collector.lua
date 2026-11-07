@@ -19,6 +19,50 @@ local function SpeedText(speed)
   return speed and Addon:AttackSpeedText(speed) or nil
 end
 
+-- ----------------------------------------------------------------------------
+-- What differs from the addon's data: in the details of a creature the data already has, each line that says something
+-- the data lacks or has differently is highlighted, with what the data has after it in grey. These are the lines an
+-- upload would change on the website (the same comparison as the collector's, Collector.InData).
+-- ----------------------------------------------------------------------------
+
+local DIFF_COLOR = "FF40C040"
+
+-- A details line: plain, or (when `differs`) its value in green followed by "(addon: <has>)", or "(new)" when the
+-- data has nothing there.
+local function DiffLine(label, value, differs, has)
+  if not differs or value == nil or value == "" then return Line(label, value) end
+  local note = (has and has ~= "") and L.DATA_HAS:format(has) or L.DATA_LACKS
+  return Line(label, ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, tostring(value), note))
+end
+
+-- Whether a level range seen lies outside the data's (or the data has no level at all).
+local function LevelDiffers(npc, low, high)
+  if not (low or high) then return false end
+  local min, max = npc.min, npc.max or npc.min
+  if not (min and max) then return true end
+  return (low and low < min) or (high and high > max) or false
+end
+
+-- The data's level range as text, or nil when it has none.
+local function DataLevel(npc)
+  return npc.min and LevelText(npc.min, npc.max) or nil
+end
+
+-- Whether a tamed pet's attack speed differs from the data's, to a tenth (as the website compares it). A tame's speed
+-- always counts, unlike a wild sighting's (Collector.NewSpeed): a tame's wins over the creature's.
+local function SpeedDiffers(npc, speed)
+  return speed ~= nil and (not npc.speed or math.abs(speed - npc.speed) > 0.05)
+end
+
+-- Whether the data lists this creature as coming with this ability rank when tamed.
+local function Teaches(npc, spellId)
+  for _, entry in ipairs(npc.taught or {}) do
+    local rank = entry.ability.ranks[entry.rankIndex]
+    if rank and rank.spell_id == spellId then return true end
+  end
+  return false
+end
+
 -- The "Collected Data" tab: while collecting is on, what the collector has recorded so far, in the same list and
 -- details layout as the other tabs, in three sections: Wild Sightings (the creatures seen, by family), Tamed
 -- Creatures (the beasts you tamed) and Trainers (the pet trainers talked to, and the Beast Training entries). A creature that is not in the addon's data yet is highlighted, since that is what the
@@ -375,13 +419,22 @@ function Window:UpdateCollectedDetails()
     local seen = {}
     if d.x and d.y then seen[#seen + 1] = ("%.1f, %.1f"):format(d.x, d.y) end
     if d.subzone and d.subzone ~= "" then seen[#seen + 1] = d.subzone end
+    -- (a creature the data does not have at all: nothing to compare, it is all new)
+    local npc = not row.isNew and Addon:GetNPC(d.id)
+    local newZone = false
+    for zoneId in pairs(d.zones or {}) do
+      if npc and Collector.NewZone(npc, zoneId) then newZone = true end
+    end
     lines = {
       Line(L.NPC_ID, d.id),
-      Line(L.LEVEL, LevelText(d.level_min, d.level_max)),
-      Line(L.ATTACK_SPEED, SpeedText(d.mainhand_speed)),
+      DiffLine(L.LEVEL, LevelText(d.level_min, d.level_max), npc and LevelDiffers(npc, d.level_min, d.level_max),
+        npc and DataLevel(npc)),
+      DiffLine(L.ATTACK_SPEED, SpeedText(d.mainhand_speed), npc and Collector.NewSpeed(npc, d.mainhand_speed),
+        npc and SpeedText(npc.speed)),
       Line(L.TYPE, d.creature_type),
-      Line(L.LOCATION, ZoneNames(d.zones)),
+      DiffLine(L.LOCATION, ZoneNames(d.zones), newZone),
       Line(L.COORDINATES, table.concat(seen, " - ")),
+      DiffLine(L.MODEL, d.display_id, npc and not Collector.HasLook(d.id)),
       Line(L.COLLECTED_AT, d.collected and date("%Y-%m-%d %H:%M", d.collected) or nil),
     }
     description = row.isNew and Colors.Highlight(L.NOT_IN_DATA) or L.IN_DATA
@@ -393,20 +446,29 @@ function Window:UpdateCollectedDetails()
     local seen = {}
     if d.x and d.y then seen[#seen + 1] = ("%.1f, %.1f"):format(d.x, d.y) end
     if d.subzone and d.subzone ~= "" then seen[#seen + 1] = d.subzone end
+    local npc = not row.isNew and Addon:GetNPC(d.npc_id)
+    local level = tonumber(d.level)
     lines = {
       Line(L.NPC_ID, d.npc_id),
-      Line(L.LEVEL, d.level),
+      DiffLine(L.LEVEL, d.level, npc and LevelDiffers(npc, level, level), npc and DataLevel(npc)),
       Line(L.PET_LEVEL, d.pet_level),
-      Line(L.ATTACK_SPEED, SpeedText(d.attack_speed)),
-      Line(L.LOCATION, d.ui_map_id and ZoneNames({ [d.ui_map_id] = true }) or nil),
+      DiffLine(L.ATTACK_SPEED, SpeedText(d.attack_speed), npc and SpeedDiffers(npc, d.attack_speed),
+        npc and SpeedText(npc.speed)),
+      DiffLine(L.LOCATION, d.ui_map_id and ZoneNames({ [d.ui_map_id] = true }) or nil,
+        npc and d.ui_map_id and Collector.NewZone(npc, d.ui_map_id)),
       Line(L.COORDINATES, table.concat(seen, " - ")),
       Line(L.COLLECTED_AT, d.tamed and date("%Y-%m-%d %H:%M", d.tamed) or nil),
     }
     local spells = {}
     for _, spell in ipairs(d.spells or {}) do
       local icon = SpellIcon(spell.spell_id)
-      spells[#spells + 1] = ("%s%s%s%s"):format(icon and ("|T" .. icon .. ":16:16:0:0|t ") or "", spell.name or "?",
-        spell.rank and (" " .. spell.rank) or "", spell.passive and (" |cFF9D9D9D(" .. L.PASSIVE .. ")|r") or "")
+      local text = (spell.name or "?") .. (spell.rank and (" " .. spell.rank) or "")
+      -- An ability rank the data does not list for this creature (passives are the family's, not compared).
+      if npc and not spell.passive and spell.spell_id and not Teaches(npc, spell.spell_id) then
+        text = ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, text, L.DATA_LACKS)
+      end
+      spells[#spells + 1] = ("%s%s%s"):format(icon and ("|T" .. icon .. ":16:16:0:0|t ") or "", text,
+        spell.passive and (" |cFF9D9D9D(" .. L.PASSIVE .. ")|r") or "")
     end
     description = #spells > 0 and table.concat(spells, "\n") or Colors.Highlight(L.NO_PET_SPELLS)
     if row.isNew then description = Colors.Highlight(L.NOT_IN_DATA_TAME) .. "\n\n" .. description end
