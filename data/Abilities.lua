@@ -1,10 +1,10 @@
 local _, Addon = ...
 Addon.TameableAbilities = {
   ["arcane-resistance"] = { name = "Arcane Resistance", learned_by = {}, passive = true, ranks = {
-    { spell_id = 24493, rank = 1, pet_level = 20, training_cost = 5 },
-    { spell_id = 24497, rank = 2, pet_level = 30, training_cost = 15 },
-    { spell_id = 24500, rank = 3, pet_level = 40, training_cost = 45 },
-    { spell_id = 24501, rank = 4, pet_level = 50, training_cost = 90 }
+    { spell_id = 24493, rank = 1, pet_level = 20, training_cost = 5, trainer_cost = 440 },
+    { spell_id = 24497, rank = 2, pet_level = 30, training_cost = 15, trainer_cost = 1600 },
+    { spell_id = 24500, rank = 3, pet_level = 40, training_cost = 45, trainer_cost = 3600 },
+    { spell_id = 24501, rank = 4, pet_level = 50, training_cost = 90, trainer_cost = 7200 }
   } },
   ["bite"] = { name = "Bite", learned_by = { "Bat", "Bear", "Boar", "Carrion Bird", "Cat", "Crocolisk", "Fox", "Gorilla", "Hyena", "Raptor", "Spider", "Tallstrider", "Turtle", "Wind Serpent", "Wolf" }, ranks = {
     { spell_id = 17253, rank = 1, pet_level = 1, training_cost = 1, npc_ids = { 1509, 1505, 30, 1688, 1994, 2958, 1138, 250868, 255887, 1131, 1922, 1999, 2959, 266851, 3110 } },
@@ -25,7 +25,7 @@ Addon.TameableAbilities = {
     { spell_id = 27685, rank = 6, pet_level = 60, training_cost = 25, npc_ids = { 16117 } }
   } },
   ["claw"] = { name = "Claw", learned_by = { "Bear", "Bird of Prey", "Carrion Bird", "Cat", "Crab", "Raptor", "Scorpid" }, ranks = {
-    { spell_id = 16827, rank = 1, pet_level = 1, training_cost = 1, npc_ids = { 3124, 250926, 3281, 250937, 1995, 3106, 251115, 1196, 250928 } },
+    { spell_id = 16827, rank = 1, pet_level = 1, training_cost = 1, npc_ids = { 3124, 250926, 3281, 250937, 1995, 3106, 251115, 1196, 2970, 250928 } },
     { spell_id = 16828, rank = 2, pet_level = 8, training_cost = 4, npc_ids = { 822, 1997, 254588, 3108, 3127, 250927, 276189, 1778, 1961, 2163, 5823, 1130, 2232 } },
     { spell_id = 16829, rank = 3, pet_level = 16, training_cost = 7, npc_ids = { 1189, 1216, 6788, 3619, 3812, 1225, 2351, 3809, 4821, 4822 } },
     { spell_id = 16830, rank = 4, pet_level = 24, training_cost = 10, npc_ids = { 3810, 4823, 4696, 4140 } },
@@ -73,43 +73,43 @@ Addon.TameableAbilities = {
     { spell_id = 1265904, rank = 5, pet_level = 60, training_cost = 0 }
   } },
   ["fire-resistance"] = { name = "Fire Resistance", learned_by = {}, passive = true, ranks = {
-    { spell_id = 23992, rank = 1, pet_level = 20, training_cost = 5 },
-    { spell_id = 24439, rank = 2, pet_level = 30, training_cost = 15 },
-    { spell_id = 24444, rank = 3, pet_level = 40, training_cost = 45 },
-    { spell_id = 24445, rank = 4, pet_level = 50, training_cost = 90 }
+    { spell_id = 23992, rank = 1, pet_level = 20, training_cost = 5, trainer_cost = 440 },
+    { spell_id = 24439, rank = 2, pet_level = 30, training_cost = 15, trainer_cost = 1600 },
+    { spell_id = 24444, rank = 3, pet_level = 40, training_cost = 45, trainer_cost = 3600 },
+    { spell_id = 24445, rank = 4, pet_level = 50, training_cost = 90, trainer_cost = 7200 }
   } },
   ["frost-resistance"] = { name = "Frost Resistance", learned_by = {}, passive = true, ranks = {
-    { spell_id = 24446, rank = 1, pet_level = 20, training_cost = 5 },
-    { spell_id = 24447, rank = 2, pet_level = 30, training_cost = 15 },
-    { spell_id = 24448, rank = 3, pet_level = 40, training_cost = 45 },
-    { spell_id = 24449, rank = 4, pet_level = 50, training_cost = 90 }
+    { spell_id = 24446, rank = 1, pet_level = 20, training_cost = 5, trainer_cost = 440 },
+    { spell_id = 24447, rank = 2, pet_level = 30, training_cost = 15, trainer_cost = 1600 },
+    { spell_id = 24448, rank = 3, pet_level = 40, training_cost = 45, trainer_cost = 3600 },
+    { spell_id = 24449, rank = 4, pet_level = 50, training_cost = 90, trainer_cost = 7200 }
   } },
   ["furious-howl"] = { name = "Furious Howl", learned_by = { "Wolf" }, unique = true, ranks = {
-    { spell_id = 24604, rank = 1, pet_level = 10, training_cost = 10, npc_ids = { 1765, 833, 10644 } },
+    { spell_id = 24604, rank = 1, pet_level = 10, training_cost = 10, npc_ids = { 1765, 833, 274300, 10644 } },
     { spell_id = 24605, rank = 2, pet_level = 24, training_cost = 15, npc_ids = { 1258, 3825, 2729, 2925 } },
     { spell_id = 24603, rank = 3, pet_level = 40, training_cost = 20, npc_ids = { 5286, 5356, 2924, 5287, 8959, 14339 } },
     { spell_id = 24597, rank = 4, pet_level = 56, training_cost = 25, npc_ids = { 9696 } }
   } },
   ["great-stamina"] = { name = "Great Stamina", learned_by = {}, passive = true, ranks = {
-    { spell_id = 4187, rank = 1, pet_level = 1, training_cost = 5 },
-    { spell_id = 4188, rank = 2, pet_level = 12, training_cost = 10 },
-    { spell_id = 4189, rank = 3, pet_level = 18, training_cost = 15 },
-    { spell_id = 4190, rank = 4, pet_level = 24, training_cost = 25 },
-    { spell_id = 4191, rank = 5, pet_level = 30, training_cost = 50 },
-    { spell_id = 4192, rank = 6, pet_level = 36, training_cost = 75 },
-    { spell_id = 4193, rank = 7, pet_level = 42, training_cost = 100 },
-    { spell_id = 4194, rank = 8, pet_level = 48, training_cost = 125 },
-    { spell_id = 5041, rank = 9, pet_level = 54, training_cost = 150 },
-    { spell_id = 5042, rank = 10, pet_level = 60, training_cost = 185 }
+    { spell_id = 4187, rank = 1, pet_level = 1, training_cost = 5, trainer_cost = 10 },
+    { spell_id = 4188, rank = 2, pet_level = 12, training_cost = 10, trainer_cost = 120 },
+    { spell_id = 4189, rank = 3, pet_level = 18, training_cost = 15, trainer_cost = 400 },
+    { spell_id = 4190, rank = 4, pet_level = 24, training_cost = 25, trainer_cost = 1400 },
+    { spell_id = 4191, rank = 5, pet_level = 30, training_cost = 50, trainer_cost = 1600 },
+    { spell_id = 4192, rank = 6, pet_level = 36, training_cost = 75, trainer_cost = 2800 },
+    { spell_id = 4193, rank = 7, pet_level = 42, training_cost = 100, trainer_cost = 4800 },
+    { spell_id = 4194, rank = 8, pet_level = 48, training_cost = 125, trainer_cost = 6400 },
+    { spell_id = 5041, rank = 9, pet_level = 54, training_cost = 150, trainer_cost = 8400 },
+    { spell_id = 5042, rank = 10, pet_level = 60, training_cost = 185, trainer_cost = 10000 }
   } },
   ["growl"] = { name = "Growl", learned_by = {}, ranks = {
     { spell_id = 2649, rank = 1, pet_level = 1, training_cost = 0 },
     { spell_id = 14916, rank = 2, pet_level = 10, training_cost = 0 },
-    { spell_id = 14917, rank = 3, pet_level = 20, training_cost = 0 },
-    { spell_id = 14918, rank = 4, pet_level = 30, training_cost = 0 },
-    { spell_id = 14919, rank = 5, pet_level = 40, training_cost = 0 },
-    { spell_id = 14920, rank = 6, pet_level = 50, training_cost = 0 },
-    { spell_id = 14921, rank = 7, pet_level = 60, training_cost = 0 }
+    { spell_id = 14917, rank = 3, pet_level = 20, training_cost = 0, trainer_cost = 440 },
+    { spell_id = 14918, rank = 4, pet_level = 30, training_cost = 0, trainer_cost = 1600 },
+    { spell_id = 14919, rank = 5, pet_level = 40, training_cost = 0, trainer_cost = 3600 },
+    { spell_id = 14920, rank = 6, pet_level = 50, training_cost = 0, trainer_cost = 7200 },
+    { spell_id = 14921, rank = 7, pet_level = 60, training_cost = 0, trainer_cost = 10000 }
   } },
   ["lightning-breath"] = { name = "Lightning Breath", learned_by = { "Wind Serpent" }, unique = true, ranks = {
     { spell_id = 24844, rank = 1, pet_level = 1, training_cost = 1 },
@@ -127,25 +127,25 @@ Addon.TameableAbilities = {
     { spell_id = 1265058, rank = 5, pet_level = 50, training_cost = 0 }
   } },
   ["natural-armor"] = { name = "Natural Armor", learned_by = {}, passive = true, ranks = {
-    { spell_id = 24545, rank = 1, pet_level = 1, training_cost = 1 },
-    { spell_id = 24549, rank = 2, pet_level = 12, training_cost = 5 },
-    { spell_id = 24550, rank = 3, pet_level = 18, training_cost = 10 },
-    { spell_id = 24551, rank = 4, pet_level = 24, training_cost = 15 },
-    { spell_id = 24552, rank = 5, pet_level = 30, training_cost = 25 },
-    { spell_id = 24553, rank = 6, pet_level = 36, training_cost = 50 },
-    { spell_id = 24554, rank = 7, pet_level = 42, training_cost = 75 },
-    { spell_id = 24555, rank = 8, pet_level = 48, training_cost = 100 },
-    { spell_id = 24629, rank = 9, pet_level = 54, training_cost = 125 },
-    { spell_id = 24630, rank = 10, pet_level = 60, training_cost = 150 }
+    { spell_id = 24545, rank = 1, pet_level = 1, training_cost = 1, trainer_cost = 10 },
+    { spell_id = 24549, rank = 2, pet_level = 12, training_cost = 5, trainer_cost = 120 },
+    { spell_id = 24550, rank = 3, pet_level = 18, training_cost = 10, trainer_cost = 400 },
+    { spell_id = 24551, rank = 4, pet_level = 24, training_cost = 15, trainer_cost = 1400 },
+    { spell_id = 24552, rank = 5, pet_level = 30, training_cost = 25, trainer_cost = 1600 },
+    { spell_id = 24553, rank = 6, pet_level = 36, training_cost = 50, trainer_cost = 2800 },
+    { spell_id = 24554, rank = 7, pet_level = 42, training_cost = 75, trainer_cost = 4800 },
+    { spell_id = 24555, rank = 8, pet_level = 48, training_cost = 100, trainer_cost = 6400 },
+    { spell_id = 24629, rank = 9, pet_level = 54, training_cost = 125, trainer_cost = 8400 },
+    { spell_id = 24630, rank = 10, pet_level = 60, training_cost = 150, trainer_cost = 10000 }
   } },
   ["nature-resistance"] = { name = "Nature Resistance", learned_by = {}, passive = true, ranks = {
-    { spell_id = 24492, rank = 1, pet_level = 20, training_cost = 5 },
-    { spell_id = 24502, rank = 2, pet_level = 30, training_cost = 15 },
-    { spell_id = 24503, rank = 3, pet_level = 40, training_cost = 45 },
-    { spell_id = 24504, rank = 4, pet_level = 50, training_cost = 90 }
+    { spell_id = 24492, rank = 1, pet_level = 20, training_cost = 5, trainer_cost = 440 },
+    { spell_id = 24502, rank = 2, pet_level = 30, training_cost = 15, trainer_cost = 1600 },
+    { spell_id = 24503, rank = 3, pet_level = 40, training_cost = 45, trainer_cost = 3600 },
+    { spell_id = 24504, rank = 4, pet_level = 50, training_cost = 90, trainer_cost = 7200 }
   } },
   ["pinch"] = { name = "Pinch", learned_by = { "Crab" }, unique = true, ranks = {
-    { spell_id = 1264735, rank = 1, pet_level = 12, training_cost = 0 },
+    { spell_id = 1264735, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 1216 } },
     { spell_id = 1264736, rank = 2, pet_level = 24, training_cost = 0, npc_ids = { 12347 } },
     { spell_id = 1264739, rank = 3, pet_level = 36, training_cost = 0 },
     { spell_id = 1264741, rank = 4, pet_level = 48, training_cost = 0 },
@@ -170,10 +170,10 @@ Addon.TameableAbilities = {
     { spell_id = 24587, rank = 4, pet_level = 56, training_cost = 25, npc_ids = { 9698, 11736, 14476, 11737 } }
   } },
   ["shadow-resistance"] = { name = "Shadow Resistance", learned_by = {}, passive = true, ranks = {
-    { spell_id = 24488, rank = 1, pet_level = 20, training_cost = 5 },
-    { spell_id = 24505, rank = 2, pet_level = 30, training_cost = 15 },
-    { spell_id = 24506, rank = 3, pet_level = 40, training_cost = 45 },
-    { spell_id = 24507, rank = 4, pet_level = 40, training_cost = 90 }
+    { spell_id = 24488, rank = 1, pet_level = 20, training_cost = 5, trainer_cost = 440 },
+    { spell_id = 24505, rank = 2, pet_level = 30, training_cost = 15, trainer_cost = 1600 },
+    { spell_id = 24506, rank = 3, pet_level = 40, training_cost = 45, trainer_cost = 3600 },
+    { spell_id = 24507, rank = 4, pet_level = 40, training_cost = 90, trainer_cost = 7200 }
   } },
   ["shell-shield"] = { name = "Shell Shield", learned_by = { "Turtle" }, unique = true, ranks = {
     { spell_id = 26064, rank = 1, pet_level = 20, training_cost = 15, npc_ids = { 3653, 4824, 4887, 4825, 2408, 14223, 8213 } }

@@ -68,7 +68,7 @@ function Addon:AbilityOfSpell(spellId)
       for index, rank in ipairs(ability.ranks) do
         if rank.spell_id then
           bySpell[rank.spell_id] = { name = ability.name, rank = rank.rank or index, pet_level = rank.pet_level,
-            training_cost = rank.training_cost, attack_speed = ability.attack_speed }
+            training_cost = rank.training_cost, trainer_cost = rank.trainer_cost, attack_speed = ability.attack_speed }
         end
       end
     end

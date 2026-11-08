@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.60.1.39] - 2026-11-08
+
+- Collect Mode clears old tames too: each time you log in or reload, a tame that tells TrueshotLodge nothing new any more
+  (the creature's tame, attack speed and abilities are all already known) is dropped from your collected data, as old
+  sightings already were, so your next upload holds only what's new. Tames other hunters share with you are checked
+  the same way as they arrive
+- Pet trainers and Beast Training are now collected only when they add something: a trainer TrueshotLodge doesn't
+  list, or an ability whose rank or price differs from what it has (your reputation discount is allowed for). The
+  rest are no longer recorded, shared or uploaded, and are cleared from your collected data when you log in or reload
+- A new pet's abilities are now the ones it came with: an ability you teach it right after taming (Growl, say) is no
+  longer recorded as one the creature comes with
+- Collect Mode only records a creature's zone when it is close to you (within about 28 yards). A creature across a
+  zone border, such as a Durotar raptor seen from the Barrens side of the river, is no longer credited to the zone you
+  stand in
+- A wild creature's attack speed now only counts when TrueshotLodge has none for it yet. A creature often swings
+  slower than its pet will (in a fight it can be slowed), so only a tame changes a speed we already have
+- Collected Data highlights more of what a tame brings: a Verified Tame line when it would be the creature's first
+  tame, name the hunter of an anonymous one or be an earlier one, and its attack speed when no tame has confirmed it yet
+- Data since 1.60.1.38:
+  - 11 new tames (180 in all)
+  - 0 new creatures (765 in all)
+  - 0 new sightings
+  - 3 new ability tames
+  - 8 new attack speeds
+  - 1 new level
+  - 3 new zones
+  - 0 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 122 of 765 creatures have no known attack speed, 72 no level and 54 no zone (147 have no map points)
+
 ## [1.60.1.38] - 2026-11-07
 
 - Collect Mode and Collected Data:

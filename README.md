@@ -187,7 +187,7 @@ Turn on Collect Mode, go hunting, and upload your `TrueshotLodge.lua` at
 [TrueshotLodge.com](https://trueshotlodge.com/collector). With Send Name on, the beasts you tame carry your name onto
 the website's Tamed badge.
 
-## Thank you!
+## Thank you
 
 - TrueshotLodge is by Hunters, for hunters.
 - Found a creature, rank or trainer that is missing or wrong? Turn on Collect Mode, go see it in game, and it is

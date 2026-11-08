@@ -164,6 +164,10 @@ L["NOT_IN_DATA_SHORT"] = "Not in the data yet"
 -- After a highlighted value in the Collected Data details: what the addon's data has instead, or that it has none.
 L["DATA_HAS"] = "addon: %s"
 L["DATA_LACKS"] = "new"
+L["DATA_CONFIRMS"] = "confirms it: no tame has yet" -- an attack speed the data has, which no tame has confirmed
+L["FIRST_TAME"] = "the first" -- a tame of a creature the data has no tame of yet
+L["NAMES_TAMER"] = "names the tamer" -- a named tame of a creature whose recorded tame is anonymous
+L["EARLIER_TAME"] = "earlier" -- a tame from before the day the data's tame was recorded
 L["MODEL"] = "Model"
 L["IN_DATA_SHORT"] = "In the data, with something new"
 L["NOT_IN_DATA_TAME"] = "Not in the addon's data yet: upload this tame, it adds a new tameable beast and what it comes with."

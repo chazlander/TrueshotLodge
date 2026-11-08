@@ -698,7 +698,7 @@ local MERGE = {
       end
     end
     local family, petFamily = FamilyName(Text(f[3])), FamilyName(Text(f[8]))
-    table.insert(DB.collected.tames, {
+    local tame = {
       npc_id = id, name = Addon:NPCName(id) or Text(f[2]), family = family, family_id = Addon:FamilyId(family),
       level = Number(f[4]),
       classification = Text(f[5]), creature_speed = Number(f[6]), pet_level = Number(f[7]), pet_family = petFamily,
@@ -707,7 +707,11 @@ local MERGE = {
       -- The tamer asked for credit (Send Name): their name as the game reports the sender, never one in the message.
       -- A tame travels one hop, so its sender is the hunter who tamed it.
       tamed_by = f[14] == "1" and sender or nil,
-    })
+    }
+    -- A tame that tells the addon's data nothing new (already a verified tame, the same attack speed, the abilities
+    -- already listed) is not kept: it would only be uploaded and reviewed for nothing, and /reload would drop it anyway.
+    if not Addon:GetModule("Collector").TameIsNews(tame) then return end
+    table.insert(DB.collected.tames, tame)
     return true
   end,
   R = function(f, sender)
@@ -755,8 +759,11 @@ local MERGE = {
     local book = DB.collected.beast_training
     local key = name .. "|" .. tostring(rank or "")
     if book[key] then return end -- yours (or already shared)
-    book[key] = { name = name, rank = rank, spell_id = Number(f[1]), cost = Number(f[4]), required_level = Number(f[5]),
+    local entry = { name = name, rank = rank, spell_id = Number(f[1]), cost = Number(f[4]), required_level = Number(f[5]),
       category = Text(f[6]), last_seen = time(), shared_by = sender }
+    -- An ability the data already has at this rank is not kept (see the collector's trainingIsNews).
+    if not Addon:GetModule("Collector").TrainingIsNews(entry) then return end
+    book[key] = entry
     return true
   end,
 }

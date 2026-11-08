@@ -23,7 +23,7 @@ read_globals = {
   "date", "time", "strsplit", "tinsert", "wipe", "issecretvalue",
 
   -- C_ namespaces
-  "C_AddOns", "C_ChatInfo", "C_CreatureInfo", "C_Map", "C_MerchantFrame", "C_NamePlate", "C_Spell", "C_SpellBook",
+  "CheckInteractDistance", "C_AddOns", "C_ChatInfo", "C_CreatureInfo", "C_Map", "C_MerchantFrame", "C_NamePlate", "C_Spell", "C_SpellBook",
   "C_StableInfo", "C_Timer", "C_TooltipInfo", "C_Trainer", "C_XMLUtil",
 
   -- Frames, mixins and UI utilities

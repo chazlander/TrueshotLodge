@@ -42,6 +42,16 @@ local function getZoneMapId()
   return mapId
 end
 
+-- Whether a creature is close enough for the zone you are in to be its zone too: within about 28 yards (the game's
+-- Follow range). Nameplates show creatures up to about 40 yards away, so one across a zone border (Durotar's raptors
+-- seen from the Barrens bank of the Southfury, say) would otherwise be credited to the zone you stand in. When the
+-- game will not say (it can refuse in combat), it is not near: a later sighting closer by records the zone.
+local function nearYou(unit)
+  local ok, near = pcall(CheckInteractDistance, unit, 4)
+  near = ok and Addon:Plain(near)
+  return near ~= nil and near ~= false
+end
+
 -- The player's position on the zone's map (getZoneMapId: the map the website's creature map points are on), not on a
 -- cave's or a city district's own map. For a tame: Tame Beast's short range puts the hunter next to the beast, so it
 -- is close to where the beast was.
@@ -129,11 +139,11 @@ local function newZone(npc, mapId)
 end
 Collector.NewZone = newZone
 
--- Whether a wild attack speed is news: the data has none, or a different one, unless the data's speed was read from a
--- tame (speed_tamed), which wild sightings do not change (a tamed pet attacks at its own speed, not the creature's).
+-- Whether a wild attack speed is news: only when the data has no speed at all. A creature's own swing is often not its
+-- pet's (read about a fifth slower when it is slowed in a fight, and unrelated for Forever's new creatures), so the
+-- website lets a wild sighting fill an empty speed but never change one; only a tame does.
 local function newSpeed(npc, speed)
-  if not speed or npc.speed_tamed then return false end
-  return not npc.speed or math.abs(speed - npc.speed) > 0.05
+  return speed ~= nil and not npc.speed
 end
 Collector.NewSpeed = newSpeed
 
@@ -205,17 +215,126 @@ local function tameCheckIsNews(id, result)
   return listed ~= (result == TAMEABLE)
 end
 
--- At load: drops the wild sightings the addon's data now holds completely (inData), and the Tame Beast verdicts it now
--- agrees with. A new release brings in what players found, and those records would only be uploaded and reviewed again
--- for nothing. Tames (each one verifies its creature), trainers and Beast Training (their prices are not in the data)
--- are always kept. Returns how many went.
+-- Whether a tame still tells the website something (as its upload page compares a tame): the creature is not in the
+-- data, or is listed as not tameable, or has no tame recorded yet; the tame would name the hunter of an anonymous one,
+-- or is from an earlier day than the one recorded; its attack speed is not yet confirmed by a tame, or differs; or its
+-- pet came with an ability rank the data does not list for the creature. When in doubt, it is kept.
+local function tameIsNews(t)
+  local npc = Addon:GetNPC(t.npc_id)
+  if not npc or npc.not_tameable or not npc.tamed then return true end
+  if t.tamed_by and not npc.tamed_by then return true end
+  if type(t.tamed) == "number" and date("%Y-%m-%d", t.tamed) < npc.tamed then return true end
+  if t.attack_speed and (not npc.speed_tamed or not npc.speed or math.abs(t.attack_speed - npc.speed) > 0.05) then
+    return true
+  end
+  for _, spell in ipairs(t.spells or {}) do
+    if not spell.passive and spell.spell_id then
+      local listed = false
+      for _, entry in ipairs(npc.taught or {}) do
+        local rank = entry.ability.ranks[entry.rankIndex]
+        if rank and rank.spell_id == spell.spell_id then listed = true end
+      end
+      if not listed then return true end
+    end
+  end
+  return false
+end
+Collector.TameIsNews = tameIsNews -- (data sharing leaves out received tames that tell the data nothing new, too)
+
+-- The discount on a trainer's prices by your standing with the trainer (UnitReaction: 4 Neutral ... 8 Exalted), in
+-- percent: the same table the website uses (CollectorCommit::REPUTATION_DISCOUNTS).
+local DISCOUNTS = { [4] = 0, [5] = 5, [6] = 10, [7] = 15, [8] = 20 }
+
+-- Whether a price paid is the data's full price less the discount of your standing (any standing's when it is not
+-- known, as for a shared trainer), to a copper of rounding. A price the data does not have never matches.
+local function priceMatches(paid, full, reaction)
+  if not full then return false end
+  local discounts = DISCOUNTS[reaction or 0] and { DISCOUNTS[reaction] } or { 0, 5, 10, 15, 20 }
+  for _, discount in ipairs(discounts) do
+    if math.abs(math.floor(full * (100 - discount) / 100 + 0.5) - paid) <= 1 then return true end
+  end
+  return false
+end
+
+-- The number in a rank's text ("Rank 3" -> 3), or nil.
+local function rankNumber(text)
+  return tonumber(tostring(text or ""):match("%d+"))
+end
+
+-- Whether a trainer window entry (a pet trainer's, or Beast Training's) tells the data something: a spell it does not
+-- have, another rank, or (a pet trainer's, `price`) a price that is not the data's. An entry without a spell id can be
+-- committed to nothing.
+local function serviceIsNews(service, price, reaction)
+  if not service.spell_id then return false end
+  local ability = Addon:AbilityOfSpell(service.spell_id)
+  if not ability then return true end
+  local rank = rankNumber(service.rank)
+  if rank and ability.rank and rank ~= ability.rank then return true end
+  return price and service.cost ~= nil and not priceMatches(service.cost, ability.trainer_cost, reaction) or false
+end
+
+-- Whether a recorded pet trainer tells the website something: a trainer the data does not have, another English
+-- title, or one of its pet abilities differing (serviceIsNews), as the website's upload page compares them.
+local function trainerIsNews(trainer)
+  local known = Addon.TameableTrainers and Addon.TameableTrainers[tonumber(trainer.id) or 0]
+  if not known then return true end
+  local title = trainer.title
+  if type(title) == "string" and title:lower():find("pet trainer", 1, true) and known.tag and title ~= known.tag then
+    return true
+  end
+  for _, service in ipairs(trainer.services or {}) do
+    if service.pet_ability and serviceIsNews(service, true, trainer.reaction) then return true end
+  end
+  return false
+end
+
+-- Whether a Beast Training entry tells the website something (its number is not compared: at a stable master it is
+-- training points).
+local function trainingIsNews(entry)
+  return serviceIsNews(entry, false)
+end
+Collector.TrainingIsNews = trainingIsNews -- (data sharing leaves out received entries the data already has, too)
+
+-- At load (each login and /reload): drops the records the addon's data now holds, which would only be uploaded and
+-- reviewed again for nothing (a new release brings in what players found): the wild sightings it holds completely
+-- (inData), the Tame Beast verdicts it agrees with, the tames that tell it nothing new (tameIsNews), and the pet
+-- trainers and Beast Training entries it agrees with (trainerIsNews, trainingIsNews). Returns how many went.
 function Collector:PurgeKnown()
   local removed = 0
+  local tames = DB.collected and DB.collected.tames
+  if type(tames) == "table" then
+    -- (a list: walked backwards, so removing one does not skip the next)
+    for i = #tames, 1, -1 do
+      local t = tames[i]
+      if type(t) == "table" and t.npc_id and not tameIsNews(t) then
+        table.remove(tames, i)
+        removed = removed + 1
+      end
+    end
+  end
   local checks = DB.collected and DB.collected.tame_checks
   if type(checks) == "table" then
     for key, check in pairs(checks) do
       if type(check) == "table" and not tameCheckIsNews(check.npc_id or key, check.result) then
         checks[key] = nil
+        removed = removed + 1
+      end
+    end
+  end
+  local trainers = DB.collected and DB.collected.trainers
+  if type(trainers) == "table" then
+    for key, trainer in pairs(trainers) do
+      if type(trainer) == "table" and trainer.id and not trainerIsNews(trainer) then
+        trainers[key] = nil
+        removed = removed + 1
+      end
+    end
+  end
+  local book = DB.collected and DB.collected.beast_training
+  if type(book) == "table" then
+    for key, entry in pairs(book) do
+      if type(entry) == "table" and not trainingIsNews(entry) then
+        book[key] = nil
         removed = removed + 1
       end
     end
@@ -229,7 +348,7 @@ function Collector:PurgeKnown()
     end
   end
   if removed > 0 then
-    Addon:Debug("collector:", removed, "sighting(s) and Tame Beast verdict(s) the addon's data now holds were removed from the collected data")
+    Addon:Debug("collector:", removed, "sighting(s), tame(s), Tame Beast verdict(s), trainer(s) and Beast Training entries the addon's data now holds were removed from the collected data")
   end
   return removed
 end
@@ -288,7 +407,7 @@ function Collector:Record(unit)
         updates[#updates + 1] = "highest level " .. level
       end
     end
-    local zoneId = getZoneMapId()
+    local zoneId = nearYou(unit) and getZoneMapId() -- (only from close by: see nearYou)
     if zoneId then
       c.zones = c.zones or {}
       if not c.zones[zoneId] then
@@ -343,7 +462,7 @@ function Collector:Record(unit)
   local Plain = function(value) return Addon:Plain(value) end
   local level = Plain(UnitLevel(unit))
   if not (level and level > 0) then level = nil end
-  local zoneId = getZoneMapId()
+  local zoneId = nearYou(unit) and getZoneMapId() or nil -- (only from close by: see nearYou)
 
   local mainhand, offhand = UnitAttackSpeed(unit)
   mainhand, offhand = Plain(mainhand), Plain(offhand)
@@ -375,7 +494,7 @@ function Collector:Record(unit)
     c.map_id = mapId
     c.x = x
     c.y = y
-    c.ui_map_id = zoneId -- Zone of this first position.
+    c.ui_map_id = zoneId -- Zone of this first position (nil when the creature was too far off to tell).
     c.subzone = GetSubZoneText()
   end
 
@@ -530,6 +649,13 @@ function Collector:RecordTrainer()
   end
   trainer.services = entries
   trainer.shared_by = nil -- seen yourself now
+  -- A trainer the data already has, with the same title, prices and ranks, tells the website nothing: not kept, and
+  -- not shared.
+  if not trainerIsNews(trainer) then
+    trainers[id] = nil
+    changed()
+    return Addon:Debug("collector: not recording", trainer.name, "(" .. id .. "): the data already has it as it is")
+  end
   share("trainer", trainer)
   for _, service in ipairs(entries) do
     share("service", {
@@ -599,7 +725,6 @@ function Collector:RecordBeastTraining()
     local rank = service.rank
     local key = service.name .. "|" .. tostring(rank or "")
     local entry = book[key] or {}
-    book[key] = entry
     entry.families = nil -- Trainer purchases are the same for every family.
 
     entry.name = service.name
@@ -610,7 +735,13 @@ function Collector:RecordBeastTraining()
     entry.required_level = service.level_req
     entry.last_seen = now
     entry.shared_by = nil -- seen yourself now
-    share("training", entry)
+    -- An ability the data already has at this rank tells the website nothing: not kept, and not shared.
+    if trainingIsNews(entry) then
+      book[key] = entry
+      share("training", entry)
+    else
+      book[key] = nil
+    end
 
   end
 
@@ -830,9 +961,26 @@ function Collector:TameStopped(failed)
 end
 
 -- Reads the tamed pet into its record, if it is still the pet that was tamed.
+-- The tames whose abilities are settled (entry -> true): what the pet came with is its first spellbook that has
+-- anything in it. Later reads only update its level and attack speed, since anything new by then is what the hunter
+-- taught it. Opening Beast Training (the only way to teach a pet) while a tame is still being read settles it too.
+local spellsSettled = setmetatable({}, { __mode = "k" })
+local reading = setmetatable({}, { __mode = "k" }) -- the tames still being read
+
+function Collector:SettleTameSpells()
+  for entry in pairs(reading) do
+    if not spellsSettled[entry] then
+      spellsSettled[entry] = true
+      Addon:Debug("collector: Beast Training opened while reading the tame of", entry.name, "- its abilities are settled")
+    end
+  end
+end
+
 function Collector:ReadTamedPet(entry, last)
+  if last then reading[entry] = nil end
   if not (UnitExists("pet") and UnitGUID("pet") == entry.pet_guid) then return end
-  local spells = readPetSpellbook()
+  local spells = spellsSettled[entry] and (entry.spells or {}) or readPetSpellbook()
+  if #spells > 0 then spellsSettled[entry] = true end
   local before = entry.spells and #entry.spells or -1
   entry.pet_level = Addon:Plain(UnitLevel("pet")) or entry.pet_level
   local petFamily, petFamilyId, petFamilyText = Addon:UnitFamily("pet")
@@ -891,6 +1039,7 @@ function Collector:PetChanged()
   Collector:NotifyNew("tame", entry)
   Addon:Debug("collector: tame of", tame.name, "(" .. tame.npc_id .. ") confirmed - reading the new pet")
   changed()
+  reading[entry] = true
   for i, delay in ipairs(READ_DELAYS) do
     C_Timer.After(delay, function() safely("tame", Collector.ReadTamedPet, Collector, entry, i == #READ_DELAYS) end)
   end
@@ -1082,6 +1231,7 @@ frame:SetScript("OnEvent", function(_, event, unit, castGUID, spellId)
   elseif event == "PLAYER_TARGET_CHANGED" then
     safely("collect", Collector.Record, Collector, "target")
   elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
+    safely("tame", Collector.SettleTameSpells, Collector) -- (before anything can be taught from it)
     schedule("trainer", Collector.RecordBeastTraining)
     schedule("trainer_npc", Collector.RecordTrainer)
   elseif event == "MERCHANT_SHOW" then

@@ -448,12 +448,34 @@ function Window:UpdateCollectedDetails()
     if d.subzone and d.subzone ~= "" then seen[#seen + 1] = d.subzone end
     local npc = not row.isNew and Addon:GetNPC(d.npc_id)
     local level = tonumber(d.level)
+    -- The attack speed: a different one (the tame's wins), or the same one no tame has confirmed yet (this one does).
+    local speedLine
+    if npc and SpeedDiffers(npc, d.attack_speed) then
+      speedLine = DiffLine(L.ATTACK_SPEED, SpeedText(d.attack_speed), true, SpeedText(npc.speed))
+    elseif npc and d.attack_speed and not npc.speed_tamed then
+      speedLine = Line(L.ATTACK_SPEED, ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, SpeedText(d.attack_speed),
+        L.DATA_CONFIRMS))
+    else
+      speedLine = Line(L.ATTACK_SPEED, SpeedText(d.attack_speed))
+    end
+    -- The verified tame (the site's Tamed badge), as the website's upload page weighs it: the creature's first, one that
+    -- names the hunter of an anonymous one, or one from an earlier day.
+    local tameNote
+    local day = type(d.tamed) == "number" and date("%Y-%m-%d", d.tamed) or nil
+    if npc and not npc.tamed then
+      tameNote = L.FIRST_TAME
+    elseif npc and d.tamed_by and not npc.tamed_by then
+      tameNote = L.NAMES_TAMER
+    elseif npc and day and day < npc.tamed then
+      tameNote = L.EARLIER_TAME
+    end
+    local tameText = d.tamed_by and ("%s, %s"):format(day or "?", d.tamed_by) or day
     lines = {
       Line(L.NPC_ID, d.npc_id),
       DiffLine(L.LEVEL, d.level, npc and LevelDiffers(npc, level, level), npc and DataLevel(npc)),
       Line(L.PET_LEVEL, d.pet_level),
-      DiffLine(L.ATTACK_SPEED, SpeedText(d.attack_speed), npc and SpeedDiffers(npc, d.attack_speed),
-        npc and SpeedText(npc.speed)),
+      speedLine,
+      tameNote and Line(L.VERIFIED, ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, tameText or "?", tameNote)) or nil,
       DiffLine(L.LOCATION, d.ui_map_id and ZoneNames({ [d.ui_map_id] = true }) or nil,
         npc and d.ui_map_id and Collector.NewZone(npc, d.ui_map_id)),
       Line(L.COORDINATES, table.concat(seen, " - ")),
