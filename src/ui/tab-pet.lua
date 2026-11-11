@@ -183,14 +183,9 @@ function Window:CreatePetProfile(frame)
   map:SetSize(MAP_WIDTH, MAP_HEIGHT)
   map:SetPoint("BOTTOMLEFT", 10, 10)
   map:SetMotionScriptsWhileDisabled(true) -- the greyed-out button still says why
-  map:SetScript("OnClick", function(button) PinHelper:ShowOnMap(button.npc) end)
-  map:SetScript("OnEnter", function(button)
-    if not button.hint then return end
-    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-    GameTooltip:SetText(button:GetText(), 1, 1, 1)
-    GameTooltip:AddLine(button.hint, nil, nil, nil, true)
-    GameTooltip:Show()
-  end)
+  map:RegisterForClicks("LeftButtonUp", "RightButtonUp") -- (right-click clears the pins)
+  map:SetScript("OnClick", function(button, mouseButton) PinHelper:MapClick(button.npc, mouseButton) end)
+  map:SetScript("OnEnter", function(button) PinHelper:ShowMapTooltip(button) end)
   map:SetScript("OnLeave", GameTooltip_Hide)
   self.profileMap = map
 end

@@ -2,13 +2,11 @@ local _, Addon = ...
 local DB = Addon:GetModule("DB")
 local Training = Addon:GetModule("Training")
 
--- Remembers which ability ranks are in the hunter's Beast Training window,
--- whether or not the current pet can learn them. On this client Beast Training
--- is the class trainer window, so it is read with the trainer API. The list is
--- saved per character in `DB.char.trained` / `trained_ids` whenever the window
--- is opened. Ranks the spellbook says the character knows are saved in
--- `DB.char.known_ids`. Both only ever grow, so what was known stays known
--- between sessions even when the pet is away or the window is closed.
+-- Remembers which ability ranks the hunter has learned: the ones listed in their Beast Training window. A rank only
+-- appears there once it is learned, and a pet's own spellbook is no guide (a beast arrives knowing its abilities before
+-- the hunter has learned them). On this client Beast Training is the class trainer window, so it is read with the
+-- trainer API. The list is saved per character in `DB.char.trained` / `trained_ids` whenever the window is opened. It
+-- only ever grows, because the window shows less for a pet that can't use a rank.
 
 local function key(name, rank)
   return tostring(name):lower() .. "|" .. (tonumber(tostring(rank or ""):match("%d+")) or 1)
@@ -147,16 +145,22 @@ function Training:ReadServices(petOnly)
   return list
 end
 
+-- Whether the open trainer window is Beast Training: it opens with no npc at all (at most a targeted beast), where a pet
+-- trainer or a stable master is an npc of its own.
+local function isBeastTraining()
+  return not UnitExists("npc") or Addon:UnitIsBeast("npc") or Addon:Plain((UnitCreatureFamily("npc"))) ~= nil
+end
+
 local function record()
   if not DB.char then return end
 
-  -- Ranks are tracked by spell id when the client gives one, otherwise by
-  -- name and rank text. Only the entries the window marks as learned ("used")
-  -- count: a trainer lists every rank, learned or not. (This client gives no
-  -- status at all, so nothing is marked here; the pet's spellbook tells.)
+  -- Ranks are tracked by spell id when the client gives one, otherwise by name and rank text. Everything listed in
+  -- Beast Training is learned. A trainer lists every rank, learned or not, so there only the entries it marks as
+  -- learned ("used") count.
+  local allLearned = isBeastTraining()
   local trained, trainedIds, count = {}, {}, 0
   for _, service in ipairs(Training:ReadServices(true)) do
-    if service.category == "used" then
+    if allLearned or service.category == "used" then
       if service.spell_id then
         trainedIds[service.spell_id] = true
       else
@@ -176,50 +180,9 @@ local function record()
   Addon:Debug("training: saved", count, "ranks")
 end
 
--- Spell ids the game said were not known, so the window and tooltips don't ask again (each ask can be
--- several protected calls) until the spellbook, the pet or the trainer list changes.
-local notKnown = {}
-
--- Saves every rank the game says the character knows right now.
-function Training:SyncKnown()
-  if not DB.char then return end
-  local known = DB.char.known_ids
-  if not known then
-    known = {}
-    DB.char.known_ids = known
-  end
-  for _, ability in pairs(Addon.TameableAbilities) do
-    for _, rank in ipairs(ability.ranks) do
-      if rank.spell_id and not known[rank.spell_id] and Addon:IsSpellKnown(rank.spell_id) then
-        known[rank.spell_id] = true
-      end
-    end
-  end
-end
-
--- Spellbook events come in bursts, so sync once things settle.
-local syncPending = false
-local function scheduleSync()
-  wipe(notKnown) -- What is known may have changed.
-  if syncPending then return end
-  syncPending = true
-  C_Timer.After(2, function()
-    syncPending = false
-    local ok, err = pcall(Training.SyncKnown, Training)
-    if not ok then Addon:Debug("training sync error:", err) end
-  end)
-end
-
-local syncFrame = CreateFrame("Frame")
-syncFrame:SetScript("OnEvent", scheduleSync)
-for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "SPELLS_CHANGED", "UNIT_PET", "PET_BAR_UPDATE" }) do
-  pcall(syncFrame.RegisterEvent, syncFrame, event)
-end
-
 local frame = CreateFrame("Frame")
 frame:SetScript("OnEvent", function(_, event)
   Addon:Debug("training: event", event)
-  wipe(notKnown)
   local ok, err = pcall(record)
   if not ok then Addon:Debug("training error:", err) end
 end)
@@ -227,29 +190,25 @@ for _, event in ipairs({ "TRAINER_SHOW", "TRAINER_UPDATE" }) do
   pcall(frame.RegisterEvent, frame, event) -- Not every client has every event.
 end
 
--- Returns true if the ability rank was in the hunter's Beast Training window,
--- was known before (saved per character), or the player (or their pet) knows the spell.
+-- Returns true if the hunter has learned the ability rank: it has been listed in their Beast Training window.
 function Addon:IsRankKnown(ability, rankIndex)
   local rank = ability.ranks[rankIndex]
   if not rank then return false end
   if ability.attack_speed then return false end -- A beast's passive, not something to learn.
 
-  local id = rank.spell_id
   local char = DB.char
-  if char then
-    if char.known_ids and char.known_ids[id] then return true end
-    if char.trained_ids and char.trained_ids[id] then return true end
-    -- By name, only for trainer entries the client gave no spell id for (usually none).
-    if char.trained and next(char.trained) and char.trained[key(ability.name, rank.rank or rankIndex)] then
-      return true
-    end
-  end
-  if notKnown[id] then return false end
+  if not char then return false end
+  if char.trained_ids and char.trained_ids[rank.spell_id] then return true end
+  -- By name, only for trainer entries the client gave no spell id for (usually none).
+  return char.trained ~= nil and char.trained[key(ability.name, rank.rank or rankIndex)] == true
+end
 
-  if self:IsSpellKnown(id) then
-    if char and char.known_ids then char.known_ids[id] = true end -- Saved: known from now on.
-    return true
-  end
-  notKnown[id] = true
-  return false
+-- A rank's state, for its color (colors.lua): Complete (known), Available (the character's level has reached it, not
+-- known yet) or Unavailable (level not reached). An attack speed is a beast's passive, not learned: Default. The level
+-- is the character's own unless one is given; in combat it can be hidden from addons, and then only level 1 counts.
+function Addon:RankState(ability, rankIndex, level)
+  if ability.attack_speed then return "Default" end
+  if self:IsRankKnown(ability, rankIndex) then return "Complete" end
+  level = level or self:Plain(UnitLevel("player")) or 1
+  return (ability.ranks[rankIndex].pet_level or 1) <= level and "Available" or "Unavailable"
 end

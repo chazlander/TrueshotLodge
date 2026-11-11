@@ -125,6 +125,8 @@ end
 
 -- UnitClassification() => the data's classification text (nil: a plain creature), as in the website's pets table.
 local CLASSIFICATIONS = { elite = "Elite", rare = "Rare", rareelite = "Rare Elite", worldboss = "Boss" }
+-- (the Collected Data tab shows a sighting's classification next to the data's)
+Collector.Classification = function(classification) return CLASSIFICATIONS[classification] end
 
 -- Whether a world map the creature was seen on is a zone the data does not link it to yet. Only a map that is a zone
 -- of its own counts (data/NPCs.lua's TameableZoneMaps): a continent (as in a dungeon, which shows the continent's map)
@@ -273,15 +275,12 @@ local function serviceIsNews(service, price, reaction)
   return price and service.cost ~= nil and not priceMatches(service.cost, ability.trainer_cost, reaction) or false
 end
 
--- Whether a recorded pet trainer tells the website something: a trainer the data does not have, another English
--- title, or one of its pet abilities differing (serviceIsNews), as the website's upload page compares them.
+-- Whether a recorded pet trainer tells the website something: a trainer the data does not have, or one of its pet
+-- abilities differing (serviceIsNews), as the website's upload page compares them. (Every trainer in the data and every
+-- one recorded is titled "Pet Trainer", so the title never differs.)
 local function trainerIsNews(trainer)
   local known = Addon.TameableTrainers and Addon.TameableTrainers[tonumber(trainer.id) or 0]
   if not known then return true end
-  local title = trainer.title
-  if type(title) == "string" and title:lower():find("pet trainer", 1, true) and known.tag and title ~= known.tag then
-    return true
-  end
   for _, service in ipairs(trainer.services or {}) do
     if service.pet_ability and serviceIsNews(service, true, trainer.reaction) then return true end
   end
@@ -542,21 +541,31 @@ local function interactionNpc()
   if unitType == "Creature" and id then return tonumber(id), unit end
 end
 
--- Whether the client's language is English (the language of the titles the addon knows).
+-- Whether an npc is a pet trainer, the only trainers recorded (a stable master or another trainer can open the same
+-- trainer window). One is in the trainer data (by npc id, so in any language), or titled exactly "Pet Trainer", in
+-- English, as the website takes them. Anything else is left out, so uploads carry no other trainers' chatter: no
+-- stable masters, no "Wolf Pet Trainer" and the like, and no unknown trainer whose title is in another language.
+local function isPetTrainer(id, title)
+  if Addon.TameableTrainers and Addon.TameableTrainers[tonumber(id) or 0] then return true end
+  return type(title) == "string" and title:match("^%s*(.-)%s*$"):lower() == "pet trainer"
+end
+Collector.IsPetTrainer = isPetTrainer -- (shared trainers are checked the same way, in share.lua)
+
+-- Whether the game client runs in English. Beast Training is collected only there, so its names and ranks reach the
+-- website in English, as the website takes them.
 local function englishClient()
   local locale = GetLocale and GetLocale() or "enUS"
   return locale == "enUS" or locale == "enGB"
 end
+Collector.EnglishClient = englishClient -- (shared Beast Training is only taken there too, in share.lua)
 
--- Whether an npc is a pet trainer. A stable master or another trainer can open the same trainer window, but only
--- pet trainers are recorded. Returns true for a pet trainer: one in the trainer data (by npc id, in any language),
--- or titled "Pet Trainer" ("Wolf Pet Trainer", ...) or with no title; "unconfirmed" for any other title on a client
--- in another language (the title cannot be read there: recorded, and the website asks us whether it is one); false
--- for any other title on an English client.
-local function petTrainerStatus(id, title)
-  if Addon.TameableTrainers and Addon.TameableTrainers[tonumber(id)] then return true end
-  if type(title) ~= "string" or title:lower():find("pet trainer", 1, true) then return true end
-  return not englishClient() and "unconfirmed" or false
+-- On a client in another language, takes out the Beast Training an earlier version collected there.
+local function dropForeignTraining()
+  if englishClient() or not DB.collected then return end
+  if next(DB.collected.beast_training or {}) then
+    DB.collected.beast_training = {}
+    Addon:Debug("collector: Beast Training is collected on English clients only; cleared it")
+  end
 end
 
 -- Takes out "trainers" an earlier version recorded from the Beast Training window: the beast that was targeted
@@ -569,7 +578,7 @@ local function dropBeastTrainers()
     if (Addon.TameableNPCs and Addon.TameableNPCs[npc]) or (DB.collected.creatures and DB.collected.creatures[tostring(npc)]) then
       trainers[id] = nil
       Addon:Debug("collector: removed", tostring(npc), "from the trainers: it is a beast, not a trainer")
-    elseif type(trainer) == "table" and not trainer.shared_by and petTrainerStatus(id, trainer.title) == false then
+    elseif type(trainer) == "table" and not isPetTrainer(id, trainer.title) then
       trainers[id] = nil
       Addon:Debug("collector: removed", tostring(trainer.name), "from the trainers: a", trainer.title, "is no pet trainer")
     end
@@ -601,8 +610,7 @@ function Collector:RecordTrainer()
   if not id then return Addon:Debug("collector: trainer window open, but no npc to record") end
   -- Only pet trainers (a stable master, for one, opens a trainer window that lists pet abilities too).
   local title = npcTitle(unit)
-  local status = petTrainerStatus(id, title)
-  if not status then
+  if not isPetTrainer(id, title) then
     return Addon:Debug("collector: not recording", tostring(UnitName(unit)), "-", title, "is no pet trainer")
   end
 
@@ -618,8 +626,7 @@ function Collector:RecordTrainer()
   trainer.id = id
   trainer.name = Addon:Plain(UnitName(unit)) or trainer.name or Addon:NPCName(id)
   trainer.title = title or trainer.title
-  -- Not known as a pet trainer and its title in another language: the website asks us to confirm it.
-  trainer.unconfirmed = status == "unconfirmed" or nil
+  trainer.unconfirmed = nil -- (an earlier version marked trainers titled in another language; none are kept now)
   -- Your standing with the trainer (4 Neutral, 5 Friendly ... 8 Exalted): prices are lower at Friendly and up, so the
   -- website works the full price back from it.
   trainer.reaction = Addon:Plain(UnitReaction(unit, "player")) or trainer.reaction
@@ -709,6 +716,8 @@ end
 function Collector:RecordBeastTraining()
   if not (DB.global and DB.global.collect) then return end
   if InCombatLockdown() then return end
+  -- English clients only: the window's names and ranks are in the client's language.
+  if not englishClient() then return end
 
   -- Beast Training is the class trainer window on this client. Only pet
   -- abilities from the data are read, so the normal class trainer isn't
@@ -1204,6 +1213,7 @@ function Collector:SetEnabled(enabled)
   if Share.SetEnabled then safely("share", Share.SetEnabled, Share, enabled) end
   if enabled then
     safely("collect", dropBeastTrainers)
+    safely("collect", dropForeignTraining)
     safely("collect", Collector.ScanNameplates, Collector)
   end
 end

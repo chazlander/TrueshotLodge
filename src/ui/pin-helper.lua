@@ -25,7 +25,7 @@ function PinHelper:AddTooltipLines(npc)
   GameTooltip:SetText(Colors.Primary(npc.name))
   if npc.tag then GameTooltip:AddLine(npc.tag, R, G, B) end
   line(L.LEVEL, npc.level_range)
-  line(L.ABILITIES, type(npc.abilities) == "table" and table.concat(npc.abilities, ", ") or nil)
+  line(L.ABILITIES, table.concat(Addon:TaughtLines(npc), ", "))
   line(L.FAMILY, Addon:FamilyLabel(npc.family))
   line(L.DIET, npc.diet)
   line(L.TYPE, npc.type)
@@ -75,6 +75,28 @@ function PinHelper:ShowOnMap(npc)
       HBD_PINS_WORLDMAP_SHOW_WORLD)
   end
   return true
+end
+
+-- A click on a Map button (or the Trainers tab's small map): the left button shows the npc on the map, the right button
+-- takes every pin off it, as right-clicking the minimap icon does.
+function PinHelper:MapClick(npc, mouseButton)
+  if mouseButton == "RightButton" then
+    self:Clear()
+  else
+    self:ShowOnMap(npc)
+  end
+end
+
+-- A Map button's tooltip: why it is as it is (button.hint, when it has one) and, while it can be clicked, that a
+-- right-click clears the pins. A greyed-out button with nothing to explain shows none.
+function PinHelper:ShowMapTooltip(button)
+  local enabled = button:IsEnabled()
+  if not (button.hint or enabled) then return end
+  GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+  GameTooltip:SetText(button:GetText(), 1, 1, 1)
+  if button.hint then GameTooltip:AddLine(button.hint, nil, nil, nil, true) end
+  if enabled then GameTooltip:AddLine(L.MAP_RIGHT_CLICK_CLEARS, nil, nil, nil, true) end
+  GameTooltip:Show()
 end
 
 function PinHelper:Get(npc)

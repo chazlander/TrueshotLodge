@@ -987,15 +987,10 @@ function Window:InitNPCRow(row, npc)
     row.MapButton = Helpers.NewOutlineButton(row)
     row.MapButton:SetSize(104, 22)
     row.MapButton:SetPoint("RIGHT", -2, 0)
-    row.MapButton:SetScript("OnClick", function(button) PinHelper:ShowOnMap(button.npc) end)
+    row.MapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp") -- (right-click clears the pins)
+    row.MapButton:SetScript("OnClick", function(button, mouseButton) PinHelper:MapClick(button.npc, mouseButton) end)
     row.MapButton:SetMotionScriptsWhileDisabled(true) -- the greyed-out button still says why
-    row.MapButton:SetScript("OnEnter", function(button)
-      if not button.hint then return end
-      GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-      GameTooltip:SetText(button:GetText(), 1, 1, 1)
-      GameTooltip:AddLine(button.hint, nil, nil, nil, true)
-      GameTooltip:Show()
-    end)
+    row.MapButton:SetScript("OnEnter", function(button) PinHelper:ShowMapTooltip(button) end)
     row.MapButton:SetScript("OnLeave", GameTooltip_Hide)
     -- Hovering the row shows the creature's details, its attack speed among them; clicking it opens its profile
     -- (tab-pet.lua).

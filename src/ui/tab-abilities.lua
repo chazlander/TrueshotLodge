@@ -20,12 +20,9 @@ function Window:InLevelRange(rank)
   return (rank.pet_level or 1) <= (self.playerLevel or 1)
 end
 
--- A rank's state, for its color (colors.lua): Complete (known), Available (the character's level has reached it, not
--- known yet) or Unavailable (level not reached). An attack speed is a beast's passive, not learned: Default.
+-- A rank's state on this tab, at the level the list was last drawn for (see Addon:RankState).
 function Window:RankState(ability, rankIndex)
-  if ability.attack_speed then return "Default" end
-  if Addon:IsRankKnown(ability, rankIndex) then return "Complete" end
-  return self:InLevelRange(ability.ranks[rankIndex]) and "Available" or "Unavailable"
+  return Addon:RankState(ability, rankIndex, self.playerLevel)
 end
 
 -- An ability's state, for its header: Available when a rank is, Complete when every rank is known, Unavailable when

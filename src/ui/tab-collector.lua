@@ -54,6 +54,18 @@ local function SpeedDiffers(npc, speed)
   return speed ~= nil and (not npc.speed or math.abs(speed - npc.speed) > 0.05)
 end
 
+-- A family line: the family seen, highlighted when the data files the creature under another one (families are
+-- compared by their English names, and shown in yours).
+local function FamilyLine(npc, family)
+  return DiffLine(L.FAMILY, family and Addon:FamilyLabel(family), npc and family and npc.family ~= family,
+    npc and npc.family and Addon:FamilyLabel(npc.family))
+end
+
+-- A classification as text ("Elite", "Rare", ... or "Normal" for a plain creature).
+local function ClassText(class)
+  return class or L.CLASSIFICATION_NORMAL
+end
+
 -- Whether the data lists this creature as coming with this ability rank when tamed.
 local function Teaches(npc, spellId)
   for _, entry in ipairs(npc.taught or {}) do
@@ -425,8 +437,13 @@ function Window:UpdateCollectedDetails()
     for zoneId in pairs(d.zones or {}) do
       if npc and Collector.NewZone(npc, zoneId) then newZone = true end
     end
+    -- (the classification is compared only when the sighting read one: older records may lack it)
+    local class = d.classification and Collector.Classification(d.classification)
     lines = {
       Line(L.NPC_ID, d.id),
+      FamilyLine(npc, d.family),
+      d.classification and DiffLine(L.CLASSIFICATION, ClassText(class), npc and npc.class ~= class,
+        npc and ClassText(npc.class)) or nil,
       DiffLine(L.LEVEL, LevelText(d.level_min, d.level_max), npc and LevelDiffers(npc, d.level_min, d.level_max),
         npc and DataLevel(npc)),
       DiffLine(L.ATTACK_SPEED, SpeedText(d.mainhand_speed), npc and Collector.NewSpeed(npc, d.mainhand_speed),
@@ -472,6 +489,7 @@ function Window:UpdateCollectedDetails()
     local tameText = d.tamed_by and ("%s, %s"):format(day or "?", d.tamed_by) or day
     lines = {
       Line(L.NPC_ID, d.npc_id),
+      FamilyLine(npc, d.family),
       DiffLine(L.LEVEL, d.level, npc and LevelDiffers(npc, level, level), npc and DataLevel(npc)),
       Line(L.PET_LEVEL, d.pet_level),
       speedLine,
@@ -540,12 +558,18 @@ function Window:UpdateCollectedDetails()
     self.icon:SetTexture(SpellIcon(d.spell_id) or d.icon or QUESTION_MARK_ICON)
     self.name:SetText(d.name or "?")
     self.subtitle:SetText(row.rank or "")
+    -- What makes the entry worth keeping, as the collector weighs it (Collector.TrainingIsNews): a spell the data does
+    -- not have at all, or another rank than the data's for that spell.
+    local ability = d.spell_id and Addon:AbilityOfSpell(d.spell_id)
+    local rank = tonumber((row.rank or ""):match("%d+"))
     -- The price is in copper and the level is what the trainer window lists; the status is for this character.
     lines = {
+      DiffLine(L.RANK, row.rank, ability and rank and ability.rank and rank ~= ability.rank,
+        ability and ability.rank and ("%s %d"):format(L.RANK, ability.rank)),
       Line(L.PRICE, d.cost and Money(d.cost) or nil),
       Line(L.LEVEL_REQUIRED, d.required_level),
       Line(L.STATUS, d.category),
-      Line(L.SPELL_ID, d.spell_id),
+      DiffLine(L.SPELL_ID, d.spell_id, d.spell_id and not ability),
     }
     description = ""
   end

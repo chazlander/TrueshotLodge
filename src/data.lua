@@ -192,12 +192,7 @@ local function PrepareNPC(id, npc)
     if a.ability.name ~= b.ability.name then return a.ability.name < b.ability.name end
     return a.rankIndex < b.rankIndex
   end)
-  npc.taught = taught -- { ability, rankIndex }, for the pet profile
-  npc.abilities = {}
-  for i, entry in ipairs(taught) do
-    npc.abilities[i] = ("|T%s:0|t %s |cFF9D9D9D(%s %s)|r"):format(
-      entry.ability.icon, entry.ability.name, L.RANK, entry.rankIndex)
-  end
+  npc.taught = taught -- { ability, rankIndex }, for the pet profile and Addon:TaughtLines
 
   -- Map pins: the map with the most points. A creature without points has its zone's world map (`map`), which opens
   -- without pins.
@@ -209,6 +204,18 @@ local function PrepareNPC(id, npc)
   npc.coords = bestPacked and UnpackPoints(bestPacked) or {}
 
   npc.prepared = true
+end
+
+-- The ability ranks a creature teaches, as tooltip text: each one's icon, then its name and rank in its state's color.
+-- Built each time, because what the character knows and their level change. A trainer teaches none: an empty list.
+function Addon:TaughtLines(npc)
+  local lines = {}
+  for i, entry in ipairs(npc.taught or {}) do
+    local paint = Colors[self:RankState(entry.ability, entry.rankIndex)]
+    lines[i] = ("|T%s:0|t %s"):format(entry.ability.icon,
+      paint(("%s (%s %s)"):format(entry.ability.name, L.RANK, entry.rankIndex)))
+  end
+  return lines
 end
 
 -- The creature with this npc id (a number or a string), ready to show; nil when it is not in the data.
@@ -269,28 +276,4 @@ function Addon:GetAbilityTab(ability)
   if ability.unique == true then return "UNIQUE" end
   if ability.passive == true then return "PASSIVE" end
   return "COMMON"
-end
-
--- Spellbook checks, in order. Resolved once here, not on every call.
-local spellChecks = {}
-if IsPlayerSpell then spellChecks[#spellChecks + 1] = IsPlayerSpell end
-if C_SpellBook and C_SpellBook.IsSpellKnown then
-  local isKnown = C_SpellBook.IsSpellKnown
-  local bank = Enum and Enum.SpellBookSpellBank
-  spellChecks[#spellChecks + 1] = isKnown
-  if bank then
-    spellChecks[#spellChecks + 1] = function(id) return isKnown(id, bank.Pet) end
-  end
-elseif IsSpellKnown then
-  spellChecks[#spellChecks + 1] = IsSpellKnown
-  spellChecks[#spellChecks + 1] = function(id) return IsSpellKnown(id, true) end
-end
-
--- Returns true if the player (or their pet) knows the spell.
-function Addon:IsSpellKnown(spellId)
-  for _, check in ipairs(spellChecks) do
-    local ok, known = pcall(check, spellId)
-    if ok and known == true then return true end
-  end
-  return false
 end

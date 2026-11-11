@@ -184,7 +184,7 @@ function Window:UpdateTrainerDetails()
   self.npcBox:Hide()
   self.npcBar:Hide()
   local hasMap = trainer.ui_map_id and coords
-  local function openMap() PinHelper:ShowOnMap(trainer) end
+  local function openMap(_, mouseButton) PinHelper:MapClick(trainer, mouseButton) end
 
   local miniMap = self.miniMap
   miniMap:ClearAllPoints()
@@ -202,7 +202,10 @@ function Window:UpdateTrainerDetails()
   self.mapButton:SetText(hasMap and L.MAP or L.MAP_UNAVAILABLE)
   self.mapButton:SetWidth(MINI_MAP_WIDTH) -- as wide as the map preview it sits under
   self.mapButton:SetEnabled(hasMap and true or false)
+  self.mapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp") -- (right-click clears the pins)
   self.mapButton:SetScript("OnClick", openMap)
+  self.mapButton:SetScript("OnEnter", function(button) PinHelper:ShowMapTooltip(button) end)
+  self.mapButton:SetScript("OnLeave", GameTooltip_Hide)
   self.mapButton:Show()
 end
 

@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.60.1.40] - 2026-11-11
+
+- Right-click any Map button to clear the pins from the world map
+- TrueshotLodge is now listed in the game's addon menu by the minimap, under the calendar. Left-click opens or closes
+  the window and right-click clears the map pins, and it stays there if you hide the minimap icon
+- Creature and map pin tooltips now color each ability: yellow if you know it, green if your level has reached it, and
+  grey if it hasn't yet
+- An ability now counts as known once it is in your Beast Training window, not as soon as you tame a beast that has it.
+  Open Beast Training once with each kind of pet to mark what you have already learned
+- The Collected Data tab now shows each creature's family, and a sighting's classification (Normal, Elite, Rare...).
+  Both are highlighted when they differ from the addon's data, and a Beast Training entry highlights its new spell or
+  its different rank, so you can see why each entry was kept
+- Data since 1.60.1.39:
+  - 55 new tames (234 in all)
+  - 3 new creatures (768 in all)
+  - 0 new sightings
+  - 6 new ability tames
+  - 15 new attack speeds
+  - 7 new levels
+  - 6 new zones
+  - 0 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 110 of 768 creatures have no known attack speed, 68 no level and 51 no zone (150 have no map points)
+
 ## [1.60.1.39] - 2026-11-08
 
 - Collect Mode clears old tames too: each time you log in or reload, a tame that tells TrueshotLodge nothing new any more

@@ -29,6 +29,8 @@ Addon.TameableLooks = {
     { display = 114497, name = "Owl Brown", npcs = { 272388, 211965, 272389 } },
     { display = 146349, name = "Owl Black", npcs = { 272387, 270196 } },
     { display = 130234, name = "Eagle", npcs = { 247033 } },
+    { display = 139491, name = "Shriekling Green", npcs = { 253282 } },
+    { display = 139493, name = "Shriekling Silver", npcs = { 253283 } },
     { display = 144559, name = "Owl Blue", npcs = { 276101 } },
     { display = 139498, name = "Shrieker Blue", npcs = { 256108 } },
     { display = 142400, name = "Shriekling Blue", npcs = { 256092 } }
@@ -67,7 +69,7 @@ Addon.TameableLooks = {
     { display = 321, name = "Black Striped", npcs = { 2070, 2069, 2237 } },
     { display = 1934, name = "White", npcs = { 3475, 252090, 10741 } },
     { display = 9958, name = "No Stripe White", npcs = { 7430, 7433, 7432 } },
-    { display = 4424, name = "Black", npcs = { 263315, 5828 } },
+    { display = 4424, name = "Black", npcs = { 5828, 263315 } },
     { display = 10054, name = "Aqua", npcs = { 10200, 10737 } },
     { display = 9230, name = "Green", npcs = { 268231 } },
     { display = 143625, name = "Prideclaw Green", npcs = { 251245 } },
@@ -87,12 +89,13 @@ Addon.TameableLooks = {
   ["Crocolisk"] = {
     { display = 925, name = "Marsh", npcs = { 260798, 270693, 1417, 1400, 2089, 260796, 260797, 1151, 4342, 2635, 4344, 14233 } },
     { display = 807, name = "Swamp", npcs = { 274715, 3231, 1693, 2476, 4341, 1084, 4343, 1082, 4345, 1087 } },
-    { display = 1609, name = "Albino", npcs = { 272384, 210107, 5053, 263380, 4841, 3581 } },
-    { display = 833, name = "River", npcs = { 258922, 3110, 1150, 1152, 259046, 15043 } }
+    { display = 833, name = "River", npcs = { 3110, 1150, 1152, 258922, 259046, 15043 } },
+    { display = 1609, name = "Albino", npcs = { 210107, 5053, 263380, 4841, 272384, 3581 } }
   },
   ["Fox"] = {
     { display = 136536, name = "Vuldren Red", npcs = { 250873, 250868 } },
     { display = 139280, name = "Vuldren Yellow", npcs = { 255887 } },
+    { display = 136523, name = "Vuldren Black", npcs = { 254589 } },
     { display = 136537, name = "Vuldren White", npcs = { 250874 } },
     { display = 148953, name = "Black", npcs = { 277645 } }
   },
@@ -121,9 +124,7 @@ Addon.TameableLooks = {
     { display = 677, name = "Mottled Blue Green", npcs = { 3633, 3637, 1021, 1023, 1353, 730 } },
     { display = 1337, name = "Grey", npcs = { 260800, 271732, 3634, 5842 } },
     { display = 615, name = "Mottled Dark Green", npcs = { 1022, 854 } },
-    { display = 5291, name = "Obsidian", npcs = { 271336, 6508 } },
-    { display = 139491, name = "Shriekling Green", npcs = { 253282 } },
-    { display = 139493, name = "Shriekling Silver", npcs = { 253283 } }
+    { display = 5291, name = "Obsidian", npcs = { 271336, 6508 } }
   },
   ["Scorpid"] = {
     { display = 2488, name = "Black", npcs = { 5989, 5987, 3281, 3226, 5823, 4139, 7022, 5988, 14476 } },
@@ -184,8 +185,8 @@ Addon.TameableLooks = {
     { display = 2699, name = "Blood", npcs = { 3472, 5307, 272401 } }
   },
   ["Wolf"] = {
-    { display = 161, name = "Coyote", npcs = { 259263, 238427, 2958, 2959, 3939, 2960, 834, 833, 2727, 4950, 259267, 2728, 2729, 268831, 2730 } },
     { display = 776, name = "Arctic", npcs = { 249225, 3826, 705, 704, 1131, 1133, 210533, 3861, 3823, 213, 565, 3824, 2274, 221168, 3825 } },
+    { display = 161, name = "Coyote", npcs = { 238427, 2958, 2959, 3939, 2960, 834, 833, 2727, 4950, 259263, 259267, 2728, 2729, 268831, 2730 } },
     { display = 165, name = "Timber", npcs = { 995, 238425, 1508, 299, 1509, 69, 525, 1138, 1922, 5288, 10644, 260225, 5286, 5287 } },
     { display = 246, name = "Dark Black", npcs = { 2275, 1765, 1766, 1923, 3862, 923, 628, 1258, 257017, 10221, 10077, 7055, 9696 } },
     { display = 780, name = "Black", npcs = { 258522, 4482, 238426, 268558, 5356, 269254, 2680, 11871, 2681 } },
@@ -196,7 +197,6 @@ Addon.TameableLooks = {
     { display = 9567, name = "Blue Brown", npcs = { 261662, 263935 } },
     { display = 131293, name = "Frost", npcs = { 247809 } },
     { display = 143460, name = "Blue Brown", npcs = { 277730 } },
-    { display = 136523, name = "Vuldren Black", npcs = { 254589 } },
     { display = 2446, name = "Ghost", npcs = { 274300 } },
     { display = 11414, name = "Dark Grey", npcs = { 8211 } }
   }

@@ -30,8 +30,8 @@ local DB = Addon:GetModule("DB")
 --   T  tame            npc id, name (as in C), family, level, classification, creature speed, pet level, pet family, pet attack
 --                      speed, uiMapID, x, y, tamed (time), credit (1: Send Name on, credit the sender); then ";" and
 --                      the spells: spell id:rank:passive, "/"-separated
---   R  pet trainer     id, name, title, level, faction, uiMapID, x, y, subzone, unconfirmed (1: not known as a pet
---                      trainer, titled in another language)
+--   R  pet trainer     id, name, title, level, faction, uiMapID, x, y, subzone (only pet trainers: in the data, or titled
+--                      exactly "Pet Trainer"; an older addon added a tenth field, "unconfirmed", which is ignored)
 --   S  trainer service trainer id, spell id, name, rank, price (copper), required level, status, pet ability (1/0)
 --   B  Beast Training  spell id, name, rank, price (copper), required level, status
 --   H  hello           addon version (when the addon loads in); answered with a whispered
@@ -212,7 +212,7 @@ local ENCODE = {
     -- As a creature's: no name or title when the data has the trainer (whoever receives it names it from its id).
     local known = Addon.TameableTrainers and Addon.TameableTrainers[tonumber(r.id) or 0]
     return Join("R", Pack(r.id, not known and r.name or nil, not known and r.title or nil, r.level, r.faction,
-      r.ui_map_id, r.x, r.y, r.subzone, r.unconfirmed and 1 or nil))
+      r.ui_map_id, r.x, r.y, r.subzone))
   end,
   service = function(s)
     return Join("S", Pack(s.trainer_id, s.spell_id, s.name, s.rank, s.cost, s.required_level, s.category,
@@ -720,13 +720,16 @@ local MERGE = {
     local trainers = DB.collected.trainers
     local r = trainers[id]
     if r and not r.shared_by then return end -- your own
-    r = r or { id = id, services = {}, first_seen = time() }
-    trainers[id] = r
     -- Named in your language from its id (the game, else the data); the sender's words only when neither knows it.
     local name, title = Addon:TrainerNameAndTitle(id)
-    r.name, r.title, r.level, r.faction = name or Text(f[2]), title or Text(f[3]), Number(f[4]), Text(f[5])
+    title = title or Text(f[3])
+    -- Only pet trainers, as the collector records them (an older addon also sends others, titled in another language).
+    if not Addon:GetModule("Collector").IsPetTrainer(id, title) then return end
+    r = r or { id = id, services = {}, first_seen = time() }
+    trainers[id] = r
+    r.name, r.title, r.level, r.faction = name or Text(f[2]), title, Number(f[4]), Text(f[5])
     r.ui_map_id, r.x, r.y, r.subzone = Number(f[6]), Number(f[7]), Number(f[8]), Text(f[9])
-    r.unconfirmed = f[10] == "1" or nil -- the sender could not confirm it is a pet trainer (see the collector)
+    r.unconfirmed = nil
     r.last_seen, r.shared_by = time(), sender
     return true
   end,
@@ -736,6 +739,8 @@ local MERGE = {
     local trainers = DB.collected.trainers
     local r = trainers[trainerId]
     if r and not r.shared_by then return end -- your own
+    -- An entry of a trainer not taken (no pet trainer, see R) is not kept either; one the data has always is.
+    if not r and not Addon:GetModule("Collector").IsPetTrainer(trainerId, nil) then return end
     r = r or { id = trainerId, services = {}, first_seen = time(), shared_by = sender }
     trainers[trainerId] = r
     r.services = r.services or {}
@@ -754,15 +759,21 @@ local MERGE = {
     return true
   end,
   B = function(f, sender)
+    -- Beast Training is collected in English only (see the collector): not kept on a client in another language, and
+    -- an ability the data does not have is taken only with a plain English-looking name (an older addon on a client in
+    -- another language still sends its own).
+    local Collector = Addon:GetModule("Collector")
+    if not Collector.EnglishClient() then return end
+    local known = Addon:AbilityOfSpell(Number(f[1]))
     local name, rank = Ability(Number(f[1]), Text(f[2]), Text(f[3]))
-    if not name then return end
+    if not name or (not known and name:find("[\128-\255]")) then return end
     local book = DB.collected.beast_training
     local key = name .. "|" .. tostring(rank or "")
     if book[key] then return end -- yours (or already shared)
     local entry = { name = name, rank = rank, spell_id = Number(f[1]), cost = Number(f[4]), required_level = Number(f[5]),
       category = Text(f[6]), last_seen = time(), shared_by = sender }
     -- An ability the data already has at this rank is not kept (see the collector's trainingIsNews).
-    if not Addon:GetModule("Collector").TrainingIsNews(entry) then return end
+    if not Collector.TrainingIsNews(entry) then return end
     book[key] = entry
     return true
   end,

@@ -51,7 +51,7 @@ local function AddOriginLine(tooltip, id, npc)
 end
 
 local function AddAbilityLines(tooltip, npc)
-  for _, ability in ipairs(npc.abilities) do
+  for _, ability in ipairs(Addon:TaughtLines(npc)) do
     tooltip:AddLine("  " .. ability, R, G, B)
   end
 end

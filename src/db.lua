@@ -15,7 +15,6 @@ local defaults = {
   char = {
     trained = {},
     trained_ids = {},
-    known_ids = {}, -- spell id -> true, for ranks the character has known (kept between sessions)
     -- The Stable tab's cache (src/stable.lua): `pets` is a copy of each pet seen out (name|family -> level, spells, ...),
     -- `slots` is what the stable held the last time it was opened, `active` the key of the pet last seen out.
     stable = { pets = {}, slots = {} },
@@ -105,12 +104,14 @@ function DB:Initialize()
   ApplyDefaults(saved.char[charKey], defaults.char)
   ApplyDefaults(collected, defaults.collected)
 
-  -- Earlier versions saved every rank a trainer window listed as trained, learned or not (all seven Growl ranks at
-  -- level 22): cleared once. The pet's spellbook (known_ids) marks the real ones again.
+  -- Earlier versions saved ranks that were never learned: every rank a trainer window listed, and then everything in
+  -- a pet's spellbook (known_ids), which includes what a beast arrives with. Cleared once; opening Beast Training marks
+  -- the real ones again.
   local char = saved.char[charKey]
-  if (char.trained_version or 1) < 2 then
+  if (char.trained_version or 1) < 3 then
     char.trained, char.trained_ids = {}, {}
-    char.trained_version = 2
+    char.known_ids = nil
+    char.trained_version = 3
   end
 
   self.global = saved.global

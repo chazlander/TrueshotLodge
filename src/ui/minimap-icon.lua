@@ -35,6 +35,9 @@ function MinimapIcon:Initialize()
   })
 
   LDBIcon:Register(ADDON_NAME, object, DB.global.minimapIcon)
+  -- Also listed in the game's addon menu under the calendar, with the same clicks and tooltip. Hiding the minimap icon
+  -- leaves this entry, so the addon can still be opened from there.
+  LDBIcon:AddButtonToCompartment(ADDON_NAME)
   self.Initialize = nil
 end
 
