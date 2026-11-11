@@ -1,0 +1,62 @@
+# Announces each release on Discord: when a version tag (v1.60.1.<n>) is pushed, which "PUSH RELEASE" does, this posts
+# that version's section of CHANGELOG.md to the announcements channel. The same tag push starts CurseForge's build, so
+# the post can arrive a few minutes before the file is ready to download there.
+#
+# The Discord webhook's URL is the repository secret DISCORD_WEBHOOK_ANNOUNCEMENT (Settings > Secrets and variables >
+# Actions), so it never appears in the code.
+name: Discord release announcement
+
+on:
+  push:
+    tags: ['v*']
+  # A manual run (Actions > Discord release announcement > Run workflow) posts a version's notes again, or tests the
+  # webhook without making a release.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version to announce, as in the changelog (e.g. 1.60.1.40)'
+        required: true
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Post the release notes to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_ANNOUNCEMENT }}
+          # Passed through the environment, never pasted into the script, so a typed version cannot run as code.
+          MANUAL_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "::error::The DISCORD_WEBHOOK_ANNOUNCEMENT secret is not set."
+            exit 1
+          fi
+
+          # The version is the tag without its "v"; its notes are the lines under "## [<version>]", up to the next
+          # version's heading. index() matches the heading as plain text, so the dots in the version need no escaping.
+          # The changelog wraps long entries onto indented lines, which Discord would show as broken lines, so each
+          # wrapped line is joined back onto its entry (an indented "- " line is a sub-entry and stays on its own).
+          version="${MANUAL_VERSION:-${GITHUB_REF_NAME#v}}"
+          notes=$(awk -v heading="## [$version]" '
+            index($0, heading) == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            !found { next }
+            /^ +[^ -]/ && held != "" { sub(/^ +/, ""); held = held " " $0; next }
+            { if (started) print held; held = $0; started = 1 }
+            END { if (started) print held }
+          ' CHANGELOG.md | sed -e '/./,$!d')
+
+          if [ -z "$notes" ]; then
+            echo "::warning::CHANGELOG.md has no section for $version; announcing the version alone."
+          fi
+
+          # A Discord message holds at most 2000 characters, so very long notes are cut short with an ellipsis.
+          message=$(printf '**TrueshotLodge %s** is out!\n\n%s' "$version" "$notes")
+          if [ ${#message} -gt 2000 ]; then
+            message="${message:0:1990}…"
+          fi
+
+          jq -n --arg content "$message" '{content: $content, allowed_mentions: {parse: []}}' \
+            | curl --fail-with-body -sS -H 'Content-Type: application/json' -d @- "$WEBHOOK"

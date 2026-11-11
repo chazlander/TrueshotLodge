@@ -5,8 +5,10 @@ manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
 
-# Not part of the addon: the development tools and settings (git leaves out .tools and .release already).
+# Not part of the addon: the development tools and settings (git leaves out .tools and .release already), and the
+# GitHub workflow that announces releases on Discord.
 ignore:
   - .tools
   - .release
   - .luacheckrc
+  - .github

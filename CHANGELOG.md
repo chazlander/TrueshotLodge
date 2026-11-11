@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.60.1.41] - 2026-11-11
+
+- Data since 1.60.1.40:
+  - 44 new tames (278 in all)
+  - 9 new creatures (777 in all)
+  - 0 new sightings
+  - 8 new ability tames
+  - 27 new attack speeds
+  - 16 new levels
+  - 13 new zones
+  - 0 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 92 of 777 creatures have no known attack speed, 61 no level and 47 no zone (159 have no map points)
+
 ## [1.60.1.40] - 2026-11-11
 
 - Right-click any Map button to clear the pins from the world map

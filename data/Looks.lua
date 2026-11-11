@@ -2,7 +2,7 @@ local _, Addon = ...
 Addon.TameableLooks = {
   ["Bat"] = {
     { display = 1954, npcs = { 4862, 227938, 277882, 3868, 4538, 4539, 262037, 4861, 8927, 8601 } },
-    { display = 4732, name = "Brown", npcs = { 272342, 1512, 1513, 1553, 255174, 11368, 14965 } },
+    { display = 4732, name = "Brown", npcs = { 1512, 1513, 1553, 255174, 11368, 14965, 272342 } },
     { display = 7894, name = "Violet", npcs = { 1554, 3866, 8600, 8602 } },
     { display = 4735, name = "White", npcs = { 10357, 4425 } },
     { display = 149118, npcs = { 277881 } }
@@ -28,17 +28,17 @@ Addon.TameableLooks = {
     { display = 6212, name = "Owl White", npcs = { 261914, 14343, 14283, 7455, 249053, 7456 } },
     { display = 114497, name = "Owl Brown", npcs = { 272388, 211965, 272389 } },
     { display = 146349, name = "Owl Black", npcs = { 272387, 270196 } },
-    { display = 130234, name = "Eagle", npcs = { 247033 } },
     { display = 139491, name = "Shriekling Green", npcs = { 253282 } },
     { display = 139493, name = "Shriekling Silver", npcs = { 253283 } },
     { display = 144559, name = "Owl Blue", npcs = { 276101 } },
     { display = 139498, name = "Shrieker Blue", npcs = { 256108 } },
-    { display = 142400, name = "Shriekling Blue", npcs = { 256092 } }
+    { display = 142400, name = "Shriekling Blue", npcs = { 256092 } },
+    { display = 130234, name = "Eagle", npcs = { 247033 } }
   },
   ["Boar"] = {
     { display = 3026, name = "Crimson", npcs = { 1985, 2954, 208638, 157, 1191, 547, 266862, 258331, 255851, 253529, 5992 } },
     { display = 381, name = "Blue", npcs = { 708, 1125, 3099, 1126, 1127, 3225, 119, 8303 } },
-    { display = 193, name = "Ivory", npcs = { 254563, 3098, 113, 524, 3100, 1689 } },
+    { display = 193, name = "Ivory", npcs = { 254563, 3098, 113, 3100, 524, 1689 } },
     { display = 377, name = "Brown", npcs = { 390, 1190, 1192, 4535, 345 } },
     { display = 8869, name = "Yellow", npcs = { 1984, 2966, 330, 454 } },
     { display = 4713, name = "Brown Armored", npcs = { 4511 } },
@@ -83,8 +83,8 @@ Addon.TameableLooks = {
     { display = 1307, name = "Vermillian", npcs = { 272374, 252592, 3106, 3107, 3503, 260235 } },
     { display = 342, name = "Bronze", npcs = { 6250, 830, 1216, 255901, 922, 1088 } },
     { display = 6296, name = "Frog Bluespots", npcs = { 259005, 259843 } },
-    { display = 147042, name = "Dark Diamond", npcs = { 272377 } },
-    { display = 6297, name = "Frogtropical", npcs = { 259006 } }
+    { display = 6297, name = "Frogtropical", npcs = { 259006 } },
+    { display = 147042, name = "Dark Diamond", npcs = { 272377 } }
   },
   ["Crocolisk"] = {
     { display = 925, name = "Marsh", npcs = { 260798, 270693, 1417, 1400, 2089, 260796, 260797, 1151, 4342, 2635, 4344, 14233 } },
@@ -155,8 +155,8 @@ Addon.TameableLooks = {
     { display = 178, name = "Brown", npcs = { 2955, 2321, 3244, 2322, 2323 } },
     { display = 1220, name = "Gray", npcs = { 2956, 3245, 4724, 4725 } },
     { display = 1221, name = "Ivory", npcs = { 2957, 3246, 263348 } },
-    { display = 1281, name = "Purple", npcs = { 272392, 272391 } },
     { display = 144242, name = "Galestrider Gray", npcs = { 251707, 256492 } },
+    { display = 1281, name = "Purple", npcs = { 272391, 272392 } },
     { display = 143799, name = "Galestrider Mount White", npcs = { 267304 } },
     { display = 143802, name = "Galestrider Mount Blue", npcs = { 267305 } },
     { display = 143801, name = "Galestrider Mount Green", npcs = { 267306 } },
@@ -173,13 +173,13 @@ Addon.TameableLooks = {
     { display = 5126, name = "Blue", npcs = { 5432, 260810, 3461, 3653, 14123, 13599, 5431, 221328 } },
     { display = 2307, name = "White", npcs = { 214612, 4142, 4144, 4143, 6369, 6352 } },
     { display = 5026, name = "Red", npcs = { 4887, 4825, 14223, 2505 } },
-    { display = 1244, name = "Seaturtle", npcs = { 263615, 4824, 2408 } }
+    { display = 1244, name = "Seaturtle", npcs = { 4824, 2408, 263615 } }
   },
   ["Wind Serpent"] = {
     { display = 2700, name = "Green", npcs = { 272396, 4346, 4347, 4348, 3631, 5756, 4118 } },
     { display = 1336, name = "Windserpent", npcs = { 3630, 3247, 3424, 3249, 8336 } },
     { display = 2703, name = "White", npcs = { 4117, 4119, 14234, 5349, 5291 } },
-    { display = 3006, name = "Black", npcs = { 269057, 5056, 11359 } },
+    { display = 3006, name = "Black", npcs = { 5056, 269057, 11359 } },
     { display = 3204, name = "Red", npcs = { 10581, 10882, 5308 } },
     { display = 2702, name = "Red", npcs = { 5834, 5708, 11357 } },
     { display = 2699, name = "Blood", npcs = { 3472, 5307, 272401 } }
@@ -189,7 +189,7 @@ Addon.TameableLooks = {
     { display = 161, name = "Coyote", npcs = { 238427, 2958, 2959, 3939, 2960, 834, 833, 2727, 4950, 259263, 259267, 2728, 2729, 268831, 2730 } },
     { display = 165, name = "Timber", npcs = { 995, 238425, 1508, 299, 1509, 69, 525, 1138, 1922, 5288, 10644, 260225, 5286, 5287 } },
     { display = 246, name = "Dark Black", npcs = { 2275, 1765, 1766, 1923, 3862, 923, 628, 1258, 257017, 10221, 10077, 7055, 9696 } },
-    { display = 780, name = "Black", npcs = { 258522, 4482, 238426, 268558, 5356, 269254, 2680, 11871, 2681 } },
+    { display = 780, name = "Black", npcs = { 4482, 238426, 268558, 258522, 5356, 269254, 2680, 11871, 2681 } },
     { display = 11413, name = "Light Grey", npcs = { 118, 12431, 2923, 2924, 2925, 2926 } },
     { display = 10278, name = "Light Blue", npcs = { 1132, 521, 14339, 10981, 252092 } },
     { display = 9370, name = "Reddish Brown", npcs = { 2753, 9690, 9416, 9694, 9697 } },
