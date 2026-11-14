@@ -96,7 +96,7 @@ local function OnTooltipSetUnit(self, data)
     self:AddLine(TITLE)
     AddInfoLines(self, unit, family)
     self:AddDoubleLine("  " .. L.TAMEABLE, L.LIKELY, nil, nil, nil, R, G, B)
-    self:AddDoubleLine("  " .. L.ABILITIES, L.UNKNOWN, nil, nil, nil, 0.6, 0.6, 0.6)
+    self:AddDoubleLine("  " .. L.ABILITIES, L.UNKNOWN, nil, nil, nil, Colors.Muted:GetRGB())
     return
   end
   Addon:Debug("tooltip: npc found", id, npc.name)
@@ -104,6 +104,10 @@ local function OnTooltipSetUnit(self, data)
   -- Add lines.
   self:AddLine(TITLE)
   AddInfoLines(self, unit, family or npc.family)
+  -- The game refused to tame it (the website's red Not tameable badge).
+  if npc.not_tameable then
+    self:AddDoubleLine("  " .. L.TAMEABLE, L.TAME_CHECK_NOT_TAMEABLE, nil, nil, nil, Colors.Bad:GetRGB())
+  end
   AddAbilityLines(self, npc)
 end
 

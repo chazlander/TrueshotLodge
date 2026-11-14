@@ -205,7 +205,23 @@ do -- Addon:Debug()
     local area = Area((...))
     -- (an area the list does not name prints whenever Debug Mode is on)
     if area and DEBUG_AREA[area] and not (global.debug_on and global.debug_on[area]) then return end
-    print("|cFFFF8800[" .. Addon.TITLE .. " debug]|r", ...)
+    Addon:DebugPrint(...)
+  end
+
+  -- A debug line in chat, whatever Debug Mode says (the `/tsl debug` commands print with it).
+  function Addon:DebugPrint(...)
+    print(Addon:GetModule("Colors").Debug("[" .. Addon.TITLE .. " debug]"), ...)
+  end
+
+  -- A line in chat from the addon: "TrueshotLodge: <text>", its name in the title's teal.
+  function Addon:Print(...)
+    print(Addon:GetModule("Colors").Primary(Addon.TITLE) .. ":", ...)
+  end
+
+  -- The same with a word after the name saying which part is speaking ("TrueshotLodge stable: ..."), for the
+  -- `/tsl debug` commands.
+  function Addon:PrintAs(label, ...)
+    print(Addon:GetModule("Colors").Primary(Addon.TITLE) .. " " .. label .. ":", ...)
   end
 end
 

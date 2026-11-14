@@ -65,9 +65,58 @@ end
 
 -- Whether a rank passes the filter (always, unless Filter by Level is on). On the attack speeds, Filter by Level keeps
 -- the beasts you can tame now instead (AttackNPCs): a speed is listed while it has one.
+-- With the Zone Filter on or a search typed, a rank is listed only while one of its creatures passes them
+-- (CreatureCount): the list on the left then matches the creatures on the right.
 function Window:RankShown(rank)
+  if self:CreatureCount(rank) == 0 then return false end
   if self.tab == "ATTACK" then return not DB.global.filter_by_level or #self:AttackNPCs(rank) > 0 end
   return not DB.global.filter_by_level or self:InLevelRange(rank)
+end
+
+-- The ranks a trainer teaches (the data's `trainer` abilities: Growl and the passives), built the first time it is
+-- needed. They are learned from no creature, so the Zone Filter has nothing to say about them.
+local trainerRanks
+local function TrainerRank(rank)
+  if not trainerRanks then
+    trainerRanks = {}
+    for _, ability in pairs(Addon.TameableAbilities) do
+      if ability.trainer then
+        for _, taught in ipairs(ability.ranks) do trainerRanks[taught] = true end
+      end
+    end
+  end
+  return trainerRanks[rank] == true
+end
+
+-- How many of a rank's creatures pass the Zone Filter (self.listZone: they live in the zone you are in), the Rares
+-- filter (self.listRares: they are rare) and the search (self.listSearch: their name holds what was typed), all set
+-- when the list is drawn; on the attack speeds, with Filter by Level on, only those you can tame now. nil with none
+-- of them on. A rank a trainer teaches has no creatures: the Zone and Rares filters say nothing about it (nil), and
+-- a search for creatures does not find it (0). Worked out once per rank each time the list is drawn
+-- (self.creatureCounts).
+function Window:CreatureCount(rank)
+  local zone, search = self.listZone, self.listSearch
+  -- (an ability whose own name matched, with Window.SEARCH_HEADINGS on, is listed whole: GetAbilities)
+  if search and self.namedRanks and self.namedRanks[rank] then search = nil end
+  local rares = self.listRares
+  if not (zone or search or rares) then return nil end
+  if TrainerRank(rank) then return search and 0 or nil end
+  self.creatureCounts = self.creatureCounts or {}
+  local count = self.creatureCounts[rank]
+  if count == nil then
+    count = 0
+    local byLevel = self.tab == "ATTACK" and DB.global.filter_by_level
+    local level = self.playerLevel or (UnitLevel and UnitLevel("player")) or 1
+    for _, id in ipairs(rank.npc_ids or {}) do
+      local npc = Addon:GetNPC(id)
+      if npc and (not zone or self:NPCInZone(npc, zone)) and self:NPCMatchesSearch(npc, search)
+          and (not rares or self:NPCIsRare(npc)) and (not byLevel or (npc.min and npc.min <= level)) then
+        count = count + 1
+      end
+    end
+    self.creatureCounts[rank] = count
+  end
+  return count
 end
 
 -- An attack speed's beasts (Addon:GetNPC) that pass Filter by Level: with it on, the ones you can tame now (their
@@ -125,27 +174,14 @@ function Window:InitRankButton(button, info)
   if known then text = ("%s (%s)"):format(text, L.KNOWN) end
   button.Label:SetText(text)
   button.Label:SetVertexColor(Colors.State[self:RankState(ability, rankIndex)]:GetRGB())
-  button.SkillUps:Hide()
-  button.LockedIcon:Hide()
 
   -- The rank's number of tameable creatures, on the right like a badge (as on the website). The template's Count
   -- (the "[2]" a recipe shows for how many can be crafted) is moved to the row's right edge for it.
-  local creatures = rank.npc_ids and #rank.npc_ids or 0
-  if creatures > 0 then
-    button.Count:ClearAllPoints()
-    button.Count:SetPoint("RIGHT", button, "RIGHT", -8, 0)
-    button.Count:SetText(("(%d)"):format(creatures))
-    button.Count:SetTextColor(0.78, 0.69, 0.55) -- tan, like the website's badge
-    button.Count:Show()
-    button.Label:SetWidth(button:GetWidth() - 60)
-  else
-    button.Count:Hide()
-    button.Label:SetWidth(button:GetWidth() - 20)
-  end
-
-  local selected = self.selected and self.selected.ability == ability and self.selected.rankIndex == rankIndex
-  button.SelectedOverlay:SetShown(selected)
-  button.HighlightOverlay:SetShown(not selected)
+  -- With the Zone Filter on or a search typed, the number of them that pass.
+  local creatures = self:CreatureCount(rank) or (rank.npc_ids and #rank.npc_ids or 0)
+  self:SetRowCount(button, creatures > 0 and creatures or nil)
+  self:SetRowSelected(button, self.selected ~= nil and self.selected.ability == ability
+    and self.selected.rankIndex == rankIndex)
 
   button.ftInfo = info
   button:RegisterForClicks("LeftButtonUp") -- (a row the Collected Data tab used also took right-clicks)
@@ -168,12 +204,24 @@ function Window:HasShownRank(ability)
   return false
 end
 
--- Abilities on the current tab that match the search and the filter, by name.
+-- Abilities on the current tab that pass the filters and the search, by name. The search looks for creatures (a rank
+-- shows while one of its creatures matches: RankShown); on the Passive tab, which has none, for the ability's name.
 function Window:GetAbilities()
   local abilities = {}
+  local byName = self.tab == "PASSIVE" and self.search ~= "" and self.search or nil
+  -- With Window.SEARCH_HEADINGS on, the ranks of an ability whose own name matches: the search does not narrow them.
+  self.namedRanks = nil
+  if self.SEARCH_HEADINGS and self:CreatureSearch() then
+    self.namedRanks = {}
+    for _, ability in pairs(Addon.TameableAbilities) do
+      if Addon:GetAbilityTab(ability) == self.tab and self:HeadingMatches(ability.name) then
+        for _, rank in ipairs(ability.ranks) do self.namedRanks[rank] = true end
+      end
+    end
+  end
   for _, ability in pairs(Addon.TameableAbilities) do
     if Addon:GetAbilityTab(ability) == self.tab and #ability.ranks > 0
-        and (self.search == "" or ability.name:lower():find(self.search, 1, true))
+        and (not byName or ability.name:lower():find(byName, 1, true))
         and self:HasShownRank(ability) and self:PetShown(ability) then
       abilities[#abilities + 1] = ability
     end
@@ -188,6 +236,12 @@ end
 
 function Window:RefreshAbilities()
   self.playerLevel = UnitLevel and UnitLevel("player") or 1
+  -- The Zone Filter's zone for this drawing of the list (the Passive tab has no Zone button: trainers teach those),
+  -- and each rank's number of creatures in it, counted afresh.
+  self.listZone = self.tab ~= "PASSIVE" and self:ZoneFilter() or nil
+  self.listSearch = self:CreatureSearch() -- (what was typed, on the tabs that list creatures)
+  self.listRares = self:RaresOnly() -- (the Rares filter)
+  self.creatureCounts = {}
   local abilities = self:GetAbilities()
   local provider = CreateTreeDataProvider()
   local first
@@ -254,7 +308,10 @@ function Window:RefreshAbilities()
   end
   if self.tab == "ATTACK" then
     local beasts = 0
-    for _, ability in ipairs(abilities) do beasts = beasts + #self:AttackNPCs(ability.ranks[1]) end
+    for _, ability in ipairs(abilities) do
+      local rank = ability.ranks[1]
+      beasts = beasts + (self:CreatureCount(rank) or #self:AttackNPCs(rank)) -- (those that pass the zone and search)
+    end
     self.headerCount:SetFormattedText(L.ATTACK_SPEED_COUNT, #abilities, beasts)
   else
     self.headerCount:SetFormattedText(L.RANKS_KNOWN, known, total)
@@ -267,14 +324,7 @@ end
 function Window:Select(ability, rankIndex)
   self.selected = { ability = ability, rankIndex = rankIndex }
   self:Remember()
-  self.scrollBox:ForEachFrame(function(button, node)
-    local info = node:GetData().rankInfo
-    if info then
-      local isSelected = info.ability == ability and info.rankIndex == rankIndex
-      button.SelectedOverlay:SetShown(isSelected)
-      button.HighlightOverlay:SetShown(not isSelected)
-    end
-  end)
+  self:MarkSelected("rankInfo", function(info) return info.ability == ability and info.rankIndex == rankIndex end)
   self:UpdateDetails()
 end
 
@@ -296,9 +346,9 @@ local function LearnableOnEnter(button)
   GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
   GameTooltip:SetText(Addon:FamilyLabel(button.family))
   if button.learns then
-    GameTooltip:AddLine(L.CAN_LEARN, 0.25, 1, 0.25)
+    Helpers.TipLine(L.CAN_LEARN, Colors.Available)
   else
-    GameTooltip:AddLine(L.CANNOT_LEARN, 0.6, 0.6, 0.6)
+    Helpers.TipLine(L.CANNOT_LEARN, Colors.Muted)
   end
   GameTooltip:Show()
 end
@@ -416,10 +466,13 @@ function Window:UpdateAbilityDetails()
     self:LearnableRow():Hide()
     self:SetTopOffset(0)
   else
-    self.facts:SetText(table.concat({
-      ("%s: %s"):format(Colors.Label(L.PET_LEVEL), rank.pet_level or 1),
-      ("%s: %s"):format(Colors.Label(L.TRAINING_COST), rank.training_cost or 0),
-    }, "\n"))
+    local facts = {
+      Helpers.Line(L.PET_LEVEL, rank.pet_level or 1),
+      Helpers.Line(L.TRAINING_COST, rank.training_cost or 0),
+    }
+    -- What a trainer charges for it (the ranks a trainer sells), as on the website.
+    if rank.trainer_cost then facts[#facts + 1] = Helpers.Line(L.PRICE, Helpers.Money(rank.trainer_cost)) end
+    self.facts:SetText(table.concat(facts, "\n"))
     self:ShowLearnableRow(ability)
   end
 
@@ -437,8 +490,25 @@ function Window:UpdateAbilityDetails()
     end
   end
   table.sort(npcs, ByLevel)
+  -- The Rares filter: only the rare creatures.
+  if self:RaresOnly() then
+    local rare = {}
+    for _, npc in ipairs(npcs) do
+      if self:NPCIsRare(npc) then rare[#rare + 1] = npc end
+    end
+    npcs = rare
+  end
+  -- The search: only the creatures whose name holds what was typed.
+  local total, search = #npcs, self:CreatureSearch()
+  if search and not (self.namedRanks and self.namedRanks[rank]) then
+    local found = {}
+    for _, npc in ipairs(npcs) do
+      if self:NPCMatchesSearch(npc, search) then found[#found + 1] = npc end
+    end
+    npcs = found
+  end
   -- The Zone Filter: only the creatures in the player's zone, "2 of 5 in Westfall".
-  local total, zone = #npcs, self:ZoneFilter()
+  local zone = self:ZoneFilter()
   if zone then
     local inZone = {}
     for _, npc in ipairs(npcs) do
@@ -447,10 +517,14 @@ function Window:UpdateAbilityDetails()
     npcs = inZone
   end
 
-  local fromTrainer = ability.passive and not ability.unique and not ability.attack_speed
+  -- Learned from a Hunter or Pet Trainer, not from tamed creatures (`trainer` in the data: Growl and the passives). Its
+  -- first rank without a price is the one every pet starts with (Growl Rank 1). As the website says it.
+  local fromTrainer = ability.trainer == true or (ability.passive and not ability.unique and not ability.attack_speed)
+  local knownByAll = fromTrainer and (rank.rank or rankIndex) == 1 and not rank.trainer_cost
   -- A unique rank no known creature has is a bounty (tab-bounties.lua): say so, and lead to it.
   local bounty = ability.unique and total == 0 and ("unique:%s:%d"):format(ability.key, rank.rank or rankIndex)
-  self.npcLabel:SetText(fromTrainer and L.LEARNED_FROM_TRAINER
+  self.npcShowFamily = false -- (a bounty's list names each creature's family; these are one ability's)
+  self.npcLabel:SetText(knownByAll and L.KNOWN_BY_EVERY_PET or fromTrainer and L.LEARNED_FROM_TRAINER
     or bounty and ("%s (0): %s"):format(L.TAMEABLE_NPCS, L.UNIQUE_RANK_NONE)
     or zone and L.TAMEABLE_IN_ZONE:format(L.TAMEABLE_NPCS, #npcs, total, zone.name)
     or ("%s (%d):"):format(L.TAMEABLE_NPCS, #npcs))

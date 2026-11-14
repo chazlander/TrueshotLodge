@@ -1,4 +1,5 @@
 local _, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local Collector = Addon:GetModule("Collector")
 local DB = Addon:GetModule("DB")
 
@@ -892,9 +893,8 @@ local function recordTameCheck(result, id)
   checks[id] = check
   changed()
   local L = Addon:GetModule("Locale")
-  local about = ("|cFF1FA5D1%s|r"):format(check.name or "?")
-  print(("|cFF007EA6%s|r: %s"):format(Addon.TITLE,
-    (result == TAMEABLE and L.TAME_CHECK_YES_NOTICE or L.TAME_CHECK_NO_NOTICE):format(about)))
+  local about = Colors.NPC(check.name or "?")
+  Addon:Print((result == TAMEABLE and L.TAME_CHECK_YES_NOTICE or L.TAME_CHECK_NO_NOTICE):format(about))
   Addon:Debug("collector: tame check", check.name, "(" .. id .. "):", result)
 end
 
@@ -1108,10 +1108,10 @@ function Collector:NotifyNew(kind, entry, force)
   announced[key] = true
   local L = Addon:GetModule("Locale")
   local level = entry.level or entry.level_min
-  local about = ("|cFF1FA5D1%s|r (%s%s)"):format(entry.name or "?", entry.family or L.UNKNOWN,
+  local about = ("%s (%s%s)"):format(Colors.NPC(entry.name or "?"), entry.family or L.UNKNOWN,
     level and (", " .. L.LEVEL:lower() .. " " .. level) or "")
   local text = (kind == "tame" and L.NEW_TAME_NOTICE or L.NEW_SIGHTING_NOTICE):format(about)
-  print(("|cFF007EA6%s|r: |cFFFF8000%s|r %s"):format(Addon.TITLE, L.NEW_BADGE, text))
+  Addon:Print(Colors.New(L.NEW_BADGE), text)
 end
 
 function Collector:SendNameTip()
@@ -1120,7 +1120,7 @@ function Collector:SendNameTip()
   global.send_name_tip = true
   if global.send_name == true then return end
   C_Timer.After(SEND_NAME_TIP_DELAY, function()
-    print(("|cFF007EA6%s|r: %s"):format(Addon.TITLE, Addon:GetModule("Locale").SEND_NAME_TIP))
+    Addon:Print(Addon:GetModule("Locale").SEND_NAME_TIP)
   end)
 end
 

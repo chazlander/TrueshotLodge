@@ -1,4 +1,5 @@
 local _, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local Helpers = Addon:GetModule("Helpers")
 local L = Addon:GetModule("Locale")
 
@@ -14,9 +15,12 @@ local ZOOM_MIN, ZOOM_MAX, ZOOM_STEP = 0.6, 2.5, 0.1 -- the camera's distance aga
 local TURN_SPEED = 0.012 -- radians per pixel the cursor moves while turning a model
 -- Moving a model: how much of the scene the frame shows from top to bottom, against how far the camera stands from
 -- the model (about the game's model camera's field of view), so the model keeps up with the cursor whatever its size;
--- and the camera's distance when the client cannot tell it.
+-- and the camera's distance when the client cannot tell it. The client sometimes answers with a number that means
+-- nothing (about 8e37 for the pet profile's box, seen in November 2026): a distance over PAN_DISTANCE_MAX is not
+-- believed, or the first pixel of a drag would throw the creature out of its box.
 local PAN_VIEW = 0.9
 local PAN_DISTANCE = 4
+local PAN_DISTANCE_MAX = 100
 
 -- The model at the zoom the player left it at (model.zoom), moved where the player dragged it (model.panY, model.panZ).
 local function ApplyZoom(model)
@@ -35,7 +39,9 @@ end
 -- distance (times the zoom, when the zoom moves the camera), spread over the frame's height.
 local function PanPerPixel(model)
   local ok, distance = pcall(model.GetCameraDistance, model)
-  if not (ok and type(distance) == "number" and distance > 0) then distance = PAN_DISTANCE end
+  if not (ok and type(distance) == "number" and distance > 0 and distance <= PAN_DISTANCE_MAX) then
+    distance = PAN_DISTANCE
+  end
   if model.zoomedByCamera then distance = distance * (model.zoom or 1) end
   local height = model:GetHeight()
   return distance * PAN_VIEW / ((height and height > 0) and height or MODEL_HEIGHT)
@@ -47,6 +53,7 @@ local function DragOnUpdate(model)
   local x, y = GetCursorPosition()
   local scale = model:GetEffectiveScale() or 1
   local dx, dy = (x - model.dragX) / scale, (y - model.dragY) / scale
+  if dx == 0 and dy == 0 then return end -- (a click, or the cursor held still: the model stays as it is)
   model.dragX, model.dragY = x, y
   if model.dragButton == "LeftButton" then
     model.facing = (model.facing or MODEL_FACING) + dx * TURN_SPEED
@@ -86,15 +93,37 @@ local function ShowModel(box, display, creatureId)
   return shown
 end
 
+-- `/tsl debug model`: what a model box's camera and position are (after a drag: where it was left), to find why a
+-- model leaves its box. Returns a line of text.
+function Helpers.DescribeModelViewer(box)
+  local model = box and box.model
+  if not model then return "no model frame" end
+  local function call(name)
+    if type(model[name]) ~= "function" then return "n/a" end
+    local values = { pcall(model[name], model) }
+    if not values[1] then return "error" end
+    local parts = {}
+    for index = 2, #values do
+      parts[#parts + 1] = type(values[index]) == "number" and ("%.3f"):format(values[index]) or tostring(values[index])
+    end
+    return table.concat(parts, ", ")
+  end
+  return ("shown=%s size=%dx%d scale=%.2f | camera distance=%s | position=%s | model scale=%s | zoom=%s by camera=%s | "
+    .. "pan y=%s z=%s | per pixel=%.5f | facing=%s | dragging=%s"):format(tostring(model:IsShown()),
+    model:GetWidth() or 0, model:GetHeight() or 0, model:GetEffectiveScale() or 0, call("GetCameraDistance"),
+    call("GetPosition"), call("GetModelScale"), tostring(model.zoom or 1), tostring(model.zoomedByCamera),
+    tostring(model.panY), tostring(model.panZ), PanPerPixel(model), tostring(model.facing), tostring(model.dragButton))
+end
+
 -- The box, in `parent`; its owner places it (its height is MODEL_HEIGHT until set). The hint ("Drag to turn, ...")
--- sits under it on the right. box:ShowModel(display, creatureId) shows a creature.
+-- sits under it, centered. box:ShowModel(display, creatureId) shows a creature.
 function Helpers.NewModelViewer(parent)
   local box = CreateFrame("Frame", nil, parent)
   box:SetHeight(MODEL_HEIGHT)
   local background = box:CreateTexture(nil, "BACKGROUND")
   background:SetAllPoints()
   background:SetColorTexture(0.04, 0.035, 0.03, 0.85)
-  for _, edge in ipairs(Helpers.AddEdges(box, 1, "BORDER")) do edge:SetColorTexture(0.42, 0.31, 0.15, 0.8) end -- bronze
+  for _, edge in ipairs(Helpers.AddEdges(box, 1, "BORDER")) do edge:SetColorTexture(Colors.Metal:GetRGBA(0.8)) end -- bronze
 
   local ok, model = pcall(CreateFrame, "PlayerModel", nil, box)
   if ok and model then
@@ -136,8 +165,8 @@ function Helpers.NewModelViewer(parent)
   box.noModel:SetPoint("CENTER")
   box.noModel:SetText(L.LOOK_NO_MODEL)
 
-  box.hint = NewText(box, "GameFontDisableSmall", "RIGHT")
-  box.hint:SetPoint("TOPRIGHT", box, "BOTTOMRIGHT", 0, -5)
+  box.hint = NewText(box, "GameFontDisableSmall", "CENTER") -- centered under the box
+  box.hint:SetPoint("TOP", box, "BOTTOM", 0, -5)
   box.hint:SetText(L.LOOK_HINT)
 
   box.ShowModel = ShowModel

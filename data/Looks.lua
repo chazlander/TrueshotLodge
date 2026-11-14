@@ -25,7 +25,7 @@ Addon.TameableLooks = {
   },
   ["Bird of Prey"] = {
     { display = 4877, name = "Owl Grey", npcs = { 1995, 1996, 1997, 270298, 7097, 7099, 7098 } },
-    { display = 6212, name = "Owl White", npcs = { 261914, 14343, 14283, 7455, 249053, 7456 } },
+    { display = 6212, name = "Owl White", npcs = { 14343, 14283, 7455, 249053, 261914, 7456 } },
     { display = 114497, name = "Owl Brown", npcs = { 272388, 211965, 272389 } },
     { display = 146349, name = "Owl Black", npcs = { 272387, 270196 } },
     { display = 139491, name = "Shriekling Green", npcs = { 253282 } },
@@ -169,7 +169,7 @@ Addon.TameableLooks = {
     { display = 144247, name = "Galestrider Swiftmount Green", npcs = { 265760 } }
   },
   ["Turtle"] = {
-    { display = 4829, name = "Grey", npcs = { 249224, 211951, 260809, 215108, 4396, 4397, 4398, 4400, 4399, 8213 } },
+    { display = 4829, name = "Grey", npcs = { 249224, 260809, 211951, 215108, 4396, 4397, 4398, 4400, 4399, 8213 } },
     { display = 5126, name = "Blue", npcs = { 5432, 260810, 3461, 3653, 14123, 13599, 5431, 221328 } },
     { display = 2307, name = "White", npcs = { 214612, 4142, 4144, 4143, 6369, 6352 } },
     { display = 5026, name = "Red", npcs = { 4887, 4825, 14223, 2505 } },

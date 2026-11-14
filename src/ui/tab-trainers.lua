@@ -22,10 +22,6 @@ end
 -- ============================================================================
 
 local TRAINER_ICON = "Interface\\Icons\\Ability_Hunter_BeastTraining"
-local SIDE_COLORS = {
-  alliance = CreateColor and CreateColor(0.42, 0.65, 1) or nil,
-  horde = CreateColor and CreateColor(1, 0.38, 0.38) or nil,
-}
 
 local function ZoneName(trainer)
   local name = trainer.zone_id and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(trainer.zone_id)
@@ -65,7 +61,8 @@ function Window:GetTrainerGroups()
     groups[#groups + 1] = { zone = zone, trainers = trainers }
   end
   table.sort(groups, function(a, b) return a.zone < b.zone end)
-  -- The Zone Filter: only the player's zone, when it has a trainer (otherwise all of them, as without the filter).
+  -- The Zone Filter: only the player's zone. A zone without a trainer lists none, as the other tabs list nothing for a
+  -- zone without creatures (it used to list every trainer then, which read as the filter not working).
   local zone = self:ZoneFilter()
   if zone then
     local here = {}
@@ -76,7 +73,7 @@ function Window:GetTrainerGroups()
       end
       if inZone then here[#here + 1] = group end
     end
-    if #here > 0 then return here end
+    return here
   end
   return groups
 end
@@ -127,16 +124,9 @@ end
 
 function Window:InitTrainerButton(button, trainer)
   button.Label:SetText(trainer.name)
-  button.Label:SetWidth(button:GetWidth() - 20)
-  local color = SIDE_COLORS[trainer.side] or HIGHLIGHT_FONT_COLOR
-  button.Label:SetVertexColor(color:GetRGB())
-  button.SkillUps:Hide()
-  button.LockedIcon:Hide()
-  button.Count:Hide()
-
-  local selected = self.selectedTrainer == trainer
-  button.SelectedOverlay:SetShown(selected)
-  button.HighlightOverlay:SetShown(not selected)
+  button.Label:SetVertexColor((Colors.Side[trainer.side] or Colors.Default):GetRGB()) -- by faction, as on the website
+  self:SetRowCount(button, nil)
+  self:SetRowSelected(button, self.selectedTrainer == trainer)
 
   button.ftTrainer = trainer
   button:RegisterForClicks("LeftButtonUp")
@@ -148,13 +138,7 @@ end
 function Window:SelectTrainer(trainer)
   self.selectedTrainer = trainer
   self:Remember()
-  self.scrollBox:ForEachFrame(function(button, node)
-    local other = node:GetData().trainer
-    if other then
-      button.SelectedOverlay:SetShown(other == trainer)
-      button.HighlightOverlay:SetShown(other ~= trainer)
-    end
-  end)
+  self:MarkSelected("trainer", function(other) return other == trainer end)
   self:UpdateTrainerDetails()
 end
 

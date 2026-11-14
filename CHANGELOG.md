@@ -1,5 +1,51 @@
 # Changelog
 
+## [1.60.1.42] - 2026-11-14
+
+- The Bounties tab has a new section, The Untamables: the creatures hunters have uploaded that we keep out of the
+  guide. There is nothing to claim; it is there so you can see everything uploads have brought in, including what we
+  left out. The same list is at TrueshotLodge.com/bounties/untamables
+- Learning a pet ability rank now marks it as known right away, without opening Beast Training. Ranks you learned
+  before still need one look in Beast Training, once with each pet family you own.
+- The Bounties tab has a new pet bounty, Missing Model: the creatures whose look nobody knows yet, as on the website.
+  Each bounty's creatures now show their family too, and a creature the game refuses to tame is no longer wanted by
+  any bounty.
+- A creature the game refuses to tame says "Not tameable" in red: after its name in the lists, in its tooltip (on the
+  map, in the window and in the world) and on its profile.
+- An ability a trainer teaches now shows the price the trainer charges for the rank. Growl says where it comes from
+  ("Known by every pet" for Rank 1, a Hunter or Pet Trainer for the rest) instead of an empty list of creatures.
+- On the Trainers tab the Zone filter now lists only your zone's trainers. In a zone without one it lists none; it
+  used to list every trainer then, which looked as if the filter was off.
+- On a pet's profile, the Map button is now at the top of the left pane, across from Back, and the model fills the
+  right pane. A tamed creature's row reads "Tamed by" and the hunter's name; hover it for the date.
+- Fixed: right-dragging the model on a pet's profile made the creature vanish.
+- A new filter button, Rares, above Pet: wherever creatures are listed (the ability tabs, Families, Looks and
+  Bounties) it shows only the rare ones, and only the ranks, families and looks that have one.
+- The search box now searches creatures, not the names on the left. Type part of a creature's name on the ability
+  tabs, Families, Looks or Bounties: the left side keeps only the ranks, families, looks and bounties that have a
+  creature matching it (opened, with their number of matches), and the right side lists just those creatures. On the
+  tabs without creatures (Passive, Trainers, Options, Help, Collected Data) it searches the list as before.
+- With the Zone filter on, the ability tabs' list now follows it too: only the ranks (and attack speeds) that a
+  creature in your zone has are listed, each with its number of creatures there. Ranks a trainer teaches stay.
+  The Families tab does the same with the Zone and Level filters: a family with no creature left is not listed.
+- The addon and the website now use the same colors for the same things: creature names are the website's light blue,
+  and hints are one grey everywhere.
+- Your collected data file now carries a random id, so when you upload it again after more hunting, we can tell it is a
+  newer copy of the same file. The id says nothing about you or your characters.
+- Data since 1.60.1.41:
+  - 54 new tames (332 in all)
+  - 1 new creature (778 in all)
+  - 0 new sightings
+  - 12 new ability tames
+  - 2 new attack speeds
+  - 1 new level
+  - 1 new zone
+  - 0 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 91 of 778 creatures have no known attack speed, 61 no level and 47 no zone (160 have no map points)
+
 ## [1.60.1.41] - 2026-11-11
 
 - Data since 1.60.1.40:

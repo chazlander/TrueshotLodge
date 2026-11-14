@@ -1,4 +1,5 @@
 local ADDON_NAME, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local Commands = Addon:GetModule("Commands")
 local PinHelper = Addon:GetModule("PinHelper")
 local UI = Addon:GetModule("UI")
@@ -19,7 +20,7 @@ local function GetArgs(message)
 end
 
 local function Say(...)
-  print("|cFFFF8800[" .. Addon.TITLE .. " debug]|r", ...)
+  Addon:DebugPrint(...)
 end
 
 -- The debug commands, `/tsl debug <command> [option]`, in the order `/tsl debug` lists them.
@@ -37,6 +38,7 @@ local DEBUG_COMMANDS = {
   { "training scan", "globals that might belong to the Beast Training window" },
   { "training events", "print each event as it first fires (again to stop)" },
   { "icon", "the parts of the details icon" },
+  { "model", "the 3D model boxes' camera and position (the Looks tab's and the pet profile's), after dragging one" },
   { "tabs", "the parts of a side tab (a left-side one if any), to check its mirroring" },
   { "tabs art|mask|icon", "change how the left tabs are mirrored, live (art on/off, mask flip/keep/off, icon on/off)" },
   { "tabs right|left", "move the left tab column 1 pixel right or left, live" },
@@ -168,6 +170,12 @@ function Debug.npc(option)
   end
 end
 
+function Debug.model()
+  local Window, Helpers = Addon:GetModule("Window"), Addon:GetModule("Helpers")
+  Say("model, Looks tab:", Helpers.DescribeModelViewer(Window.lookWidgets))
+  Say("model, pet profile:", Helpers.DescribeModelViewer(Window.profileViewer))
+end
+
 function Debug.icon()
   return Addon:GetModule("Window"):DescribeIcon()
 end
@@ -273,7 +281,7 @@ function Commands:HandleDebug(command, option)
   if command then Say("unknown command:", command) end
   Say("commands (/tsl debug ...):")
   for _, entry in ipairs(DEBUG_COMMANDS) do
-    print(("  |cFFFFD100%s|r - %s"):format(entry[1], entry[2]))
+    print(("  %s - %s"):format(Colors.Gold(entry[1]), entry[2]))
   end
 end
 

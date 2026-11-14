@@ -54,27 +54,45 @@ local BLIZZARD_ICON_RING = false
 Window.BOUNTY_ICON = (GetFileIDFromPath and GetFileIDFromPath("Interface\\Icons\\INV_Inscription_80_Contract_Embers"))
   or "Interface\\Icons\\INV_Scroll_03"
 
+-- Each tab, in the side tabs' default order. Besides what the side tab shows (label, title, icon), a tab names the
+-- Window functions that fill it, so the window itself never has to know which tabs exist:
+--   refresh    fills the tab (the list and the details); the four ability tabs share RefreshAbilities
+--   details    fills the details pane for what is selected
+--   selection  the Window field that holds the tab's selection, which Sticky Selections saves
+-- A new tab is one entry here and a file of its own with those functions (and, for a new kind of list row, an entry
+-- in ROW_KINDS below); .tools/smoke.py checks that every tab's functions exist and are reached.
 local TABS = {
   -- First, as on the website (which opens on it).
-  { key = "FAMILIES", label = L.FAMILIES, title = L.PET_FAMILIES, icon = "Interface\\Icons\\Ability_Hunter_Pet_Wolf" },
+  { key = "FAMILIES", label = L.FAMILIES, title = L.PET_FAMILIES, icon = "Interface\\Icons\\Ability_Hunter_Pet_Wolf",
+    refresh = "RefreshFamilies", details = "UpdateFamilyDetails", selection = "selectedFamily" },
   { key = "UNIQUE", label = L.UNIQUE, title = L.UNIQUE_ABILITIES, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming" },
   { key = "COMMON", label = L.COMMON, title = L.COMMON_ABILITIES, icon = "Interface\\Icons\\Ability_Racial_Cannibalize" },
   { key = "PASSIVE", label = L.PASSIVE, title = L.PASSIVE_ABILITIES, icon = "Interface\\Icons\\Spell_Nature_UnyeildingStamina" },
   { key = "ATTACK", label = L.ATTACK_SPEEDS, title = L.ATTACK_SPEEDS, icon = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
-  { key = "TRAINERS", label = L.TRAINERS, title = L.TRAINERS, icon = "Interface\\Icons\\Ability_Hunter_BeastTraining" },
+  { key = "TRAINERS", label = L.TRAINERS, title = L.TRAINERS, icon = "Interface\\Icons\\Ability_Hunter_BeastTraining",
+    refresh = "RefreshTrainers", details = "UpdateTrainerDetails" }, -- (its selection is saved by id: Window:Remember)
   -- The website's Looks tab icon (Trade_Archaeology_HighborneSoulMirror), by file id.
-  { key = "LOOKS", label = L.LOOKS, title = L.LOOKS, icon = 458243 },
-  { key = "BOUNTIES", label = L.BOUNTIES, title = L.BOUNTIES, icon = Window.BOUNTY_ICON },
-  { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall" },
+  { key = "LOOKS", label = L.LOOKS, title = L.LOOKS, icon = 458243,
+    refresh = "RefreshLooks", details = "UpdateLookDetails", selection = "selectedLook" },
+  { key = "BOUNTIES", label = L.BOUNTIES, title = L.BOUNTIES, icon = Window.BOUNTY_ICON,
+    refresh = "RefreshBounties", details = "UpdateBountyDetails", selection = "selectedBounty" },
+  { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall",
+    refresh = "RefreshStable" },
   -- No side tabs: the gear and the "?" by the close button open these (Window:CreateTitleButtons).
-  { key = "OPTIONS", label = L.OPTIONS, title = L.OPTIONS, icon = "Interface\\Icons\\INV_Misc_Gear_01", noSideTab = true },
-  { key = "HELP", label = L.HELP, title = L.HELP, icon = "Interface\\Icons\\INV_Misc_QuestionMark", noSideTab = true },
+  { key = "OPTIONS", label = L.OPTIONS, title = L.OPTIONS, icon = "Interface\\Icons\\INV_Misc_Gear_01", noSideTab = true,
+    refresh = "RefreshOptions", details = "UpdateOptionDetails", selection = "selectedOption" },
+  { key = "HELP", label = L.HELP, title = L.HELP, icon = "Interface\\Icons\\INV_Misc_QuestionMark", noSideTab = true,
+    refresh = "RefreshHelp", details = "UpdateHelpDetails", selection = "selectedHelp" },
   -- No side tab either: a creature's name opens its profile (tab-pet.lua).
-  { key = "PET", label = L.PET_PROFILE, title = L.PET_PROFILE, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming", noSideTab = true },
+  { key = "PET", label = L.PET_PROFILE, title = L.PET_PROFILE, icon = "Interface\\Icons\\Ability_Hunter_BeastTaming", noSideTab = true,
+    refresh = "RefreshPetProfile" },
   -- Last, so the tabs above never move: it is only shown while collecting is on.
-  { key = "COLLECTOR", label = L.COLLECTED_DATA, title = L.COLLECTED_DATA, icon = "Interface\\Icons\\INV_Misc_Note_02" },
+  { key = "COLLECTOR", label = L.COLLECTED_DATA, title = L.COLLECTED_DATA, icon = "Interface\\Icons\\INV_Misc_Note_02",
+    refresh = "RefreshCollector", details = "UpdateCollectedDetails" },
 }
 Window.TABS = TABS -- the side tabs (window-tabs.lua) are made from it
+local TAB_BY_KEY = {}
+for _, info in ipairs(TABS) do TAB_BY_KEY[info.key] = info end
 
 -- ============================================================================
 -- Availability
@@ -118,7 +136,7 @@ end
 
 function Window:Show()
   if not self:IsAvailable() then
-    print(("|cFF007EA6%s|r: %s"):format(Addon.TITLE, L.WINDOW_UNAVAILABLE))
+    Addon:Print(L.WINDOW_UNAVAILABLE)
     return
   end
   self.frame:Show()
@@ -282,18 +300,11 @@ end
 function Window:Remember()
   if not self:Sticky() then return end
   local selections = DB.global.selections
+  local info = TAB_BY_KEY[self.tab]
   if self.tab == "TRAINERS" then
     selections.TRAINERS = self.selectedTrainer and self.selectedTrainer.id or nil
-  elseif self.tab == "BOUNTIES" then
-    selections.BOUNTIES = self.selectedBounty
-  elseif self.tab == "FAMILIES" then
-    selections.FAMILIES = self.selectedFamily
-  elseif self.tab == "LOOKS" then
-    selections.LOOKS = self.selectedLook
-  elseif self.tab == "HELP" then
-    selections.HELP = self.selectedHelp
-  elseif self.tab == "OPTIONS" then
-    selections.OPTIONS = self.selectedOption
+  elseif info and info.selection then
+    selections[self.tab] = self[info.selection]
   elseif self.selected then
     selections[self.tab] = {
       ability = self.selected.ability.key, -- the slug (set in data.lua)
@@ -352,7 +363,7 @@ function Window:CreateTitleButtons(frame)
       icon:SetPoint("CENTER", button, "CENTER", GEAR_OFFSET[1], GEAR_OFFSET[2])
       icon:SetSize(size - 2 * GEAR_MARGIN, size - 2 * GEAR_MARGIN)
       icon:SetTexture(section.icon)
-      icon:SetVertexColor(1, 0.82, 0) -- the gold of the game's button text
+      icon:SetVertexColor(Colors.Gold:GetRGB()) -- the gold of the game's button text
       button.icon = icon
     else
       -- Its own text, centered on the button (the button's own text is placed and padded by the template).
@@ -453,9 +464,7 @@ function Window:UpdateTabs()
     if button.section == self.tab then button:LockHighlight() else button:UnlockHighlight() end
   end
   if not self.dragTab then self:LayoutTabs() end -- (a tab being dragged is placed by the cursor)
-  for _, info in ipairs(TABS) do
-    if info.key == self.tab then self.header:SetText(info.title) end
-  end
+  if TAB_BY_KEY[self.tab] then self.header:SetText(TAB_BY_KEY[self.tab].title) end
   self:UpdateClearButton()
   -- Stable and the pet profile fill the window beside the side tabs; the other tabs use the list and the details.
   local stable, profile = self.tab == "STABLE", self.tab == "PET"
@@ -473,6 +482,24 @@ end
 -- ============================================================================
 -- Ability list (left)
 -- ============================================================================
+
+-- The kinds of row the list shows: the field of a row's data that holds what it shows, and the Window function that
+-- fills the row from it. Each tab's file has its own (InitRankButton is in tab-abilities.lua, and so on).
+local ROW_KINDS = {
+  { "rankInfo", "InitRankButton" }, { "setting", "InitOptionButton" }, { "trainer", "InitTrainerButton" },
+  { "collected", "InitCollectedButton" }, { "bounty", "InitBountyButton" }, { "look", "InitLookButton" },
+  { "family", "InitFamilyButton" }, { "help", "InitHelpButton" },
+}
+Window.ROW_KINDS = ROW_KINDS -- (.tools/smoke.py fills every row a tab lists through it)
+
+-- The function that fills a row, and what it shows; nil for data no tab claims.
+local function RowInit(data)
+  for _, kind in ipairs(ROW_KINDS) do
+    local value = data[kind[1]]
+    -- (a header's `family` is a name, the unique abilities' tooltip: only a table is a Families row)
+    if value and (kind[1] ~= "family" or type(value) == "table") then return kind[2], value end
+  end
+end
 
 function Window:CreateList(frame)
   local list = CreateFrame("Frame", nil, frame)
@@ -575,7 +602,7 @@ function Window:CreateList(frame)
           if data.hint then -- how right-clicking sorts it
             GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
             GameTooltip:SetText(data.title or data.categoryInfo.name)
-            GameTooltip:AddLine(data.hint, 0.6, 0.6, 0.6)
+            Helpers.TipLine(data.hint, Colors.Muted)
             GameTooltip:Show()
           end
         end)
@@ -584,24 +611,16 @@ function Window:CreateList(frame)
           if data.hint then GameTooltip:Hide() end
         end)
       end)
-    elseif data.rankInfo then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitRankButton(button, data.rankInfo) end)
-    elseif data.setting then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitOptionButton(button, data.setting) end)
-    elseif data.trainer then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitTrainerButton(button, data.trainer) end)
-    elseif data.collected then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitCollectedButton(button, data.collected) end)
-    elseif data.bounty then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitBountyButton(button, data.bounty) end)
-    elseif data.look then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitLookButton(button, data.look) end)
-    elseif type(data.family) == "table" then -- (a header's `family` is a name: the unique abilities' tooltip)
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitFamilyButton(button, data.family) end)
-    elseif data.help then
-      factory("ProfessionsRecipeListRecipeTemplate", function(button) self:ResetRowExtras(button); self:InitHelpButton(button, data.help) end)
     else
-      factory("Frame")
+      local init, value = RowInit(data)
+      if init then
+        factory("ProfessionsRecipeListRecipeTemplate", function(button)
+          self:ResetRowExtras(button)
+          self[init](self, button, value)
+        end)
+      else
+        factory("Frame")
+      end
     end
   end)
 
@@ -612,9 +631,10 @@ function Window:CreateList(frame)
   ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 end
 
--- The filter buttons at the right of the header: Level, Zone, Pet (and Faction on the Trainers tab), in the Filters
--- box. Each shows on the tabs it applies to; grey while off, red and glowing while on. The setting is
--- DB.global[key]; the Zone Filter's own rules are in zone-filter.lua.
+-- The filter buttons at the right of the header, in the Filters box: Level, Zone and Pet (Faction on the Trainers tab)
+-- in a row, and Rares above Pet (`top`), beside the box's label. Each shows on the tabs it applies to; grey while off,
+-- red and glowing while on. The setting is DB.global[key]; the Zone Filter's own rules are in zone-filter.lua.
+local CREATURE_LISTS = { UNIQUE = true, COMMON = true, ATTACK = true, BOUNTIES = true, FAMILIES = true, LOOKS = true }
 local FILTER_BUTTONS = {
   { key = "filter_by_level", label = L.FILTER_LEVEL, title = L.FILTER_BY_LEVEL, slot = 1,
     tabs = { UNIQUE = true, COMMON = true, PASSIVE = true, ATTACK = true, BOUNTIES = true, FAMILIES = true, LOOKS = true } },
@@ -623,12 +643,30 @@ local FILTER_BUTTONS = {
   { key = "filter_by_pet", label = L.FILTER_PET, title = L.FILTER_BY_PET, slot = 3, tabs = { UNIQUE = true, COMMON = true } },
   -- (the Pet place: the two never show on the same tab)
   { key = "filter_by_faction", label = L.FILTER_FACTION, title = L.FILTER_BY_FACTION, slot = 3, tabs = { TRAINERS = true } },
+  -- Rares: only the rare creatures, wherever creatures are listed. In the row above, over Pet.
+  { key = "filter_rares", label = L.FILTER_RARES, title = L.FILTER_BY_RARES, tooltip = L.FILTER_RARES_TOOLTIP, slot = 3,
+    top = true, tabs = CREATURE_LISTS },
 }
 local FILTER_WIDTH, FILTER_HEIGHT, FILTER_GAP = 58, 22, 6
 -- The Filters box: fixed at the top right, as wide as three buttons whichever show, from under the title bar down to
 -- the top of the panes (the list's top, 72), with the window's own edge on its right.
 local FILTER_SLOTS, FILTER_LEFT, FILTER_RIGHT = 3, 10, 8 -- the places; the room before the first and after the last
-local FILTER_BOX_TOP, FILTER_BOX_BOTTOM, FILTER_BUTTONS_TOP = 26, 72, 17 -- (the buttons' top: under the label)
+-- Two rows: the box's label with the Rares button at its right end (a little shorter than the others, to fit under the
+-- title bar), then the row of buttons under them.
+local FILTER_BOX_TOP, FILTER_BOX_BOTTOM = 26, 72
+local FILTER_TOP_ROW, FILTER_TOP_HEIGHT = 0, 19 -- the top row's buttons: their top and their height
+local FILTER_BUTTONS_TOP = 21 -- the row under it: its top
+local FILTER_LABEL_SLOTS = 2 -- the label is centered over this many places from the left (clear of Rares)
+
+-- Whether a creature is rare (its classification, as the data has it: "Rare", "Rare Elite").
+function Window:NPCIsRare(npc)
+  return (npc.class or ""):find("Rare", 1, true) ~= nil
+end
+
+-- Whether the Rares filter is on, on a tab that lists creatures: only the rare ones are then shown.
+function Window:RaresOnly()
+  return DB.global.filter_rares == true and CREATURE_LISTS[self.tab] == true
+end
 
 -- Whether a filter button can be used now: Pet needs a current pet (summoned or dismissed).
 function Window:FilterUsable(filter)
@@ -669,7 +707,7 @@ function Window:CreateFilterButtons(frame)
   self.filterButtons = {}
   for _, filter in ipairs(FILTER_BUTTONS) do
     local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    button:SetSize(FILTER_WIDTH, FILTER_HEIGHT)
+    button:SetSize(FILTER_WIDTH, filter.top and FILTER_TOP_HEIGHT or FILTER_HEIGHT)
     button:SetText(filter.label)
     button:SetFrameLevel(frame:GetFrameLevel() + 20) -- over the window's background art
     button:SetMotionScriptsWhileDisabled(true) -- a Pet button without a pet still says why
@@ -687,30 +725,35 @@ function Window:CreateFilterButtons(frame)
       GameTooltip:SetText(filter.title, 1, 1, 1)
       if filter.key == "zone_filter" then
         local zone = self:PlayerZone()
-        if zone then GameTooltip:AddLine(zone.name, 1, 0.82, 0) end
+        if zone then Helpers.TipLine(zone.name, Colors.Gold) end
         GameTooltip:AddLine(L.ZONE_FILTER_TOOLTIP, nil, nil, nil, true)
       elseif filter.key == "filter_by_pet" then
         local family = self:CurrentPetFamily()
-        GameTooltip:AddLine(family or L.NO_ACTIVE_PET, 1, 0.82, 0)
+        Helpers.TipLine(family or L.NO_ACTIVE_PET, Colors.Gold)
+      elseif filter.tooltip then
+        GameTooltip:AddLine(filter.tooltip, nil, nil, nil, true)
       end
-      GameTooltip:AddLine(DB.global[filter.key] and L.ON or L.OFF, 0.6, 0.6, 0.6)
+      Helpers.TipLine(DB.global[filter.key] and L.ON or L.OFF, Colors.Muted)
       GameTooltip:Show()
     end)
     button:SetScript("OnLeave", GameTooltip_Hide)
     self.filterButtons[#self.filterButtons + 1] = button
   end
 
-  -- The box: "Filters" over the buttons, and a line on its left down to the panes.
+  -- The box: "Filters" over the first buttons (Rares sits at the right end of its row), and a line on the box's left
+  -- down to the panes.
   local group = CreateFrame("Frame", nil, frame)
   group:SetFrameLevel(frame:GetFrameLevel() + 19)
   group:SetSize(FILTER_LEFT + FILTER_SLOTS * FILTER_WIDTH + (FILTER_SLOTS - 1) * FILTER_GAP + FILTER_RIGHT,
     FILTER_BOX_BOTTOM - FILTER_BOX_TOP)
   group:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -FILTER_BOX_TOP)
   local label = group:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  label:SetPoint("TOP", 0, -3)
+  label:SetPoint("CENTER", group, "TOPLEFT",
+    FILTER_LEFT + (FILTER_LABEL_SLOTS * FILTER_WIDTH + (FILTER_LABEL_SLOTS - 1) * FILTER_GAP) / 2,
+    -(FILTER_TOP_ROW + FILTER_TOP_HEIGHT / 2))
   label:SetText(L.FILTERS)
   local line = group:CreateTexture(nil, "ARTWORK")
-  line:SetColorTexture(0.78, 0.69, 0.55, 0.45) -- the window's tan, faint
+  line:SetColorTexture(Colors.Tan:GetRGBA(0.45)) -- the window's tan, faint
   line:SetWidth(1)
   line:SetPoint("TOPLEFT", 0, 0)
   line:SetPoint("BOTTOMLEFT", 0, 0)
@@ -718,7 +761,7 @@ function Window:CreateFilterButtons(frame)
   -- Each button in its own place in the box: one that does not apply to the tab is hidden, the others stay put.
   for _, button in ipairs(self.filterButtons) do
     button:SetPoint("TOPLEFT", group, "TOPLEFT", FILTER_LEFT + (button.filter.slot - 1) * (FILTER_WIDTH + FILTER_GAP),
-      -FILTER_BUTTONS_TOP)
+      -(button.filter.top and FILTER_TOP_ROW or FILTER_BUTTONS_TOP))
   end
 end
 
@@ -739,7 +782,7 @@ function Window:UpdateFilterButtons()
       end
       local text = button:GetFontString()
       if text then
-        if on then text:SetTextColor(1, 0.82, 0) else text:SetTextColor(0.6, 0.6, 0.6) end
+        if on then text:SetTextColor(Colors.Gold:GetRGB()) else text:SetTextColor(Colors.Muted:GetRGB()) end
       end
       ShowGlow(button, on)
     else
@@ -753,6 +796,86 @@ end
 function Window:ResetRowExtras(button)
   if button.ftSmallBadge then button.ftSmallBadge:Hide() end
   if button.ftSparkles then button.ftSparkles:Hide() end
+end
+
+-- A row's badge at its right end: a count ("(12)", in the website's tan) or a word (Options: "On", in its state's
+-- color). Without text the badge is hidden and the label gets the whole row.
+function Window:SetRowCount(button, text, color)
+  if text == nil or text == "" then
+    button.Count:Hide()
+    button.Label:SetWidth(button:GetWidth() - 20)
+    return
+  end
+  button.Count:ClearAllPoints()
+  button.Count:SetPoint("RIGHT", button, "RIGHT", -8, 0)
+  button.Count:SetText(type(text) == "number" and ("(%d)"):format(text) or text)
+  button.Count:SetTextColor((color or Colors.Tan):GetRGB())
+  button.Count:Show()
+  button.Label:SetWidth(button:GetWidth() - 60)
+end
+
+-- A row's plain parts, the same on every tab: none of the recipe row's own marks, and lit when it is the selection.
+function Window:SetRowSelected(button, selected)
+  button.SkillUps:Hide()
+  button.LockedIcon:Hide()
+  button.SelectedOverlay:SetShown(selected)
+  button.HighlightOverlay:SetShown(not selected)
+end
+
+-- Lights the selected row among the rows on screen, after a click: `field` is the field of a row's data that holds
+-- what it shows (as ROW_KINDS), and `isSelected(value)` says whether that is the selection.
+function Window:MarkSelected(field, isSelected)
+  self.scrollBox:ForEachFrame(function(button, node)
+    local value = node:GetData()[field]
+    if value then
+      local selected = isSelected(value)
+      button.SelectedOverlay:SetShown(selected)
+      button.HighlightOverlay:SetShown(not selected)
+    end
+  end)
+end
+
+-- The search box searches creatures: on the tabs that list them, typing a name keeps the entries on the left that
+-- have a creature whose name holds it (a rank, a family, a look, a bounty), and on the right only those creatures. The
+-- other tabs have no creatures, so there it searches the list itself (the Passive tab's abilities, trainers, options,
+-- help and collected data).
+local CREATURE_TABS = { UNIQUE = true, COMMON = true, ATTACK = true, FAMILIES = true, LOOKS = true, BOUNTIES = true }
+
+-- Whether the search also matches the names on the left (an ability, a family, a look, a bounty), as it did before it
+-- searched creatures. Off: it searches creature names only. Set it to true to have both: an entry whose own name
+-- matches is then listed whole, with all its creatures, beside the entries that have a matching creature. Everything
+-- it needs is in place (Window:HeadingMatches, and the tabs' lists ask it), and .tools/smoke.py tests it both ways.
+Window.SEARCH_HEADINGS = false
+
+-- The text to search creature names for on the current tab (lowercase), or nil: nothing typed, or a tab without
+-- creatures.
+function Window:CreatureSearch()
+  local search = self.search
+  if search == nil or search == "" or not CREATURE_TABS[self.tab] then return nil end
+  return search
+end
+
+-- Whether an entry's own name holds the search text, with SEARCH_HEADINGS on (never, with it off): such an entry is
+-- listed whole, its creatures not narrowed by the search.
+function Window:HeadingMatches(...)
+  local search = self.SEARCH_HEADINGS and self:CreatureSearch()
+  if not search then return false end
+  for index = 1, select("#", ...) do
+    local name = select(index, ...)
+    if type(name) == "string" and name:lower():find(search, 1, true) then return true end
+  end
+  return false
+end
+
+-- Whether a creature's name holds the search text (`search`, from CreatureSearch; always, without one).
+function Window:NPCMatchesSearch(npc, search)
+  if not search then return true end
+  local name = npc.search_name
+  if not name then
+    name = (npc.name or ""):lower()
+    npc.search_name = name -- (kept: a search looks at every creature)
+  end
+  return name:find(search, 1, true) ~= nil
 end
 
 -- Whether a header of the current list is open, and opening or closing them all.
@@ -778,9 +901,10 @@ function Window:UpdateToggleButton()
   self.toggleButton:SetShown(true)
 end
 
--- Headers start collapsed; the ones opened stay open across refreshes (search, reopening the window).
+-- Headers start collapsed; the ones opened stay open across refreshes (reopening the window). While searching for a
+-- creature every header is open, so what was found shows; they go back to how they were when the search is cleared.
 function Window:SetCollapsed(category, key)
-  local collapse = not self.expanded[key]
+  local collapse = not self.expanded[key] and not self:CreatureSearch()
   if category.SetCollapsed then
     category:SetCollapsed(collapse)
   elseif collapse and not category:IsCollapsed() then
@@ -788,46 +912,12 @@ function Window:SetCollapsed(category, key)
   end
 end
 
+-- Fills the current tab, with the function the tab names (TABS); the ability tabs share one (tab-abilities.lua).
 function Window:Refresh()
   if not self.frame then return end
-  if self.tab == "OPTIONS" then
-    self:RefreshOptions()
-    return
-  end
-  if self.tab == "STABLE" then
-    self:UpdateTabs()
-    self:RefreshStable()
-    return
-  end
-  if self.tab == "PET" then
-    self:RefreshPetProfile()
-    return
-  end
-  if self.tab == "TRAINERS" then
-    self:RefreshTrainers()
-    return
-  end
-  if self.tab == "COLLECTOR" then
-    self:RefreshCollector()
-    return
-  end
-  if self.tab == "BOUNTIES" then
-    self:RefreshBounties()
-    return
-  end
-  if self.tab == "FAMILIES" then
-    self:RefreshFamilies()
-    return
-  end
-  if self.tab == "LOOKS" then
-    self:RefreshLooks()
-    return
-  end
-  if self.tab == "HELP" then
-    self:RefreshHelp()
-    return
-  end
-  self:RefreshAbilities() -- the ability tabs (tab-abilities.lua)
+  if self.tab == "STABLE" then self:UpdateTabs() end -- (the Stable page shows in place of the list and details)
+  local info = TAB_BY_KEY[self.tab]
+  self[info and info.refresh or "RefreshAbilities"](self)
 end
 
 -- ============================================================================
@@ -857,7 +947,7 @@ function Window:CreateDetails(frame)
   if BLIZZARD_ICON_RING and TemplateExists("CircularGiantItemButtonTemplate") then
     iconButton = CreateFrame("Button", nil, details, "CircularGiantItemButtonTemplate")
     icon = iconButton.Icon
-    iconButton.IconBorder:SetVertexColor(0.85, 0.68, 0.42) -- bronze, like the profession window
+    iconButton.IconBorder:SetVertexColor(Colors.Bronze:GetRGB()) -- bronze, like the profession window
     iconButton.IconBorder:Show()
   else
     iconButton = CreateFrame("Button", nil, details)
@@ -872,7 +962,7 @@ function Window:CreateDetails(frame)
       texture:AddMaskTexture(mask)
       return texture
     end
-    circle("BACKGROUND", 58):SetColorTexture(0.85, 0.68, 0.42) -- the ring: bronze, like the profession window
+    circle("BACKGROUND", 58):SetColorTexture(Colors.Bronze:GetRGB()) -- the ring: bronze, like the profession window
     circle("BORDER", 54):SetColorTexture(0.06, 0.05, 0.03)
     icon = circle("ARTWORK", 53) -- up to the ring, with a hairline of the dark circle between
     icon:SetTexCoord(0.06, 0.94, 0.06, 0.94) -- past the icon art's own dark edge, so the picture fills the circle
@@ -916,7 +1006,7 @@ function Window:CreateDetails(frame)
   underline:SetPoint("BOTTOMLEFT", 0, -1)
   underline:SetPoint("BOTTOMRIGHT", 0, -1)
   underline:SetHeight(1)
-  underline:SetColorTexture(1, 0.82, 0, 0.8)
+  underline:SetColorTexture(Colors.Gold:GetRGBA(0.8))
   nameLink:Hide()
   self.nameLink = nameLink
 
@@ -972,6 +1062,30 @@ function Window:CreateDetails(frame)
   self.miniMap = miniMap
 end
 
+-- A creature's Map button, wherever one is shown (the creature rows, the pet profile): "Map" with its pins; the zone's
+-- map without pins when no map points are known; greyed out without a zone (or a map). Sized to its word.
+function Window:SetMapButton(button, npc)
+  button.npc = npc
+  if npc.ui_map_id and npc.coords and #npc.coords > 0 then
+    button:SetText(L.MAP)
+    button:SetEnabled(true)
+    button.hint = nil
+  elseif npc.ui_map_id then
+    button:SetText(L.NO_COORDINATES)
+    button:SetEnabled(true)
+    button.hint = L.NO_COORDINATES_TOOLTIP
+  elseif not npc.location then
+    button:SetText(L.UNKNOWN_ZONE)
+    button:SetEnabled(false)
+    button.hint = L.UNKNOWN_ZONE_TOOLTIP
+  else
+    button:SetText(L.MAP_UNAVAILABLE)
+    button:SetEnabled(false)
+    button.hint = nil
+  end
+  button:SetWidth(math.max(44, math.ceil((button:GetTextWidth() or 60) + 24)))
+end
+
 function Window:InitNPCRow(row, npc)
   -- Rows are recycled by the scroll box: build their parts once.
   if not row.ftBuilt then
@@ -995,16 +1109,21 @@ function Window:InitNPCRow(row, npc)
     -- Hovering the row shows the creature's details, its attack speed among them; clicking it opens its profile
     -- (tab-pet.lua).
     row:EnableMouse(true)
+    -- One of The Untamables (Bounties) has no profile: its tooltip says why it is listed instead.
     row:SetScript("OnEnter", function(this)
       if not this.npc then return end
       GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
       PinHelper:AddTooltipLines(this.npc)
-      GameTooltip:AddLine(L.PROFILE_CLICK, 0.6, 0.6, 0.6)
+      if this.npc.untamable then
+        Helpers.TipLine(L.UNTAMABLE_TOOLTIP, Colors.Muted, true)
+      else
+        Helpers.TipLine(L.PROFILE_CLICK, Colors.Muted)
+      end
       GameTooltip:Show()
     end)
     row:SetScript("OnLeave", GameTooltip_Hide)
     row:SetScript("OnMouseUp", function(this, button)
-      if button == "LeftButton" and this.npc and this:IsMouseOver() then
+      if button == "LeftButton" and this.npc and not this.npc.untamable and this:IsMouseOver() then
         Helpers.PlayClick()
         self:ShowPetProfile(this.npc.id)
       end
@@ -1014,20 +1133,21 @@ function Window:InitNPCRow(row, npc)
     stripe:SetColorTexture(1, 1, 1, 0.04)
     local hover = row:CreateTexture(nil, "HIGHLIGHT")
     hover:SetAllPoints()
-    hover:SetColorTexture(1, 0.82, 0, 0.1)
+    hover:SetColorTexture(Colors.Gold:GetRGBA(0.1))
     -- A rare creature: the row glows gold from the left, with a gold edge (as on the website).
     row.RareGlow = row:CreateTexture(nil, "BACKGROUND", nil, 1)
     row.RareGlow:SetAllPoints()
     row.RareGlow:SetColorTexture(1, 1, 1, 1)
+    local r, g, b = Colors.Gold:GetRGB()
     if CreateColor and not pcall(row.RareGlow.SetGradient, row.RareGlow, "HORIZONTAL",
-        CreateColor(1, 0.82, 0, 0.18), CreateColor(1, 0.82, 0, 0.02)) then
-      pcall(row.RareGlow.SetGradientAlpha, row.RareGlow, "HORIZONTAL", 1, 0.82, 0, 0.18, 1, 0.82, 0, 0.02)
+        CreateColor(Colors.Gold:GetRGBA(0.18)), CreateColor(Colors.Gold:GetRGBA(0.02))) then
+      pcall(row.RareGlow.SetGradientAlpha, row.RareGlow, "HORIZONTAL", r, g, b, 0.18, r, g, b, 0.02)
     end
     row.RareEdge = row:CreateTexture(nil, "BORDER")
     row.RareEdge:SetPoint("TOPLEFT")
     row.RareEdge:SetPoint("BOTTOMLEFT")
     row.RareEdge:SetWidth(2)
-    row.RareEdge:SetColorTexture(1, 0.82, 0, 0.6)
+    row.RareEdge:SetColorTexture(Colors.Gold:GetRGBA(0.6))
     -- An elite creature: the skull raid marker before its name.
     row.EliteIcon = row:CreateTexture(nil, "ARTWORK")
     row.EliteIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
@@ -1080,26 +1200,11 @@ function Window:InitNPCRow(row, npc)
   if elite then x = x + 17 end
   -- The map button: the pins; the zone's map without pins (no map points); greyed out without a zone (or a map).
   local button = row.MapButton
-  if npc.ui_map_id and npc.coords and #npc.coords > 0 then
-    button:SetText(L.MAP)
-    button:SetEnabled(true)
-    button.hint = nil
-  elseif npc.ui_map_id then
-    button:SetText(L.NO_COORDINATES)
-    button:SetEnabled(true)
-    button.hint = L.NO_COORDINATES_TOOLTIP
-  elseif not npc.location then
-    button:SetText(L.UNKNOWN_ZONE)
-    button:SetEnabled(false)
-    button.hint = L.UNKNOWN_ZONE_TOOLTIP
-  else
-    button:SetText(L.MAP_UNAVAILABLE)
-    button:SetEnabled(false)
-    button.hint = nil
-  end
-  -- As wide as its word ("Map" is small); the name and the line under it get the rest of the row.
-  button:SetWidth(math.max(44, math.ceil((button:GetTextWidth() or 60) + 24)))
-  local reserve = button:GetWidth() + 8
+  -- As wide as its word ("Map" is small); the name and the line under it get the rest of the row. One of The
+  -- Untamables has no map button at all: the guide does not send hunters after it.
+  self:SetMapButton(button, npc)
+  button:SetShown(not npc.untamable)
+  local reserve = npc.untamable and 8 or button:GetWidth() + 8
   row.InfoText:ClearAllPoints()
   row.InfoText:SetPoint("TOPLEFT", 4, -18)
   row.InfoText:SetPoint("RIGHT", -reserve, 0)
@@ -1109,7 +1214,10 @@ function Window:InitNPCRow(row, npc)
   row.NameText:SetPoint("TOPLEFT", x, -3)
   -- Room for the dot after the name, which is cut short before it when the row is narrow.
   row.NameText:SetPoint("RIGHT", tamed and -(reserve + badge:GetWidth() + 6) or -reserve, 0)
-  row.NameText:SetText(Colors.Primary(npc.name))
+  -- The name in the creatures' light blue (as on the website); "Not tameable" in red after it when the game refused
+  -- to tame it (the website's red badge).
+  row.NameText:SetText(Colors.NPC(npc.name)
+    .. (npc.not_tameable and ("  " .. Colors.Bad(L.TAME_CHECK_NOT_TAMEABLE)) or ""))
   badge:SetShown(tamed)
   if tamed then
     badge.date = npc.tamed
@@ -1122,45 +1230,22 @@ function Window:InitNPCRow(row, npc)
     badge:SetPoint("LEFT", row.NameText, "LEFT", width + 3, 0)
   end
   row.npc = npc
-  row.InfoText:SetText(("%s %s  %s"):format(L.LEVEL, npc.level_range or L.UNKNOWN, npc.location or L.UNKNOWN_ZONE))
-  button.npc = npc
+  -- "Level 5-6  Westfall"; in a list of mixed families (a bounty: self.npcShowFamily) the family comes between them,
+  -- as on the website.
+  local family = self.npcShowFamily and npc.family and (Addon:FamilyLabel(npc.family) .. "  ") or ""
+  row.InfoText:SetText(("%s %s  %s%s"):format(L.LEVEL, npc.level_range or L.UNKNOWN, family,
+    npc.location or L.UNKNOWN_ZONE))
 end
 
+-- Fills the details pane for the current tab's selection, with the function the tab names (TABS).
 function Window:UpdateDetails()
-  if self.tab == "TRAINERS" then
-    self:UpdateTrainerDetails()
-    return
-  end
-  if self.tab == "COLLECTOR" then
-    self:UpdateCollectedDetails()
-    return
-  end
-  if self.tab == "BOUNTIES" then
-    self:UpdateBountyDetails()
-    return
-  end
-  if self.tab == "FAMILIES" then
-    self:UpdateFamilyDetails()
-    return
-  end
-  if self.tab == "LOOKS" then
-    self:UpdateLookDetails()
-    return
-  end
-  if self.tab == "HELP" then
-    self:UpdateHelpDetails()
-    return
-  end
-  if self.tab == "OPTIONS" then
-    self:UpdateOptionDetails()
-    return
-  end
-  self:UpdateAbilityDetails() -- the ability tabs (tab-abilities.lua)
+  local info = TAB_BY_KEY[self.tab]
+  self[info and info.details or "UpdateAbilityDetails"](self)
 end
 
 -- `/tsl debug icon`: every part of the details icon and what is drawn over it, to find art that covers the round icon.
 function Window:DescribeIcon()
-  local say = function(...) print(("|cFF007EA6%s|r icon:"):format(Addon.TITLE), ...) end
+  local say = function(...) Addon:PrintAs("icon", ...) end
   if not (self.frame and self.iconButton) then return say("open the window first") end
   local function describe(prefix, object)
     local kind = object:GetObjectType()

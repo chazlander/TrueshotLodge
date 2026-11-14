@@ -1,4 +1,5 @@
 local _, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local DB = Addon:GetModule("DB")
 local Helpers = Addon:GetModule("Helpers")
 local L = Addon:GetModule("Locale")
@@ -170,18 +171,19 @@ function Window:CreatePetProfile(frame)
   ScrollUtil.InitScrollBoxListWithScrollBar(box, bar, view)
   self.profileBox = box
 
-  -- Right: the model, filling the pane above the Map button.
+  -- Right: the model, filling the pane (its hint, "Drag to turn, ...", sits under it).
   local right = CreatePanel(page)
   right:SetPoint("TOPLEFT", left, "TOPRIGHT", 2, 0)
   right:SetPoint("BOTTOMRIGHT")
   local viewer = Helpers.NewModelViewer(right)
   viewer:SetPoint("TOPLEFT", 10, -10)
-  viewer:SetPoint("BOTTOMRIGHT", -10, 40)
+  viewer:SetPoint("BOTTOMRIGHT", -10, 26)
   self.profileViewer = viewer
 
-  local map = Helpers.NewOutlineButton(right)
+  -- The Map button: at the top right of the left pane, across from Back (it grows leftwards with its word).
+  local map = Helpers.NewOutlineButton(left)
   map:SetSize(MAP_WIDTH, MAP_HEIGHT)
-  map:SetPoint("BOTTOMLEFT", 10, 10)
+  map:SetPoint("TOPRIGHT", -10, -10)
   map:SetMotionScriptsWhileDisabled(true) -- the greyed-out button still says why
   map:RegisterForClicks("LeftButtonUp", "RightButtonUp") -- (right-click clears the pins)
   map:SetScript("OnClick", function(button, mouseButton) PinHelper:MapClick(button.npc, mouseButton) end)
@@ -213,11 +215,19 @@ local function ProfileRows(npc)
   stat(L.LEVEL, npc.level_range)
   stat(L.ATTACK_SPEED, npc.speed_text)
   stat(L.LOCATION, npc.location or L.UNKNOWN_ZONE)
-  if npc.forever then stat(L.NEW_IN_FOREVER, " ", Addon.FOREVER_ICON) end
   if type(npc.tamed) == "string" and npc.tamed ~= "" then
+    -- "Tamed by", the green dot after it, and the hunter's name, sized down when it is too long for the row (`fit`);
+    -- the day is in the row's tooltip ("Verified Tame: <date> by <hunter>"), as on the creature lists' green dot. A
+    -- hunter who tamed it with Send Name off left no name: "Anonymous", in grey.
     local by = type(npc.tamed_by) == "string" and npc.tamed_by ~= "" and npc.tamed_by or nil
-    stat(L.VERIFIED, by and ("%s, %s"):format(npc.tamed, by) or npc.tamed, Addon.GREEN_DOT)
+    local dot = (" |T%s:12:12:0:0|t"):format(Addon.GREEN_DOT)
+    if by then
+      stat(L.TAMED_BY .. dot, by, nil, { hint = L.VERIFIED_TAME_BY:format(npc.tamed, by), fit = true })
+    else
+      stat(L.TAMED_BY .. dot, Colors.Muted(L.ANONYMOUS), nil, { hint = L.VERIFIED_TAME:format(npc.tamed), fit = true })
+    end
   end
+  if npc.not_tameable then stat(L.TAME_CHECK_NOT_TAMEABLE, npc.not_tameable) end -- (the day the game refused it)
   stat(L.NPC_ID, npc.id)
 
   -- The ability ranks it teaches, each opening on its own tab.
@@ -263,7 +273,8 @@ function Window:RefreshPetProfile()
   end
   self.headerCount:SetText("")
   self.profileBack:SetShown(self.petHistory ~= nil and #self.petHistory > 0)
-  self.profileTitle:SetText(npc.name)
+  -- The name, with the infinity mark before it for a creature new in WoW Forever (as in the creature lists).
+  self.profileTitle:SetText(npc.forever and ("|T%s:16:16:0:0|t %s"):format(Addon.FOREVER_ICON, npc.name) or npc.name)
   self.profileSubtitle:SetText(("%s %s %s"):format(L.LEVEL, npc.level_range or L.UNKNOWN, Addon:FamilyLabel(npc.family)))
   self.profileBox:SetDataProvider(self:BuildStableTree(ProfileRows(npc)), true)
 
@@ -272,24 +283,6 @@ function Window:RefreshPetProfile()
   self.profileViewer:ShowModel(looks[1] and looks[1].look.display, npc.id)
 
   -- The Map button, as in the creature lists (Window:InitNPCRow).
-  local map = self.profileMap
-  map.npc = npc
-  if npc.ui_map_id and npc.coords and #npc.coords > 0 then
-    map:SetText(L.MAP)
-    map:SetEnabled(true)
-    map.hint = nil
-  elseif npc.ui_map_id then
-    map:SetText(L.NO_COORDINATES)
-    map:SetEnabled(true)
-    map.hint = L.NO_COORDINATES_TOOLTIP
-  elseif not npc.location then
-    map:SetText(L.UNKNOWN_ZONE)
-    map:SetEnabled(false)
-    map.hint = L.UNKNOWN_ZONE_TOOLTIP
-  else
-    map:SetText(L.MAP_UNAVAILABLE)
-    map:SetEnabled(false)
-    map.hint = nil
-  end
-  map:SetWidth(math.max(44, math.ceil((map:GetTextWidth() or 60) + 24)))
+  self:SetMapButton(self.profileMap, npc)
+  self.profileBack:SetWidth(self.profileMap:GetWidth()) -- Back is as wide as Map, across from it
 end

@@ -1,4 +1,5 @@
 local _, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local L = Addon:GetModule("Locale")
 local Stable = Addon:GetModule("Stable")
 local Window = Addon:GetModule("Window")
@@ -125,20 +126,20 @@ local function SlotOnEnter(button)
   local pet = button.pet
   GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
   if button.locked then
-    GameTooltip:SetText(L.NOT_PURCHASED, 1, 0.3, 0.3)
-    GameTooltip:AddLine(L.NOT_PURCHASED_TOOLTIP, 0.6, 0.6, 0.6, true)
+    GameTooltip:SetText(L.NOT_PURCHASED, Colors.Bad:GetRGB())
+    Helpers.TipLine(L.NOT_PURCHASED_TOOLTIP, Colors.Muted, true)
   elseif not pet then
-    GameTooltip:SetText(button.active and L.STABLE_NO_PET or L.EMPTY_SLOT, 0.6, 0.6, 0.6)
+    GameTooltip:SetText(button.active and L.STABLE_NO_PET or L.EMPTY_SLOT, Colors.Muted:GetRGB())
   else
-    if button.active then GameTooltip:AddLine(L.CURRENT_PET, 1, 0.82, 0) end
+    if button.active then Helpers.TipLine(L.CURRENT_PET, Colors.Gold) end
     GameTooltip:AddLine(pet.name or "?", 1, 1, 1)
     GameTooltip:AddLine(("%s %s %s"):format(L.LEVEL, tostring(pet.level or "?"), Addon:FamilyLabel(pet.family or "")), 1, 1, 1)
     if pet.live then
-      GameTooltip:AddLine(L.OUT_NOW, 0.4, 1, 0.4)
+      Helpers.TipLine(L.OUT_NOW, Colors.Available)
     elseif button.active then
-      GameTooltip:AddLine(L.NOT_OUT, 0.6, 0.6, 0.6)
+      Helpers.TipLine(L.NOT_OUT, Colors.Muted)
     elseif pet.cached then
-      GameTooltip:AddLine(("%s: %s"):format(L.LAST_SEEN, date("%Y-%m-%d %H:%M", pet.cached)), 0.6, 0.6, 0.6)
+      Helpers.TipLine(("%s: %s"):format(L.LAST_SEEN, date("%Y-%m-%d %H:%M", pet.cached)), Colors.Muted)
     end
   end
   GameTooltip:Show()
@@ -297,6 +298,23 @@ function Window:CreateStable(frame)
   self.selectedStable = nil
 end
 
+-- Sizes a row's value down, a point at a time, until it fits beside its label (a row with `fit`: a hunter's name on
+-- the pet profile). Never under FIT_MIN_SIZE: a name that long is cut off by the row instead.
+local FIT_MIN_SIZE = 8
+local function FitValue(row, labelLeft)
+  local value, label = row.Value, row.Label
+  local font, size, flags = value:GetFont()
+  if not (font and size) then return end
+  local width = row:GetWidth()
+  if not width or width <= 0 then width = Helpers.LIST_WIDTH - 30 end -- (not laid out yet: about the list's width)
+  local labelWidth = label.GetUnboundedStringWidth and label:GetUnboundedStringWidth() or label:GetStringWidth() or 0
+  local room = width - labelLeft - labelWidth - 6 - 8 -- (the gap between them, and the value's right margin)
+  while size > FIT_MIN_SIZE and (value:GetStringWidth() or 0) > room do
+    size = size - 1
+    value:SetFont(font, size, flags)
+  end
+end
+
 -- A row of the statistics list. Rows are recycled by the scroll box: their parts are built once.
 function Window:InitStableRow(row, data)
   if not row.ftBuilt then
@@ -325,7 +343,7 @@ function Window:InitStableRow(row, data)
     -- A link (the pet profile's family, abilities and looks: `onClick`): lit while hovered, its `hint` in a tooltip.
     row.Hover = row:CreateTexture(nil, "HIGHLIGHT")
     row.Hover:SetAllPoints()
-    row.Hover:SetColorTexture(1, 0.82, 0, 0.12)
+    row.Hover:SetColorTexture(Colors.Gold:GetRGBA(0.12))
     row:SetScript("OnMouseUp", function(this, button)
       if button == "LeftButton" and this.ftData and this.ftData.onClick and this:IsMouseOver() then
         PlayClick()
@@ -335,15 +353,19 @@ function Window:InitStableRow(row, data)
     row:SetScript("OnEnter", function(this)
       if not (this.ftData and this.ftData.hint) then return end
       GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-      GameTooltip:SetText(this.ftData.label, 1, 1, 1)
-      GameTooltip:AddLine(this.ftData.hint, nil, nil, nil, true)
+      if this.ftData.onClick then
+        GameTooltip:SetText(this.ftData.label, 1, 1, 1)
+        GameTooltip:AddLine(this.ftData.hint, nil, nil, nil, true)
+      else
+        GameTooltip:SetText(this.ftData.hint, 1, 1, 1) -- (not a link: the hint is all there is to say)
+      end
       GameTooltip:Show()
     end)
     row:SetScript("OnLeave", GameTooltip_Hide)
   end
 
   row.ftData = data
-  row:EnableMouse(data.onClick ~= nil)
+  row:EnableMouse(data.onClick ~= nil or data.hint ~= nil) -- (a row with only a hint still shows it on hover)
   row.Hover:SetShown(data.onClick ~= nil)
   row.Label:ClearAllPoints()
   row.Swatch:Hide()
@@ -362,7 +384,9 @@ function Window:InitStableRow(row, data)
   row.Label:SetWordWrap(data.kind == "note") -- a note is a sentence: it wraps instead of being cut off
   row.Label:SetMaxLines(data.kind == "note" and 2 or 1)
   row.Label:SetText(data.label)
+  row.Value:SetFontObject("GameFontHighlight") -- (a recycled row's value may have been sized down)
   row.Value:SetText(data.value or "")
+  if data.fit then FitValue(row, data.icon and 30 or 8) end
 end
 
 -- ----------------------------------------------------------------------------

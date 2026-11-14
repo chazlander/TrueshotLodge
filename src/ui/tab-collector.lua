@@ -25,14 +25,17 @@ end
 -- upload would change on the website (the same comparison as the collector's, Collector.InData).
 -- ----------------------------------------------------------------------------
 
-local DIFF_COLOR = "FF40C040"
+-- A value an upload would change, in green, with a grey note after it: "1.20 (addon: 1.30)".
+local function Marked(value, note)
+  return ("%s %s"):format(Colors.Good(tostring(value)), Colors.Muted(("(%s)"):format(note)))
+end
 
 -- A details line: plain, or (when `differs`) its value in green followed by "(addon: <has>)", or "(new)" when the
 -- data has nothing there.
 local function DiffLine(label, value, differs, has)
   if not differs or value == nil or value == "" then return Line(label, value) end
   local note = (has and has ~= "") and L.DATA_HAS:format(has) or L.DATA_LACKS
-  return Line(label, ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, tostring(value), note))
+  return Line(label, Marked(value, note))
 end
 
 -- Whether a level range seen lies outside the data's (or the data has no level at all).
@@ -89,11 +92,10 @@ local NEW_COLOR = CreateColorFromHexString and CreateColorFromHexString("FFC6AF8
 --   legendary  "NEW" before the name, in the legendary orange (the website's --color-rarity-legendary, #ff8000)
 local NEW_STYLE = "tan"
 local TINT_NEW_NAMES = false -- the name of a new entry in tan too (it also tints the badge: off while trying the styles)
-local BADGE_COLORS = { tan = "FFC6AF8D", sparkles = "FFC6AF8D", legendary = "FFFF8000" }
+local BADGE_COLORS = { tan = Colors.Tan.hex, sparkles = Colors.Tan.hex, legendary = Colors.New.hex }
 local SPARKLE_TEXTURE = "Interface\\Cooldown\\star4"
-  or { GetRGB = function() return 0.776, 0.686, 0.553 end }
 -- In front of an entry another TrueshotLodge user shared (`shared_by`): a blue dot.
-local SHARED_DOT = "|cFF3FA9F5\226\128\162|r " -- U+2022 BULLET
+local SHARED_DOT = Colors.Shared("\226\128\162") .. " " -- U+2022 BULLET
 
 local function Collecting()
   return DB.global ~= nil and DB.global.collect == true
@@ -124,7 +126,7 @@ function Window:GetCollectedGroups()
       group.rows[#group.rows + 1] = {
         key = "c:" .. tostring(id), kind = "creature", data = c, isNew = Addon.TameableNPCs[c.id] == nil,
         store = "creatures", storeKey = id,
-        name = c.name or "?", level = ("|cFF9D9D9D%s %s|r"):format(L.LEVEL, LevelText(c.level_min, c.level_max)),
+        name = c.name or "?", level = Colors.Muted(("%s %s"):format(L.LEVEL, LevelText(c.level_min, c.level_max))),
       }
     end
   end
@@ -142,7 +144,7 @@ function Window:GetCollectedGroups()
       local isNew = Addon.TameableNPCs[tonumber(tame.npc_id)] == nil
       tames.rows[#tames.rows + 1] = {
         key = "m:" .. index, kind = "tame", data = tame, index = index, store = "tames", storeKey = index, isNew = isNew,
-        name = tame.name or "?", level = ("|cFF9D9D9D%s %s|r"):format(L.LEVEL, tostring(tame.level or "?")),
+        name = tame.name or "?", level = Colors.Muted(("%s %s"):format(L.LEVEL, tostring(tame.level or "?"))),
       }
     end
   end
@@ -153,8 +155,8 @@ function Window:GetCollectedGroups()
   local checks = { rows = {} }
   for id, check in pairs(DB.collected.tame_checks or {}) do
     if matches((check.name or "") .. " " .. (check.family or "")) then
-      local verdict = check.result == "tameable" and ("|cFF40C040%s|r"):format(L.TAME_CHECK_TAMEABLE)
-        or ("|cFFE04030%s|r"):format(L.TAME_CHECK_NOT_TAMEABLE)
+      local verdict = check.result == "tameable" and Colors.Good(L.TAME_CHECK_TAMEABLE)
+        or Colors.Bad(L.TAME_CHECK_NOT_TAMEABLE)
       checks.rows[#checks.rows + 1] = {
         key = "k:" .. tostring(id), kind = "check", data = check, store = "tame_checks", storeKey = id,
         isNew = check.result == "tameable", -- (a tameable creature the data does not list: NEW, as a new sighting)
@@ -189,8 +191,8 @@ function Window:GetCollectedGroups()
     if matches((trainer.name or "") .. " " .. (trainer.title or "")) then
       trainers.rows[#trainers.rows + 1] = {
         key = "r:" .. tostring(id), kind = "trainer", data = trainer, store = "trainers", storeKey = id,
-        label = ("%s  |cFF9D9D9D%s|r"):format(trainer.name or "?",
-          trainer.ui_map_id and ZoneNames({ [trainer.ui_map_id] = true }) or ""),
+        label = ("%s  %s"):format(trainer.name or "?",
+          Colors.Muted(trainer.ui_map_id and ZoneNames({ [trainer.ui_map_id] = true }) or "")),
       }
     end
   end
@@ -247,7 +249,7 @@ local function CollectedOnEnter(button)
     GameTooltip:AddLine(L.NOT_IN_DATA_SHORT, 1, 1, 1)
   end
   if row.data.shared_by then GameTooltip:AddLine(("%s: %s"):format(L.SHARED_BY, row.data.shared_by), 1, 1, 1) end
-  if row.store then GameTooltip:AddLine(L.RIGHT_CLICK_TO_DELETE, 0.6, 0.6, 0.6) end
+  if row.store then Helpers.TipLine(L.RIGHT_CLICK_TO_DELETE, Colors.Muted) end
   GameTooltip:Show()
 end
 
@@ -257,7 +259,7 @@ local function SmallBadge(button)
     local text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
     text:SetPoint("RIGHT", button, "RIGHT", -8, 0)
     text:SetText(L.NEW_BADGE)
-    text:SetTextColor(0.78, 0.69, 0.55)
+    text:SetTextColor(Colors.Tan:GetRGB())
     button.ftSmallBadge = text
   end
   return button.ftSmallBadge
@@ -470,8 +472,7 @@ function Window:UpdateCollectedDetails()
     if npc and SpeedDiffers(npc, d.attack_speed) then
       speedLine = DiffLine(L.ATTACK_SPEED, SpeedText(d.attack_speed), true, SpeedText(npc.speed))
     elseif npc and d.attack_speed and not npc.speed_tamed then
-      speedLine = Line(L.ATTACK_SPEED, ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, SpeedText(d.attack_speed),
-        L.DATA_CONFIRMS))
+      speedLine = Line(L.ATTACK_SPEED, Marked(SpeedText(d.attack_speed), L.DATA_CONFIRMS))
     else
       speedLine = Line(L.ATTACK_SPEED, SpeedText(d.attack_speed))
     end
@@ -493,7 +494,7 @@ function Window:UpdateCollectedDetails()
       DiffLine(L.LEVEL, d.level, npc and LevelDiffers(npc, level, level), npc and DataLevel(npc)),
       Line(L.PET_LEVEL, d.pet_level),
       speedLine,
-      tameNote and Line(L.VERIFIED, ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, tameText or "?", tameNote)) or nil,
+      tameNote and Line(L.VERIFIED, Marked(tameText or "?", tameNote)) or nil,
       DiffLine(L.LOCATION, d.ui_map_id and ZoneNames({ [d.ui_map_id] = true }) or nil,
         npc and d.ui_map_id and Collector.NewZone(npc, d.ui_map_id)),
       Line(L.COORDINATES, table.concat(seen, " - ")),
@@ -505,10 +506,10 @@ function Window:UpdateCollectedDetails()
       local text = (spell.name or "?") .. (spell.rank and (" " .. spell.rank) or "")
       -- An ability rank the data does not list for this creature (passives are the family's, not compared).
       if npc and not spell.passive and spell.spell_id and not Teaches(npc, spell.spell_id) then
-        text = ("|c%s%s|r |cFF9D9D9D(%s)|r"):format(DIFF_COLOR, text, L.DATA_LACKS)
+        text = Marked(text, L.DATA_LACKS)
       end
       spells[#spells + 1] = ("%s%s%s"):format(icon and ("|T" .. icon .. ":16:16:0:0|t ") or "", text,
-        spell.passive and (" |cFF9D9D9D(" .. L.PASSIVE .. ")|r") or "")
+        spell.passive and (" " .. Colors.Muted("(" .. L.PASSIVE .. ")")) or "")
     end
     description = #spells > 0 and table.concat(spells, "\n") or Colors.Highlight(L.NO_PET_SPELLS)
     if row.isNew then description = Colors.Highlight(L.NOT_IN_DATA_TAME) .. "\n\n" .. description end

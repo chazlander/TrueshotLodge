@@ -34,11 +34,13 @@ Browse the same pets, abilities, looks and trainers on the web at **[TrueshotLod
 ## The UI
 
 TrueshotLodge looks and feels like the game's own profession window: a list on the left, the details on the right,
-and tabs down the side. Hold a side tab for a moment to drag it up or down the column and put your tabs in the order
+and tabs down the side. The **search box** above the list looks for creatures: type part of a creature's name and the
+list keeps only the ranks, families, looks and bounties that have a creature matching it, with just those creatures
+on the right. Hold a side tab for a moment to drag it up or down the column and put your tabs in the order
 you like (saved for each character). At the top right, across from the tab's title, are the **filter buttons**.
 Each tab shows the filters it can use: **Level** (what your level reaches, or the
 creatures you can tame now), **Zone** (only the zone you are standing in), **Pet** (only what your active pet's
-family can learn) and, on the Trainers tab, **Faction**. A filter is grey while off, and red and glowing while on.
+family can learn), **Rares** (only the rare creatures) and, on the Trainers tab, **Faction**. A filter is grey while off, and red and glowing while on.
 Beside the close button, the **gear** opens Options and the **?** opens Help (click either again to go back to your
 tab).
 
@@ -47,7 +49,7 @@ tab).
 Every pet family, by type (Cunning, Ferocity, Tenacity), with its number of tameable creatures. Select one to see its
 unique ability and what it does, its type and diet, the common and passive abilities it learns, and **all its tameable
 creatures**, each with a **Map Location** button. The **Zone** and **Level** filters narrow the creatures to the
-zone you are in and the ones you can tame now.
+zone you are in and the ones you can tame now; a family with none left is not listed.
 
 ## ![Unique Abilities](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beasttaming.jpg) Unique Abilities
 
@@ -61,8 +63,9 @@ Select a rank to see:
   Location** button that opens your world map with a pin on every place it has been seen
 - whether your pet already knows it
 
-Turn on **Level** to show only the ranks your level has reached, or **Pet** for only the abilities your active pet's
-family can learn.
+Turn on **Level** to show only the ranks your level has reached, **Zone** for only the ranks a creature in the zone
+you are standing in has (each rank then counts its creatures there), or **Pet** for only the abilities your active
+pet's family can learn.
 
 ## ![Common Abilities](https://wow.zamimg.com/images/wow/icons/medium/ability_racial_cannibalize.jpg) Common Abilities
 
@@ -72,7 +75,7 @@ rank, what it does, who can learn it, and the creatures you can tame it from. Th
 ## ![Passive Abilities](https://wow.zamimg.com/images/wow/icons/medium/spell_nature_unyeildingstamina.jpg) Passive Abilities
 
 The passives your pet learns from a trainer: the five resistances, Great Stamina and Natural Armor, with every rank,
-its level and its cost.
+its level, its training point cost and the price a trainer charges for it.
 
 ## ![Passive Attack Speed](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_pocketwatch_01.jpg) Passive Attack Speed
 
@@ -93,7 +96,7 @@ same as [TrueshotLodge.com/looks](https://trueshotlodge.com/looks). Each family 
 and how many creatures have each; a look in **gold** has only one creature, the only place to get it. Select one to
 see it in **3D**: drag to turn it, right-drag to move it and scroll to zoom. Under the model are the
 creatures with that look, each with a **Map Location** button. The **Zone** and **Level** filters narrow them to the
-zone you are in and the ones you can tame now, and the search finds a look by its name, its family or a creature.
+zone you are in and the ones you can tame now, and the search finds the looks a creature has.
 
 ## ![Stable](https://wow.zamimg.com/images/wow/icons/medium/ability_hunter_beastcall.jpg) Stable
 
@@ -113,8 +116,9 @@ When TrueshotLodge knows the beast a pet was tamed from, **Tamed From** names it
 Click a creature's name anywhere in the window to open its profile: the creature lists under an ability, a family, a
 bounty or a look, the Collected Data tab, and Tamed From on the Stable tab. The profile shows:
 
-- its **3D model** (drag to turn it, right-drag to move it, scroll to zoom) and its **Map** button
-- its family, type, diet, level, attack speed and zone, whether it is new in Forever, its verified tame and its NPC ID
+- its **Map** button, and its **3D model** (drag to turn it, right-drag to move it, scroll to zoom)
+- its family, type, diet, level, attack speed and zone, whether it is new in Forever, who tamed it (hover for the
+  date) and its NPC ID
 - the **abilities** it teaches and its **looks**: click one to see it on its own tab (the family too)
 
 **Back** returns to the tab, selection or profile you came from.
@@ -127,14 +131,17 @@ is in Help (the **?** by the close button).
 
 - **Pet Bounties**:
   - **Missing Rares**: rares no TrueshotLodge hunter has tamed yet
-  - **Missing Normal**: every other creature no TrueshotLodge hunter has tamed yet
+  - **Missing Normals**: every other creature no TrueshotLodge hunter has tamed yet
   - **Missing Forever**: the creatures new in WoW Forever (∞) no TrueshotLodge hunter has tamed yet
   - **Missing Attack Speed**: creatures whose attack speed nobody has recorded
   - **Missing Zone**: creatures nobody knows the whereabouts of
+  - **Missing Model**: creatures whose look nobody knows yet, so the Looks tab cannot show them
 - **Unique Abilities without Source**: ranks of a family's unique ability that no known tameable creature has, each with
   its **Potential Tameable Targets**: the family's untamed beasts between the levels of the ranks around it
+- **The Untamables**: the creatures hunters have uploaded that we keep out of the guide. Nothing to claim: they are
+  listed so you can see everything uploads have brought in, including what we left out
 
-Each bounty lists its creatures, the lowest level first, each with its level, zone and a **Map Location** button. Turn
+Each bounty lists its creatures, the lowest level first, each with its level, family, zone and a **Map Location** button. Turn
 on **Zone** to see only the ones in the zone you are in, or **Level** to see only the ones you can tame now, the
 highest level first. The bounties under a heading are listed
 alphabetically; right-click the heading to list them by number of creatures instead (and again to switch back).

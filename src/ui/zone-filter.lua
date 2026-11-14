@@ -3,8 +3,8 @@ local DB = Addon:GetModule("DB")
 local Window = Addon:GetModule("Window")
 
 -- The Zone Filter: the Zone button in the header (Window:CreateFilterButtons). While it is on, the ability tabs list only
--- the tameable creatures in the zone the player is in, and the Trainers tab only that zone's trainers (all of them
--- when the zone has none). The setting is saved (DB.global.zone_filter); the lists follow the player into a new zone.
+-- the tameable creatures in the zone the player is in, and the Trainers tab only that zone's trainers (none, in a
+-- zone without one). The setting is saved (DB.global.zone_filter); the lists follow the player into a new zone.
 
 -- The zone the player is in: its name (as the game names zones, in the player's language) and its world map (the
 -- zone's, not a subzone's or a dungeon level's). nil when the game does not say.

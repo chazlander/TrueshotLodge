@@ -190,6 +190,83 @@ for _, event in ipairs({ "TRAINER_SHOW", "TRAINER_UPDATE" }) do
   pcall(frame.RegisterEvent, frame, event) -- Not every client has every event.
 end
 
+-- The second way to learn of a rank: the moment it is learned. When the hunter learns a rank (from a pet, a pet
+-- trainer or Beast Training), the game says "You have learned a new ability: Bite (Rank 3)." in chat, and some clients
+-- also fire LEARNED_SPELL_IN_TAB with its spell id. Either one saves the rank straight away, so the list keeps up
+-- without opening Beast Training. It only catches ranks learned from now on; the window is still how older ones are
+-- found.
+
+-- Lua patterns for the game's "You have learned..." lines, made from its own strings so they work in every language,
+-- with the English ones as a fallback. The %s in each becomes a capture.
+local learnPatterns = {}
+for _, text in ipairs({ ERR_LEARN_ABILITY_S, ERR_LEARN_SPELL_S,
+  "You have learned a new ability: %s.", "You have learned a new spell: %s." }) do
+  if type(text) == "string" and text:find("%s", 1, true) then
+    local pattern = "^" .. text:gsub("%%s", "\0"):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"):gsub("%z", "(.+)") .. "$"
+    learnPatterns[#learnPatterns + 1] = pattern
+  end
+end
+
+-- Lowercase English ability name -> the ability in the data, to find a rank's spell id from the chat line's text.
+local byName
+local function abilityNamed(name)
+  if not byName then
+    byName = {}
+    for _, ability in pairs(Addon.TameableAbilities) do byName[ability.name:lower()] = ability end
+  end
+  return byName[tostring(name):lower()]
+end
+
+-- Saves one learned rank, by spell id when it is one of the data's pet ability ranks.
+local function saveLearned(spellId)
+  if not (DB.char and spellId and Addon:AbilityOfSpell(spellId)) then return false end
+  DB.char.trained_ids = DB.char.trained_ids or {}
+  DB.char.trained_ids[spellId] = true
+  Addon:Debug("training: learned", spellId)
+  return true
+end
+
+-- Works out the spell id from what the chat line names: a spell link, or "Bite (Rank 3)" / "Bite" in English.
+local function learnedFromText(what)
+  local id = tonumber(what:match("spell:(%d+)"))
+  if id then return saveLearned(id) end
+
+  local plain = what:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+  plain = plain:gsub("^%[", ""):gsub("%]$", "")
+  local name, rank = plain:match("^(.-)%s*%((.-)%)$")
+  name = name or plain
+  local ability = abilityNamed(name)
+  if not ability then return false end
+  local number = tonumber(tostring(rank or ""):match("%d+")) or 1
+  for index, r in ipairs(ability.ranks) do
+    if (r.rank or index) == number then return saveLearned(r.spell_id) end
+  end
+  return false
+end
+
+local learnFrame = CreateFrame("Frame")
+learnFrame:SetScript("OnEvent", function(_, event, arg)
+  local ok, err = pcall(function()
+    if event == "LEARNED_SPELL_IN_TAB" then
+      saveLearned(tonumber(Addon:Plain(arg)))
+      return
+    end
+    local text = Addon:Plain(arg)
+    if type(text) ~= "string" then return end
+    for _, pattern in ipairs(learnPatterns) do
+      local what = text:match(pattern)
+      if what then
+        learnedFromText(what)
+        return
+      end
+    end
+  end)
+  if not ok then Addon:Debug("training learn error:", err) end
+end)
+for _, event in ipairs({ "CHAT_MSG_SYSTEM", "LEARNED_SPELL_IN_TAB" }) do
+  pcall(learnFrame.RegisterEvent, learnFrame, event) -- Not every client has every event.
+end
+
 -- Returns true if the hunter has learned the ability rank: it has been listed in their Beast Training window.
 function Addon:IsRankKnown(ability, rankIndex)
   local rank = ability.ranks[rankIndex]

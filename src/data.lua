@@ -227,6 +227,19 @@ function Addon:GetNPC(id)
   return npc
 end
 
+-- One of The Untamables (Addon.TameableUntamables: hidden creatures hunters have uploaded), ready to show in the
+-- Bounties tab's list like any creature; nil when it is not one. `untamable = true` tells the list not to open a
+-- profile or offer a map for it. They are kept apart from the creatures, so nothing else in the addon shows them.
+function Addon:GetUntamable(id)
+  id = tonumber(id)
+  local npc = id and Addon.TameableUntamables and Addon.TameableUntamables[id]
+  if npc and not npc.prepared then
+    PrepareNPC(id, npc)
+    npc.untamable = true
+  end
+  return npc
+end
+
 -- A creature's name as the game gives it, in the client's language, from its npc id: the tooltip of a unit link with
 -- that id. It answers for any creature the client knows, also ones the data does not have; for one the client has not
 -- loaded yet the first call can come back empty. nil when it does not answer.

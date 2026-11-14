@@ -1,5 +1,7 @@
 local _, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local DB = Addon:GetModule("DB")
+local Helpers = Addon:GetModule("Helpers")
 local L = Addon:GetModule("Locale")
 local Window = Addon:GetModule("Window")
 
@@ -196,7 +198,7 @@ Window.KeepIconMirrored = KeepIconMirrored
 
 -- `/tsl debug tabs art|mask|icon`: changes how the left tabs are mirrored (MIRROR) and redraws them, to compare.
 function Window:SetTabMirror(part)
-  local say = function(...) print(("|cFF007EA6%s|r tab mirror:"):format(Addon.TITLE), ...) end
+  local say = function(...) Addon:PrintAs("tab mirror", ...) end
   if part == "right" or part == "left" then
     leftNudge = leftNudge + (part == "right" and 1 or -1)
     self:LayoutTabs()
@@ -218,7 +220,7 @@ end
 -- `/tsl debug tabs`: the parts of a left-side tab (or the first tab): each region's type, its art and anchors, and the
 -- icon's masks, to check the mirroring.
 function Window:DescribeTab()
-  local say = function(...) print(("|cFF007EA6%s|r tab:"):format(Addon.TITLE), ...) end
+  local say = function(...) Addon:PrintAs("tab", ...) end
   if not self.tabs then return say("open the window first") end
   local tab = self.tabs[1]
   for _, t in ipairs(self.tabs) do if t.ftMirrored then tab = t; break end end
@@ -365,7 +367,7 @@ function Window:CreateSideTabs(frame)
         if self.dragTab then return end
         GameTooltip:SetOwner(this, SideOf(info.key) == "left" and "ANCHOR_LEFT" or "ANCHOR_RIGHT") -- (away from the window)
         GameTooltip:SetText(info.label)
-        GameTooltip:AddLine(L.TAB_DRAG_HINT, 0.6, 0.6, 0.6)
+        Helpers.TipLine(L.TAB_DRAG_HINT, Colors.Muted)
         GameTooltip:Show()
       end)
       tab:SetScript("OnLeave", GameTooltip_Hide)

@@ -39,6 +39,7 @@ local defaults = {
     filter_by_faction = false,
     zone_filter = false, -- the Zone Filter checkbox in the window's title bar (src/ui/zone-filter.lua)
     filter_by_pet = false,
+    filter_rares = false, -- the Rares button: only the rare creatures, wherever creatures are listed
     last_tab = "UNIQUE",
     selections = {}, -- tab -> { ability = slug, rank = n } or the trainer's id
     bounty_sort = {}, -- Bounties tab: heading key -> "count" when sorted by number of entries (right-click the heading)

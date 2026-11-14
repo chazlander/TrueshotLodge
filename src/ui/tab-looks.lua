@@ -1,4 +1,5 @@
 local _, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local DB = Addon:GetModule("DB")
 local Helpers = Addon:GetModule("Helpers")
 local L = Addon:GetModule("Locale")
@@ -14,8 +15,7 @@ local Window = Addon:GetModule("Window")
 
 local PlayClick = Helpers.PlayClick
 local QUESTION_MARK_ICON = Helpers.QUESTION_MARK_ICON
-local COUNT_COLOR = { 0.78, 0.69, 0.55 } -- the tan of the website's count badges
-local UNIQUE_COLOR = { 1, 0.82, 0 } -- gold, as the website's edge on a look only one creature has
+local UNIQUE_COLOR = Colors.Gold -- as the website's edge on a look only one creature has
 
 -- A look's name: its texture's (in the data), else its creature's when only one has it, else the family's ("Bat": the
 -- family's own look, with no colour of its own). As the website's look_name(). The pet profile names its looks so too.
@@ -36,27 +36,20 @@ end
 -- ----------------------------------------------------------------------------
 
 -- The families with their looks: { { key, family, info, rows = { { key, family, look, name, total, creatures } } } },
--- by family name. With the search, a look shows when it, its family or one of its creatures matches.
+-- by family name. With a search (which looks for creatures), a look shows when one of its creatures matches.
 function Window:GetLookGroups()
-  local search = self.search or ""
   local zone, level = self:ZoneFilter(), UnitLevel("player") or 1
-  local filtered = zone ~= nil or DB.global.filter_by_level
+  local filtered = zone ~= nil or DB.global.filter_by_level or self:RaresOnly() or self:CreatureSearch() ~= nil
   local groups = {}
   for family, looks in pairs(Addon.TameableLooks or {}) do
     local info = Addon.TameableFamilies and Addon.TameableFamilies[family]
     if info then
-      local familyMatch = search == "" or family:lower():find(search, 1, true) ~= nil
       local group = { key = "looks:" .. family, family = family, info = info, rows = {} }
       for _, look in ipairs(looks) do
         local name = Addon:LookName(look, family)
-        local creatures = self:BountyCreatures(look.npcs, zone, level) -- (with the filters)
-        local match = familyMatch or name:lower():find(search, 1, true) ~= nil
-        if not match then
-          for _, npc in ipairs(creatures) do
-            if (npc.name or ""):lower():find(search, 1, true) then match = true break end
-          end
-        end
-        if match and (#creatures > 0 or not filtered) then
+        local named = self:HeadingMatches(name, family)
+        local creatures = self:BountyCreatures(look.npcs, zone, level, false, named) -- (the filters, the search)
+        if #creatures > 0 or not filtered then
           group.rows[#group.rows + 1] = { key = family .. ":" .. look.display, family = family, look = look,
             name = name, total = #look.npcs, creatures = creatures }
         end
@@ -79,31 +72,17 @@ local function LookOnEnter(button)
   GameTooltip:SetText(row.name)
   GameTooltip:AddLine(Addon:FamilyLabel(row.family), 1, 1, 1)
   if row.total == 1 then
-    GameTooltip:AddLine(L.LOOK_UNIQUE_TOOLTIP, UNIQUE_COLOR[1], UNIQUE_COLOR[2], UNIQUE_COLOR[3], true)
+    Helpers.TipLine(L.LOOK_UNIQUE_TOOLTIP, UNIQUE_COLOR, true)
   end
   GameTooltip:Show()
 end
 
 function Window:InitLookButton(button, row)
   button.Label:SetText(row.name)
-  if row.total == 1 then
-    button.Label:SetVertexColor(unpack(UNIQUE_COLOR))
-  else
-    button.Label:SetVertexColor(HIGHLIGHT_FONT_COLOR:GetRGB())
-  end
-  button.SkillUps:Hide()
-  button.LockedIcon:Hide()
+  button.Label:SetVertexColor((row.total == 1 and UNIQUE_COLOR or Colors.Default):GetRGB())
   -- The number of its creatures (with the filters), on the right like a badge (as on the Families tab).
-  button.Count:ClearAllPoints()
-  button.Count:SetPoint("RIGHT", button, "RIGHT", -8, 0)
-  button.Count:SetText(("(%d)"):format(#row.creatures))
-  button.Count:SetTextColor(unpack(COUNT_COLOR))
-  button.Count:Show()
-  button.Label:SetWidth(button:GetWidth() - 60)
-
-  local selected = self.selectedLook == row.key
-  button.SelectedOverlay:SetShown(selected)
-  button.HighlightOverlay:SetShown(not selected)
+  self:SetRowCount(button, #row.creatures)
+  self:SetRowSelected(button, self.selectedLook == row.key)
 
   button.ftLook = row
   button:RegisterForClicks("LeftButtonUp")
@@ -160,13 +139,7 @@ end
 function Window:SelectLook(key)
   self.selectedLook = key
   self:Remember()
-  self.scrollBox:ForEachFrame(function(button, node)
-    local row = node:GetData().look
-    if row then
-      button.SelectedOverlay:SetShown(row.key == key)
-      button.HighlightOverlay:SetShown(row.key ~= key)
-    end
-  end)
+  self:MarkSelected("look", function(row) return row.key == key end)
   self:UpdateLookDetails()
 end
 

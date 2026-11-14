@@ -22,7 +22,7 @@ end
 -- The creature's (or trainer's) lines in GameTooltip, which is already owned: its name, title, level, abilities,
 -- family, diet, type, attack speed and location. A creature's missing level, attack speed or zone shows as unknown.
 function PinHelper:AddTooltipLines(npc)
-  GameTooltip:SetText(Colors.Primary(npc.name))
+  GameTooltip:SetText(Colors.NPC(npc.name))
   if npc.tag then GameTooltip:AddLine(npc.tag, R, G, B) end
   line(L.LEVEL, npc.level_range)
   line(L.ABILITIES, table.concat(Addon:TaughtLines(npc), ", "))
@@ -31,6 +31,11 @@ function PinHelper:AddTooltipLines(npc)
   line(L.TYPE, npc.type)
   line(L.ATTACK_SPEED, npc.speed_text) -- creatures only (trainers have none)
   line(L.LOCATION, npc.location or npc.zone or (npc.speed_text and L.UNKNOWN_ZONE) or nil)
+  -- The game refused to tame it (the website's red Not tameable badge), and the day that was reported.
+  if npc.not_tameable then
+    local red = Colors.Bad
+    GameTooltip:AddLine(L.NOT_TAMEABLE_REPORTED:format(npc.not_tameable), red.r, red.g, red.b, true)
+  end
 end
 
 local function onEnter(self)
@@ -39,7 +44,7 @@ local function onEnter(self)
   -- Show tooltip
   GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
   PinHelper:AddTooltipLines(self.npc)
-  GameTooltip:AddDoubleLine(L.LEFT_CLICK, L.CLEAR_PINS, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6)
+  GameTooltip:AddDoubleLine(L.LEFT_CLICK, L.CLEAR_PINS, Colors.Muted.r, Colors.Muted.g, Colors.Muted.b, Colors.Muted:GetRGB())
   GameTooltip:Show()
 end
 

@@ -8,7 +8,8 @@ local Integrity = Addon:GetModule("Integrity")
 --   - At load, every record is checked: one whose tag no longer matches was changed outside the game and is marked
 --     `edited = true` for good (the mark is signed with the rest, so it cannot be dropped again without the tag).
 --   - The website checks the same tags on upload (app/Libraries/CollectorIntegrity.php) and shows what fails.
---   - The file also says which addon version saved it (`collected.addon`: version, saved_at, its own tag).
+--   - The file also says which addon version saved it (`collected.addon`: version, saved_at, locale, its own tag),
+--     and carries its own id (`file_id`), so the website can tell a newer copy of a file it already has.
 --
 -- Not a lock: the addon's code is public, so someone determined can re-sign a forged record. It catches hand edits.
 -- KEEP IN STEP with CollectorIntegrity.php: the key, the kinds, how a record is written out and the hash.
@@ -149,6 +150,19 @@ function Integrity:Check()
   return edited
 end
 
+-- The file's id: 16 random hex digits, made the first time the file is saved and kept from then on. A hunter uploads
+-- the same file again and again as it grows, so each upload is a newer copy of the last: the id lets the website see
+-- which uploads are copies of one file. It is random (the time and the game's random numbers), not made from the
+-- character's name, so it says nothing about who the file belongs to.
+local function FileId()
+  local addon = type(DB.collected) == "table" and DB.collected.addon
+  local id = type(addon) == "table" and addon.file_id
+  if type(id) == "string" and id:match("^%x+$") and #id == 16 then return id end
+  local seed = table.concat({ time(), GetTime(), debugprofilestop and debugprofilestop() or 0,
+    math.random(0, 2147483646), math.random(0, 2147483646) }, "|")
+  return Hash("file|" .. seed) .. Hash(seed .. "|" .. math.random(0, 2147483646))
+end
+
 -- At logout: signs every record, as the game is about to write the saved file, and notes which addon version saved
 -- it (`addon`, tagged too): when the data changes in a way old files cannot follow, the website can ask for an upload
 -- from a newer version.
@@ -164,7 +178,9 @@ function Integrity:SignAll()
   if failed > 0 then Addon:Debug("integrity:", failed, "record(s) could not be signed and were left unsigned") end
   if type(DB.collected) == "table" then
     -- locale: the client's language (ruRU, deDE, ...): names in the file are in it, families are in English.
-    local addon = { version = Addon.VERSION, saved_at = time(), locale = GetLocale and GetLocale() or nil }
+    -- file_id: this file's own id, made once and kept (see FileId).
+    local addon = { version = Addon.VERSION, saved_at = time(), locale = GetLocale and GetLocale() or nil,
+      file_id = FileId() }
     addon.sig = self:Tag("addon", "", addon)
     DB.collected.addon = addon
   end

@@ -1,4 +1,5 @@
 local _, Addon = ...
+local Colors = Addon:GetModule("Colors")
 local DB = Addon:GetModule("DB")
 local Helpers = Addon:GetModule("Helpers")
 local L = Addon:GetModule("Locale")
@@ -11,7 +12,6 @@ local Window = Addon:GetModule("Window")
 
 local Line, PlayClick, SetSpellTooltip = Helpers.Line, Helpers.PlayClick, Helpers.SetSpellTooltip
 local QUESTION_MARK_ICON = Helpers.QUESTION_MARK_ICON
-local COUNT_COLOR = { 0.78, 0.69, 0.55 } -- the tan of the website's count badges
 local TYPE_ORDER = { Cunning = 1, Ferocity = 2, Tenacity = 3 } -- then families without a type
 
 -- Each family's tameable creatures (npc ids), worked out once: the data does not change while playing.
@@ -31,7 +31,10 @@ end
 
 -- What a family learns, as the website lists it: its unique ability, then the common and the passive abilities (those
 -- every family learns, and those of its own). The attack speed passives are not learned: they are left out.
+local familyAbilities = {} -- family -> { unique, common, passive }: the data does not change while playing
 local function FamilyAbilities(family)
+  local cached = familyAbilities[family]
+  if cached then return cached.unique, cached.common, cached.passive end
   local unique, common, passive = nil, {}, {}
   for _, ability in pairs(Addon.TameableAbilities or {}) do
     local tab = Addon:GetAbilityTab(ability)
@@ -51,6 +54,7 @@ local function FamilyAbilities(family)
   local byName = function(a, b) return a.name < b.name end
   table.sort(common, byName)
   table.sort(passive, byName)
+  familyAbilities[family] = { unique = unique, common = common, passive = passive }
   return unique, common, passive
 end
 
@@ -140,14 +144,17 @@ end
 -- The list
 -- ----------------------------------------------------------------------------
 
--- The types with their families: { { key, name, rows = { { key, family, info, count, creatures } } } }.
+-- The types with their families: { { key, name, rows = { { key, family, info, count, creatures } } } }. With the Zone
+-- or Level filter on, or a search (which looks for creatures), a family none of whose creatures are left is not
+-- listed (as on the Looks and ability tabs), and neither is a type with no family left.
 function Window:GetFamilyGroups()
-  local search = self.search or ""
   local zone, level = self:ZoneFilter(), UnitLevel("player") or 1
+  local filtered = zone ~= nil or DB.global.filter_by_level or self:RaresOnly() or self:CreatureSearch() ~= nil
   local byType = {}
   for family, info in pairs(Addon.TameableFamilies or {}) do
-    if search == "" or family:lower():find(search, 1, true) then
-      local creatures = self:BountyCreatures(FamilyCreatureIds(family), zone, level) -- (with the filters)
+    local named = self:HeadingMatches(family)
+    local creatures = self:BountyCreatures(FamilyCreatureIds(family), zone, level, false, named) -- (the filters, the search)
+    if #creatures > 0 or not filtered then
       local typeName = info.type or L.OTHER
       byType[typeName] = byType[typeName] or { key = "families:" .. typeName, name = typeName, rows = {} }
       table.insert(byType[typeName].rows, { key = family, family = family, info = info, count = #creatures,
@@ -182,20 +189,10 @@ end
 
 function Window:InitFamilyButton(button, row)
   button.Label:SetText(("|T%s:16:16:0:0|t %s"):format(row.info.icon or QUESTION_MARK_ICON, Addon:FamilyLabel(row.family)))
-  button.Label:SetVertexColor(HIGHLIGHT_FONT_COLOR:GetRGB())
-  button.SkillUps:Hide()
-  button.LockedIcon:Hide()
+  button.Label:SetVertexColor(Colors.Default:GetRGB())
   -- The number of tameable creatures, on the right like a badge (as on the Bounties tab).
-  button.Count:ClearAllPoints()
-  button.Count:SetPoint("RIGHT", button, "RIGHT", -8, 0)
-  button.Count:SetText(("(%d)"):format(row.count))
-  button.Count:SetTextColor(unpack(COUNT_COLOR))
-  button.Count:Show()
-  button.Label:SetWidth(button:GetWidth() - 60)
-
-  local selected = self.selectedFamily == row.key
-  button.SelectedOverlay:SetShown(selected)
-  button.HighlightOverlay:SetShown(not selected)
+  self:SetRowCount(button, row.count)
+  self:SetRowSelected(button, self.selectedFamily == row.key)
 
   button.ftFamily = row
   button:RegisterForClicks("LeftButtonUp")
@@ -243,13 +240,7 @@ end
 function Window:SelectFamily(key)
   self.selectedFamily = key
   self:Remember()
-  self.scrollBox:ForEachFrame(function(button, node)
-    local row = node:GetData().family
-    if row then
-      button.SelectedOverlay:SetShown(row.key == key)
-      button.HighlightOverlay:SetShown(row.key ~= key)
-    end
-  end)
+  self:MarkSelected("family", function(row) return row.key == key end)
   self:UpdateFamilyDetails()
 end
 

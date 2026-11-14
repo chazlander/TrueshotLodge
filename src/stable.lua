@@ -335,7 +335,7 @@ function Stable:Log(text)
 end
 
 local function Say(...)
-  print(("|cFF007EA6%s|r stable:"):format(Addon.TITLE), ...)
+  Addon:PrintAs("stable", ...)
 end
 
 -- What the game says about your pets, next to what is kept, so a pet that is gone can be told from one that is just

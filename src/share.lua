@@ -828,7 +828,7 @@ local function CheckVersion(text, who)
   for _ in pairs(senders) do count = count + 1 end
   if count < NEWER_VERSION_REPORTERS then return end
   newerTold = true
-  print(("|cFF007EA6%s|r: %s"):format(Addon.TITLE, Addon:GetModule("Locale").NEWER_VERSION:format(text, Addon.VERSION)))
+  Addon:Print(Addon:GetModule("Locale").NEWER_VERSION:format(text, Addon.VERSION))
 end
 Share.CheckVersion = CheckVersion -- (for the tests)
 
