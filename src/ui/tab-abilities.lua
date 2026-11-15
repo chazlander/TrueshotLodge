@@ -88,35 +88,43 @@ local function TrainerRank(rank)
   return trainerRanks[rank] == true
 end
 
--- How many of a rank's creatures pass the Zone Filter (self.listZone: they live in the zone you are in), the Rares
--- filter (self.listRares: they are rare) and the search (self.listSearch: their name holds what was typed), all set
--- when the list is drawn; on the attack speeds, with Filter by Level on, only those you can tame now. nil with none
--- of them on. A rank a trainer teaches has no creatures: the Zone and Rares filters say nothing about it (nil), and
--- a search for creatures does not find it (0). Worked out once per rank each time the list is drawn
--- (self.creatureCounts).
-function Window:CreatureCount(rank)
-  local zone, search = self.listZone, self.listSearch
-  -- (an ability whose own name matched, with Window.SEARCH_HEADINGS on, is listed whole: GetAbilities)
-  if search and self.namedRanks and self.namedRanks[rank] then search = nil end
-  local rares = self.listRares
-  if not (zone or search or rares) then return nil end
-  if TrainerRank(rank) then return search and 0 or nil end
-  self.creatureCounts = self.creatureCounts or {}
-  local count = self.creatureCounts[rank]
-  if count == nil then
-    count = 0
+-- How many of a rank's creatures pass the filters and the search that are on (all of them when none is), and how many
+-- of those someone has tamed (the green count). The filters: the Zone Filter (self.listZone: they live in the zone
+-- you are in), the Rares filter (self.listRares) and the search (self.listSearch: their name holds what was typed),
+-- all set when the list is drawn; on the attack speeds, with Filter by Level on, only those you can tame now. Worked
+-- out once per rank each time the list is drawn (self.rankCreatures).
+function Window:RankCreatures(rank)
+  self.rankCreatures = self.rankCreatures or {}
+  local counted = self.rankCreatures[rank]
+  if not counted then
+    local zone, search, rares = self.listZone, self.listSearch, self.listRares
+    -- (an ability whose own name matched, with Window.SEARCH_HEADINGS on, is listed whole: GetAbilities)
+    if search and self.namedRanks and self.namedRanks[rank] then search = nil end
     local byLevel = self.tab == "ATTACK" and DB.global.filter_by_level
     local level = self.playerLevel or (UnitLevel and UnitLevel("player")) or 1
+    counted = { n = 0, tamed = 0 }
     for _, id in ipairs(rank.npc_ids or {}) do
       local npc = Addon:GetNPC(id)
       if npc and (not zone or self:NPCInZone(npc, zone)) and self:NPCMatchesSearch(npc, search)
           and (not rares or self:NPCIsRare(npc)) and (not byLevel or (npc.min and npc.min <= level)) then
-        count = count + 1
+        counted.n = counted.n + 1
+        if Addon:NPCMark(npc) == "tamed" then counted.tamed = counted.tamed + 1 end
       end
     end
-    self.creatureCounts[rank] = count
+    self.rankCreatures[rank] = counted
   end
-  return count
+  return counted.n, counted.tamed
+end
+
+-- A rank's count with the Zone Filter, the Rares filter or a search on (RankCreatures); nil with none of them on. A
+-- rank a trainer teaches has no creatures: the Zone and Rares filters say nothing about it (nil), and a search for
+-- creatures does not find it (0).
+function Window:CreatureCount(rank)
+  local search = self.listSearch
+  if search and self.namedRanks and self.namedRanks[rank] then search = nil end
+  if not (self.listZone or search or self.listRares) then return nil end
+  if TrainerRank(rank) then return search and 0 or nil end
+  return (self:RankCreatures(rank))
 end
 
 -- An attack speed's beasts (Addon:GetNPC) that pass Filter by Level: with it on, the ones you can tame now (their
@@ -179,7 +187,10 @@ function Window:InitRankButton(button, info)
   -- (the "[2]" a recipe shows for how many can be crafted) is moved to the row's right edge for it.
   -- With the Zone Filter on or a search typed, the number of them that pass.
   local creatures = self:CreatureCount(rank) or (rank.npc_ids and #rank.npc_ids or 0)
-  self:SetRowCount(button, creatures > 0 and creatures or nil)
+  -- Every one of them tamed: the count in green (Colors.Tamed), as the website's badge.
+  local _, tamed = self:RankCreatures(rank)
+  local complete = creatures > 0 and tamed == creatures and not TrainerRank(rank)
+  self:SetRowCount(button, creatures > 0 and creatures or nil, complete and Colors.Tamed or nil)
   self:SetRowSelected(button, self.selected ~= nil and self.selected.ability == ability
     and self.selected.rankIndex == rankIndex)
 
@@ -241,7 +252,7 @@ function Window:RefreshAbilities()
   self.listZone = self.tab ~= "PASSIVE" and self:ZoneFilter() or nil
   self.listSearch = self:CreatureSearch() -- (what was typed, on the tabs that list creatures)
   self.listRares = self:RaresOnly() -- (the Rares filter)
-  self.creatureCounts = {}
+  self.rankCreatures = {}
   local abilities = self:GetAbilities()
   local provider = CreateTreeDataProvider()
   local first

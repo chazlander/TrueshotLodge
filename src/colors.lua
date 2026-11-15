@@ -25,6 +25,7 @@ local colorMap = {
   Alliance = "FF6BA6FF", -- a trainer who serves the Alliance (--ft-alliance)
   Horde = "FFFF6161", -- a trainer who serves the Horde (--ft-horde)
   Good = "FF40C040", -- green: a good verdict, a value an upload would add (--ft-good)
+  Tamed = "FFB9F0C4", -- pale green: a count whose creatures are all tamed (the website's Tamed seal, .tamed-badge)
   Bad = "FFE04030", -- red: a bad verdict, what is missing or refused (--ft-bad)
   Shared = "FF3FA9F5", -- blue: an entry another TrueshotLodge user shared
   New = "FFFF8000", -- orange: the NEW badge

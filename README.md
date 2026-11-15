@@ -19,7 +19,8 @@ Built for WoW Forever:
 - **Every look in 3D**: the 155 skins pets come in, each turnable in 3D, and which beasts wear it
 - **Every pet ability and rank**: what it does, the pet level it needs, its training point cost and who can learn it
 - **New in Forever**: creatures and families added in WoW Forever carry the ∞ mark
-- **Verified tames**: a green dot marks creatures TrueshotLodge users have actually tamed, with the date on hover
+- **Verified tames**: a green dot marks creatures TrueshotLodge users have actually tamed, with the date on hover; a
+  grey eye marks the ones only seen in the wild so far
 - **Rare and elite** creatures stand out: rares glow gold, elites carry a skull
 - **Pet tooltips**: hover a tameable beast in the world to see its family, attack speed and the abilities it teaches
 - **Pet ability tooltips**: a pet ability's tooltip (spellbook, pet bar, Beast Training, chat links) adds the pet
@@ -137,8 +138,9 @@ is in Help (the **?** by the close button).
   - **Missing Attack Speed**: creatures whose attack speed nobody has recorded
   - **Missing Zone**: creatures nobody knows the whereabouts of
   - **Missing Model**: creatures whose look nobody knows yet, so the Looks tab cannot show them
-- **Unique Abilities without Source**: ranks of a family's unique ability that no known tameable creature has, each with
-  its **Potential Tameable Targets**: the family's untamed beasts between the levels of the ranks around it
+- **Unique Ability Targets**: every rank of a family's unique ability, with how many known creatures have it and its
+  **Potential Tameable Targets**: the family's untamed beasts between the levels of the ranks around it, which might
+  have it
 - **The Untamables**: the creatures hunters have uploaded that we keep out of the guide. Nothing to claim: they are
   listed so you can see everything uploads have brought in, including what we left out
 

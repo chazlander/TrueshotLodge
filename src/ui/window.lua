@@ -452,7 +452,7 @@ function Window:UpdateTabs()
     if families then
       self.npcLabel:SetPoint("TOPLEFT", self:FamilyWidgets().abilities, "BOTTOMLEFT", 0, -14)
     elseif looks then
-      self.npcLabel:SetPoint("TOPLEFT", self:LookWidgets(), "BOTTOMLEFT", 0, -26)
+      self.npcLabel:SetPoint("TOPLEFT", self:LookWidgets(), "BOTTOMLEFT", 0, -14)
     else
       self.npcLabel:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", 0, -14)
     end
@@ -1184,18 +1184,24 @@ function Window:InitNPCRow(row, npc)
       GameTooltip:Show()
     end)
     row.ForeverIcon:SetScript("OnLeave", GameTooltip_Hide)
-    -- A creature an addon user has tamed (`tamed` in the data, the day of the last tame; `tamed_by`, who): a green dot
-    -- after its name, "Verified Tame: <date> by <hunter>" on hover. The frame is a little larger than the dot, to be easier to hover.
+    -- The mark after its name (Addon:NPCMark): a creature an addon user has tamed (`tamed` in the data, the day of
+    -- the last tame; `tamed_by`, who) has a green dot, "Verified Tame: <date> by <hunter>" on hover; one only seen in
+    -- the wild (`sighted`) a grey eye, "Seen in the wild" on hover. The frame is a little larger than the mark, to be
+    -- easier to hover.
     local badge = CreateFrame("Frame", nil, row)
     badge:SetSize(14, 14)
     badge:EnableMouse(true)
-    local dot = badge:CreateTexture(nil, "ARTWORK")
-    dot:SetAllPoints()
-    dot:SetTexture(Addon.GREEN_DOT)
+    badge.icon = badge:CreateTexture(nil, "ARTWORK")
+    badge.icon:SetAllPoints()
     badge:SetScript("OnEnter", function(frame)
       GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
-      local text = frame.by and L.VERIFIED_TAME_BY:format(frame.date or "", frame.by) or L.VERIFIED_TAME:format(frame.date or "")
-      GameTooltip:SetText(text, 1, 1, 1)
+      if frame.kind == "sighted" then
+        GameTooltip:SetText(L.SIGHTED, 1, 1, 1)
+        Helpers.TipLine(L.SIGHTED_TOOLTIP, Colors.Muted, true)
+      else
+        local text = frame.by and L.VERIFIED_TAME_BY:format(frame.date or "", frame.by) or L.VERIFIED_TAME:format(frame.date or "")
+        GameTooltip:SetText(text, 1, 1, 1)
+      end
       GameTooltip:Show()
     end)
     badge:SetScript("OnLeave", GameTooltip_Hide)
@@ -1226,17 +1232,19 @@ function Window:InitNPCRow(row, npc)
   row.InfoText:SetPoint("TOPLEFT", 4, -18)
   row.InfoText:SetPoint("RIGHT", -reserve, 0)
   local badge = row.TamedBadge
-  local tamed = type(npc.tamed) == "string" and npc.tamed ~= ""
+  local mark = Addon:NPCMark(npc) -- "tamed" (the green dot), "sighted" (the grey eye) or nil
   row.NameText:ClearAllPoints()
   row.NameText:SetPoint("TOPLEFT", x, -3)
-  -- Room for the dot after the name, which is cut short before it when the row is narrow.
-  row.NameText:SetPoint("RIGHT", tamed and -(reserve + badge:GetWidth() + 6) or -reserve, 0)
+  -- Room for the mark after the name, which is cut short before it when the row is narrow.
+  row.NameText:SetPoint("RIGHT", mark and -(reserve + badge:GetWidth() + 6) or -reserve, 0)
   -- The name in the creatures' light blue (as on the website); "Not tameable" in red after it when the game refused
   -- to tame it (the website's red badge).
   row.NameText:SetText(Colors.NPC(npc.name)
     .. (npc.not_tameable and ("  " .. Colors.Bad(L.TAME_CHECK_NOT_TAMEABLE)) or ""))
-  badge:SetShown(tamed)
-  if tamed then
+  badge:SetShown(mark ~= nil)
+  if mark then
+    badge.kind = mark
+    Addon:SetNPCMarkTexture(badge.icon, mark)
     badge.date = npc.tamed
     badge.by = type(npc.tamed_by) == "string" and npc.tamed_by ~= "" and npc.tamed_by or nil
     local width = row.NameText.GetUnboundedStringWidth and row.NameText:GetUnboundedStringWidth()

@@ -74,6 +74,24 @@ function Addon:AbilityOfSpell(spellId)
   return spellId and bySpell[spellId] or nil
 end
 
+-- The hunter's own spell that teaches a rank (the data's learn_id: what the game links in "You have learned a new
+-- spell: [Web]."; 1265888 teaches the pet's Web Rank 2, 1265878) -> the rank's spell id, built the first time it is
+-- needed. A spell id that is already a rank's is given back as it is; nil for one that is neither.
+local byLearnSpell
+function Addon:RankSpellOf(spellId)
+  if not spellId then return nil end
+  if not byLearnSpell then
+    byLearnSpell = {}
+    for _, ability in pairs(Addon.TameableAbilities) do
+      for _, rank in ipairs(ability.ranks) do
+        if rank.learn_id and rank.spell_id then byLearnSpell[rank.learn_id] = rank.spell_id end
+      end
+    end
+  end
+  if self:AbilityOfSpell(spellId) then return spellId end
+  return byLearnSpell[spellId]
+end
+
 -- A rank as saved: "Rank 3" in English from the game's text in any language ("Уровень 3"), or the text as it is
 -- when it has no number.
 function Addon:RankText(text)
@@ -125,6 +143,7 @@ function Training:ReadServices(petOnly)
     end
     if wanted then
       spellId = spellId or serviceSpellId(i)
+      spellId = Addon:RankSpellOf(spellId) or spellId -- (a hunter's teaching spell counts as the rank it teaches)
       local ability = Addon:AbilityOfSpell(spellId)
       list[#list + 1] = {
         index = i,
@@ -197,52 +216,78 @@ end
 -- found.
 
 -- Lua patterns for the game's "You have learned..." lines, made from its own strings so they work in every language,
--- with the English ones as a fallback. The %s in each becomes a capture.
+-- with the English ones as a fallback. The %s in each becomes a capture. (The list is walked by count, not ipairs: a
+-- string this client lacks is nil, and ipairs stops at the first nil, which left no patterns at all.)
 local learnPatterns = {}
-for _, text in ipairs({ ERR_LEARN_ABILITY_S, ERR_LEARN_SPELL_S,
-  "You have learned a new ability: %s.", "You have learned a new spell: %s." }) do
+local learnTexts = { ERR_LEARN_ABILITY_S, ERR_LEARN_SPELL_S,
+  "You have learned a new ability: %s.", "You have learned a new spell: %s." }
+for index = 1, 4 do
+  local text = learnTexts[index]
   if type(text) == "string" and text:find("%s", 1, true) then
     local pattern = "^" .. text:gsub("%%s", "\0"):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"):gsub("%z", "(.+)") .. "$"
     learnPatterns[#learnPatterns + 1] = pattern
   end
 end
 
--- Lowercase English ability name -> the ability in the data, to find a rank's spell id from the chat line's text.
+-- Lowercase ability name -> the ability in the data, to find a rank's spell id from the chat line's text. The names
+-- are the game's own, in the client's language (data.lua names each ability from its spell), as the chat line is.
 local byName
 local function abilityNamed(name)
   if not byName then
     byName = {}
-    for _, ability in pairs(Addon.TameableAbilities) do byName[ability.name:lower()] = ability end
+    for _, ability in pairs(Addon.TameableAbilities) do
+      if not ability.attack_speed then byName[ability.name:lower()] = ability end
+    end
   end
   return byName[tostring(name):lower()]
 end
 
--- Saves one learned rank, by spell id when it is one of the data's pet ability ranks.
+-- Saves one learned rank, by spell id: a rank's own, or the hunter's spell that teaches it (Addon:RankSpellOf).
 local function saveLearned(spellId)
-  if not (DB.char and spellId and Addon:AbilityOfSpell(spellId)) then return false end
+  spellId = Addon:RankSpellOf(spellId)
+  if not (DB.char and spellId) then return false end
   DB.char.trained_ids = DB.char.trained_ids or {}
   DB.char.trained_ids[spellId] = true
   Addon:Debug("training: learned", spellId)
   return true
 end
 
--- Works out the spell id from what the chat line names: a spell link, or "Bite (Rank 3)" / "Bite" in English.
+-- Works out the rank from what the chat line names, and saves it. The line links the hunter's own spell for learning
+-- the rank, not the pet's ("[Web]" is 1265888, which teaches Web Rank 2): the data names that spell for each rank
+-- (learn_id), so the link's id says exactly which rank it is. Only for a spell the data does not know is the name and
+-- rank in the link's text tried.
 local function learnedFromText(what)
   local id = tonumber(what:match("spell:(%d+)"))
-  if id then return saveLearned(id) end
+  if id and saveLearned(id) then return true end
 
   local plain = what:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
   plain = plain:gsub("^%[", ""):gsub("%]$", "")
   local name, rank = plain:match("^(.-)%s*%((.-)%)$")
   name = name or plain
   local ability = abilityNamed(name)
-  if not ability then return false end
-  local number = tonumber(tostring(rank or ""):match("%d+")) or 1
+  if not ability then
+    return Addon:Debug("training: learned a spell that is no pet ability:", plain, id and ("(spell " .. id .. ")") or "")
+  end
+  -- The rank: in the link's text ("Bite (Rank 4)"), else what the game says of the linked spell ("Rank 2"). A link
+  -- can show none ("[Web]" was the hunter's spell for Web Rank 2, 1265888): then, when the ability has more than one
+  -- rank, nothing is guessed, since a rank marked known by mistake would never come off.
+  if not rank and id then
+    local subtext = C_Spell and C_Spell.GetSpellSubtext and C_Spell.GetSpellSubtext(id)
+    rank = type(subtext) == "string" and subtext ~= "" and subtext or nil
+  end
+  local number = tonumber(tostring(rank or ""):match("%d+"))
+  if not number and #ability.ranks > 1 then
+    return Addon:Debug("training: learned", plain, id and ("(spell " .. id .. ")") or "",
+      "but the game does not say which rank: open Beast Training to record it")
+  end
+  number = number or 1
   for index, r in ipairs(ability.ranks) do
     if (r.rank or index) == number then return saveLearned(r.spell_id) end
   end
-  return false
+  return Addon:Debug("training: learned", plain, "but the data has no such rank")
 end
+Training.LearnedFromText = learnedFromText -- (.tools/smoke.py tries it with the game's own chat lines)
+Training.LearnPatterns = learnPatterns
 
 local learnFrame = CreateFrame("Frame")
 learnFrame:SetScript("OnEvent", function(_, event, arg)

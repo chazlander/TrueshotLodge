@@ -8,7 +8,8 @@ local Window = Addon:GetModule("Window")
 -- The "Bounties" tab: what we still want hunters to find, as on TrueshotLodge.com/bounties, worked out from the
 -- addon's data. On the left: the Pet Bounties (Missing Rares, Missing Normals, Missing Forever, Missing Attack Speed,
 -- Missing Zone, Missing Model);
--- the Unique Abilities without Source (ranks of a family's unique ability that no known tameable creature has); and
+-- the Unique Ability Targets (every rank of a family's unique ability, with the untamed creatures that might have it);
+-- and
 -- The Untamables (the hidden creatures hunters have uploaded, listed only so everyone can see what uploads brought in).
 -- On the right, the selected one with its creatures and their Map Location buttons. The title bar's Zone Filter keeps
 -- the creatures of the zone you are in, and Filter by Level the ones you can tame now (their lowest level at most yours).
@@ -58,12 +59,13 @@ local PET_BOUNTIES = {
     wants = function(_, id) return not HasLook(id) end },
 }
 
--- The ranks of a family's unique ability that no known tameable creature has, each with its potential targets: the
--- family's creatures nobody has tamed, whose levels reach from the pet level of the rank before to that of the rank
--- after (from level 1 for a first rank, with no top for a last one), less those known to have another rank of it. As
--- the website works them out. The data does not change while playing, so this is done once.
+-- Every rank of a family's unique ability (the website's Unique Ability Targets), each with how many known creatures
+-- have it (`known`) and its potential targets: the family's creatures nobody has tamed, whose levels reach from the
+-- pet level of the rank before to that of the rank after (from level 1 for a first rank, with no top for a last one),
+-- less those known to have a rank of it (they have theirs). As the website works them out. The data does not change
+-- while playing, so this is done once.
 local uniqueEntries
-local function UniqueRanksWithoutSource()
+local function UniqueRankTargets()
   if uniqueEntries then return uniqueEntries end
   uniqueEntries = {}
   for key, ability in pairs(Addon.TameableAbilities or {}) do
@@ -75,25 +77,24 @@ local function UniqueRanksWithoutSource()
         for _, id in ipairs(rank.npc_ids or {}) do known[id] = true end
       end
       for _, this in ipairs(numbered) do
-        if not (this.rank.npc_ids and #this.rank.npc_ids > 0) then
-          local before, after
-          for _, other in ipairs(numbered) do
-            if other.number < this.number and (not before or other.number > before.number) then before = other end
-            if other.number > this.number and (not after or other.number < after.number) then after = other end
-          end
-          local low = before and before.rank.pet_level or 1
-          local high = after and after.rank.pet_level or nil
-          local targets = {}
-          for id, npc in pairs(Addon.TameableNPCs or {}) do
-            if npc.family == family and npc.min and not Tamed(npc) and not known[id] and not npc.not_tameable then
-              if (npc.max or npc.min) >= low and (not high or npc.min <= high) then targets[#targets + 1] = id end
-            end
-          end
-          uniqueEntries[#uniqueEntries + 1] = {
-            key = "unique:" .. key .. ":" .. this.number, ability = ability, rank = this.rank, number = this.number,
-            family = family, before = before, after = after, low = low, high = high, targetIds = targets,
-          }
+        local before, after
+        for _, other in ipairs(numbered) do
+          if other.number < this.number and (not before or other.number > before.number) then before = other end
+          if other.number > this.number and (not after or other.number < after.number) then after = other end
         end
+        local low = before and before.rank.pet_level or 1
+        local high = after and after.rank.pet_level or nil
+        local targets = {}
+        for id, npc in pairs(Addon.TameableNPCs or {}) do
+          if npc.family == family and npc.min and not Tamed(npc) and not known[id] and not npc.not_tameable then
+            if (npc.max or npc.min) >= low and (not high or npc.min <= high) then targets[#targets + 1] = id end
+          end
+        end
+        uniqueEntries[#uniqueEntries + 1] = {
+          key = "unique:" .. key .. ":" .. this.number, ability = ability, rank = this.rank, number = this.number,
+          family = family, before = before, after = after, low = low, high = high, targetIds = targets,
+          known = this.rank.npc_ids and #this.rank.npc_ids or 0,
+        }
       end
     end
   end
@@ -231,8 +232,8 @@ function Window:GetBountyGroups()
     groups[#groups + 1] = pets
   end
 
-  local unique = { key = "bounties:unique", name = L.UNIQUE_WITHOUT_SOURCE, rows = {} }
-  for _, entry in ipairs(UniqueRanksWithoutSource()) do
+  local unique = { key = "bounties:unique", name = L.UNIQUE_TARGETS, rows = {} }
+  for _, entry in ipairs(UniqueRankTargets()) do
     local title = ("%s (%s %d)"):format(entry.ability.name, L.RANK, entry.number)
     local named = self:HeadingMatches(title, entry.family)
     local creatures = self:BountyCreatures(entry.targetIds, zone, level, false, named)
@@ -405,8 +406,11 @@ function Window:UpdateBountyDetails()
     self.subtitle:SetText(("%s %d"):format(L.RANK, entry.number))
     add(Line(L.FAMILY, Addon:FamilyLabel(entry.family)))
     add(Line(L.PET_LEVEL, entry.rank.pet_level))
+    add(Line(L.BOUNTY_KNOWN_COUNT, entry.known))
     add(Line(L.BOUNTY_TARGET_COUNT, #row.creatures))
-    description = L.BOUNTY_UNIQUE_TEXT:format(entry.family, RangeText(entry))
+    -- What is known of it, then where the untamed ones that might have it are.
+    description = entry.known == 0 and L.BOUNTY_UNIQUE_TEXT:format(entry.family, RangeText(entry))
+      or L.BOUNTY_UNIQUE_KNOWN_TEXT:format(entry.known, entry.family, RangeText(entry))
     self:ShowBountyCreatures(row.creatures, L.BOUNTY_TARGETS, L.BOUNTY_TARGETS_NONE:format(entry.family))
   end
 

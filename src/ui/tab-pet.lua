@@ -177,7 +177,7 @@ function Window:CreatePetProfile(frame)
   right:SetPoint("BOTTOMRIGHT")
   local viewer = Helpers.NewModelViewer(right)
   viewer:SetPoint("TOPLEFT", 10, -10)
-  viewer:SetPoint("BOTTOMRIGHT", -10, 26)
+  viewer:SetPoint("BOTTOMRIGHT", -10, 10)
   self.profileViewer = viewer
 
   -- The Map button: at the top right of the left pane, across from Back (it grows leftwards with its word).
@@ -226,6 +226,11 @@ local function ProfileRows(npc)
     else
       stat(L.TAMED_BY .. dot, Colors.Muted(L.ANONYMOUS), nil, { hint = L.VERIFIED_TAME:format(npc.tamed), fit = true })
     end
+  end
+  if Addon:NPCMark(npc) == "sighted" then
+    -- Seen in the wild but not tamed yet: the grey eye after the label, as in the lists.
+    stat(L.SIGHTED .. (" |T%s:12:12:0:0:32:32:0:32:0:32:157:157:157|t"):format(Addon.SIGHTED_EYE), L.YES, nil,
+      { hint = L.SIGHTED_TOOLTIP })
   end
   if npc.not_tameable then stat(L.TAME_CHECK_NOT_TAMEABLE, npc.not_tameable) end -- (the day the game refused it)
   stat(L.NPC_ID, npc.id)

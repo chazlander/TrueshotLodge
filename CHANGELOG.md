@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.60.1.44] - 2026-11-14
+
+- The 3D models (the Looks tab and a pet's profile) show the game's model buttons along the top when you hover them:
+  zoom in and out, turn left and right (hold to keep turning) and reset, as on the stable's pet. The "Drag to turn"
+  line under them is gone; dragging, right-dragging and the mouse wheel still work.
+- Bounties: Uniques without Source is now Unique Ability Targets. It lists every rank of each family's unique
+  ability, not only those no known creature has, each with the untamed creatures in its level range that might have
+  it, and how many known creatures have it already. As on the website.
+- A rank's count of creatures turns green once every one of them has been tamed, as on the website.
+- A grey eye after a creature's name means a TrueshotLodge hunter has seen it in the wild and uploaded the
+  sighting, but nobody has tamed it yet (a tamed creature keeps its green dot). Its profile says so too.
+- Fixed: learning a pet ability rank now marks it known straight away, as 1.60.1.42 meant it to. It did not notice the
+  game's "You have learned a new spell" line at all. The line links your own spell for the rank, not the pet's, and
+  often shows no rank ("[Web]" was Rank 2), so the addon now knows which rank each of those spells teaches, from the
+  game's own data.
+- Data since 1.60.1.43:
+  - 0 new tames (346 in all)
+  - 0 new creatures (785 in all)
+  - 0 new sightings
+  - 0 new ability tames
+  - 0 new attack speeds
+  - 0 new levels
+  - 0 new zones
+  - 0 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 87 of 785 creatures have no known attack speed, 58 no level and 45 no zone (167 have no map points)
+
 ## [1.60.1.43] - 2026-11-14
 
 - **NEW FEATURE:** The addon is unaware of all the hard work a Hunter has done prior to its download. This new feature will give you the ability to mark abilities as known until it can be verified by the addon itself. Unfortately there is nothing exposed by Blizzard to allow us to read every ability you may have previously learned - only whats available in the spell book or what you actively learn while you have the addon.
