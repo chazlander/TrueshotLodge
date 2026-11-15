@@ -6,8 +6,8 @@ local L = Addon:GetModule("Locale")
 local Window = Addon:GetModule("Window")
 
 -- The Help section, opened with the "?" button by the close button (no side tab): How to Claim (a bounty: how and what
--- you have on), how the filters work, and the slash commands; then Tab Descriptions, what each tab is for. In the same
--- list and details layout as the tabs.
+-- you have on), how the filters work, how abilities become known, and the slash commands; then Tab Descriptions, what
+-- each tab is for. In the same list and details layout as the tabs.
 
 local Line, PlayClick = Helpers.Line, Helpers.PlayClick
 local QUESTION_MARK_ICON = Helpers.QUESTION_MARK_ICON
@@ -15,6 +15,7 @@ local QUESTION_MARK_ICON = Helpers.QUESTION_MARK_ICON
 local ENTRIES = {
   { key = "claim", label = L.BOUNTY_HOW_TO_CLAIM, icon = function() return Window.BOUNTY_ICON end },
   { key = "filters", label = L.HELP_FILTERS, icon = function() return "Interface\\Icons\\INV_Misc_Spyglass_03" end },
+  { key = "known", label = L.HELP_KNOWN, icon = function() return "Interface\\Icons\\Ability_Hunter_BeastTraining" end },
   { key = "commands", label = L.HELP_COMMANDS, icon = function() return "Interface\\Icons\\INV_Misc_Note_01" end },
 }
 
@@ -134,6 +135,22 @@ function Window:UpdateHelpDetails()
   elseif row.key == "filters" then
     self.subtitle:SetText(L.FILTERS)
     description = L.HELP_FILTERS_TEXT
+  elseif row.key == "known" then
+    -- How a rank becomes known, with this character's counts: seen in Beast Training, and marked by hand.
+    self.subtitle:SetText(L.BEAST_TRAINING)
+    local verified, marked = 0, 0
+    for _, ability in pairs(Addon.TameableAbilities) do
+      for rankIndex in ipairs(ability.ranks) do
+        if Addon:IsRankVerified(ability, rankIndex) then
+          verified = verified + 1
+        elseif Addon:IsRankKnown(ability, rankIndex) then
+          marked = marked + 1
+        end
+      end
+    end
+    add(Line(L.HELP_KNOWN_VERIFIED, verified))
+    add(Line(L.HELP_KNOWN_MARKED, marked))
+    description = L.HELP_KNOWN_TEXT
   else
     self.subtitle:SetText("/tsl")
     description = L.HELP_COMMANDS_TEXT

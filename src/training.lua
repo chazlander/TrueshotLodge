@@ -267,17 +267,40 @@ for _, event in ipairs({ "CHAT_MSG_SYSTEM", "LEARNED_SPELL_IN_TAB" }) do
   pcall(learnFrame.RegisterEvent, learnFrame, event) -- Not every client has every event.
 end
 
--- Returns true if the hunter has learned the ability rank: it has been listed in their Beast Training window.
-function Addon:IsRankKnown(ability, rankIndex)
+-- Returns true if the game has shown that the hunter learned the ability rank: it was listed in their Beast Training
+-- window, or the game said it was learned (the chat line or the event). That cannot be undone: a hunter cannot unlearn
+-- a rank, so a verified rank is known for good, and no mark by hand takes it back.
+function Addon:IsRankVerified(ability, rankIndex)
   local rank = ability.ranks[rankIndex]
-  if not rank then return false end
-  if ability.attack_speed then return false end -- A beast's passive, not something to learn.
-
   local char = DB.char
-  if not char then return false end
+  if not (rank and char) or ability.attack_speed then return false end
   if char.trained_ids and char.trained_ids[rank.spell_id] then return true end
   -- By name, only for trainer entries the client gave no spell id for (usually none).
   return char.trained ~= nil and char.trained[key(ability.name, rank.rank or rankIndex)] == true
+end
+
+-- Returns true if the hunter knows the ability rank: verified by the game (IsRankVerified), or marked known by hand
+-- (`rank_marked`: SetRankKnown) for a rank the addon has not seen them learn.
+function Addon:IsRankKnown(ability, rankIndex)
+  local rank = ability.ranks[rankIndex]
+  if not rank or ability.attack_speed then return false end -- (an attack speed is a beast's passive, not learned)
+  if self:IsRankVerified(ability, rankIndex) then return true end
+  local char = DB.char
+  return char ~= nil and char.rank_marked ~= nil and char.rank_marked[rank.spell_id] == true
+end
+
+-- Marks a rank known, or takes that mark back, by hand (a click on an ability's icon, with Known Ability Edit on: tab-abilities.lua):
+-- for a rank the hunter learned before the addon could see it. Saved per character in DB.char.rank_marked (spell id
+-- -> true). A rank the game has verified is known for good: it cannot be marked not known (false comes back).
+function Addon:SetRankKnown(ability, rankIndex, known)
+  local rank = ability.ranks[rankIndex]
+  local char = DB.char
+  if not (rank and rank.spell_id and char) or ability.attack_speed then return false end
+  if self:IsRankVerified(ability, rankIndex) then return known end -- (already known; never unmarked)
+  char.rank_marked = char.rank_marked or {}
+  char.rank_marked[rank.spell_id] = known or nil
+  Addon:Debug("training: marked", ability.name, rankIndex, known and "known" or "not known", "by hand")
+  return true
 end
 
 -- A rank's state, for its color (colors.lua): Complete (known), Available (the character's level has reached it, not

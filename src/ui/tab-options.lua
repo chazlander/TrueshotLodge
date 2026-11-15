@@ -70,6 +70,11 @@ local function Groups()
     } },
     -- Last, for development.
     { key = "options:advanced", name = L.ADVANCED, settings = {
+      -- Known Ability Edit: a click on an ability's icon marks the rank known by hand (tab-abilities.lua). Never
+      -- saved: it is on for this session only, and off again after logging out (or a /reload).
+      Setting("known_edit", L.KNOWN_EDIT, L.KNOWN_EDIT_TOOLTIP, "Interface\\Icons\\Ability_Hunter_BeastTraining",
+        function() return Window.knownEdit == true end,
+        function(value) Window.knownEdit = value or nil end),
       GlobalSetting("debug", L.DEBUG_MODE, L.DEBUG_MODE_TOOLTIP, "Interface\\Icons\\INV_Misc_Wrench_01", false),
     } },
   }

@@ -321,6 +321,31 @@ function Window:RefreshAbilities()
   self:UpdateDetails()
 end
 
+-- Whether the rank shown can be marked known by hand: one of the ability tabs, a rank that is learned (not an attack
+-- speed, which belongs to a beast).
+local ABILITY_TABS = { UNIQUE = true, COMMON = true, PASSIVE = true }
+function Window:CanMarkKnown()
+  local sel = self.selected
+  return ABILITY_TABS[self.tab] == true and sel ~= nil and not sel.ability.attack_speed
+end
+
+-- A click on the details icon, with Known Ability Edit on (Options, Advanced: Window.knownEdit, this session only):
+-- marks the rank shown known, or takes the mark back, by hand (Addon:SetRankKnown), and redraws the list and the
+-- details in its new color. A rank the game verified (Beast Training listed it, or it was learned) stays known:
+-- nothing happens. Returns whether it changed anything.
+function Window:ToggleSelectedKnown()
+  if not (self.knownEdit and self:CanMarkKnown()) then return false end
+  local sel = self.selected
+  if Addon:IsRankVerified(sel.ability, sel.rankIndex) then return false end
+  local known = not Addon:IsRankKnown(sel.ability, sel.rankIndex)
+  Addon:SetRankKnown(sel.ability, sel.rankIndex, known)
+  if PlaySound and SOUNDKIT then
+    PlaySound(known and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+  end
+  self:Refresh()
+  return true
+end
+
 function Window:Select(ability, rankIndex)
   self.selected = { ability = ability, rankIndex = rankIndex }
   self:Remember()

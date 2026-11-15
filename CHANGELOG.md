@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.60.1.43] - 2026-11-14
+
+- **NEW FEATURE:** The addon is unaware of all the hard work a Hunter has done prior to its download. This new feature will give you the ability to mark abilities as known until it can be verified by the addon itself. Unfortately there is nothing exposed by Blizzard to allow us to read every ability you may have previously learned - only whats available in the spell book or what you actively learn while you have the addon.
+- A new option, Known Ability Edit (Options, Advanced): while it is on, click an ability's icon (at the top of its
+  details, on the Unique, Common and Passive tabs) to mark that rank known by hand, for one you learned before the
+  addon could see it (click again to take the mark back). It is on for that session only, and off again when you log
+  out. A rank your Beast Training has shown stays known for good: a rank cannot be unlearned. Help (the ? by the close
+  button) has a new Known Abilities entry that explains all this.
+- The abilities you have learned are never cleared any more. A hunter cannot unlearn a Beast Training rank, so once a
+  rank is marked known it stays known for that character.
+- Data since 1.60.1.42:
+  - 14 new tames (346 in all)
+  - 7 new creatures (785 in all)
+  - 0 new sightings
+  - 2 new ability tames
+  - 11 new attack speeds
+  - 10 new levels
+  - 9 new zones
+  - 0 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 87 of 785 creatures have no known attack speed, 58 no level and 45 no zone (167 have no map points)
+
 ## [1.60.1.42] - 2026-11-14
 
 - The Bounties tab has a new section, The Untamables: the creatures hunters have uploaded that we keep out of the

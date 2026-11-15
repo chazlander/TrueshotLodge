@@ -63,7 +63,7 @@ Addon.TameableAbilities = {
   ["dive"] = { name = "Dive", learned_by = { "Bat", "Bird of Prey", "Carrion Bird", "Wind Serpent" }, ranks = {
     { spell_id = 23145, rank = 1, pet_level = 30, training_cost = 15, npc_ids = { 4538, 2578, 4425, 4539, 2579, 6013, 4693, 4861, 4346, 4347, 4348 } },
     { spell_id = 23147, rank = 2, pet_level = 40, training_cost = 20, npc_ids = { 5307, 5428, 5429, 5308, 8207, 5430, 7097, 5349 } },
-    { spell_id = 23148, rank = 3, pet_level = 50, training_cost = 25, npc_ids = { 1809, 5708, 7099, 8927, 7098, 8299, 14343, 8600, 7455, 2931, 7456 } }
+    { spell_id = 23148, rank = 3, pet_level = 50, training_cost = 25, npc_ids = { 1809, 5708, 7099, 8927, 7098, 8299, 14343, 8600, 7455, 2931 } }
   } },
   ["dust-cloud"] = { name = "Dust Cloud", learned_by = { "Tallstrider" }, unique = true, ranks = {
     { spell_id = 1265899, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 3246, 2172 } },
@@ -124,7 +124,7 @@ Addon.TameableAbilities = {
     { spell_id = 1265055, rank = 2, pet_level = 20, training_cost = 0 },
     { spell_id = 1265056, rank = 3, pet_level = 30, training_cost = 0, npc_ids = { 272389 } },
     { spell_id = 1265057, rank = 4, pet_level = 40, training_cost = 0 },
-    { spell_id = 1265058, rank = 5, pet_level = 50, training_cost = 0 }
+    { spell_id = 1265058, rank = 5, pet_level = 50, training_cost = 0, npc_ids = { 7456 } }
   } },
   ["natural-armor"] = { name = "Natural Armor", learned_by = {}, passive = true, trainer = true, ranks = {
     { spell_id = 24545, rank = 1, pet_level = 1, training_cost = 1, trainer_cost = 10 },
@@ -187,7 +187,7 @@ Addon.TameableAbilities = {
   } },
   ["swipe"] = { name = "Swipe", learned_by = { "Bear" }, unique = true, ranks = {
     { spell_id = 1264494, rank = 1, pet_level = 12, training_cost = 0, npc_ids = { 1797, 1188, 259388 } },
-    { spell_id = 1264497, rank = 2, pet_level = 24, training_cost = 0, npc_ids = { 2356, 271334 } },
+    { spell_id = 1264497, rank = 2, pet_level = 24, training_cost = 0, npc_ids = { 2356, 271334, 14280 } },
     { spell_id = 1264498, rank = 3, pet_level = 36, training_cost = 0 },
     { spell_id = 1264501, rank = 4, pet_level = 48, training_cost = 0 },
     { spell_id = 1264502, rank = 5, pet_level = 60, training_cost = 0 }

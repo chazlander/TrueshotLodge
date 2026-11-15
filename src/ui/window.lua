@@ -968,10 +968,27 @@ function Window:CreateDetails(frame)
     icon:SetTexCoord(0.06, 0.94, 0.06, 0.94) -- past the icon art's own dark edge, so the picture fills the circle
   end
   iconButton:SetPoint("TOPLEFT", DETAILS_LEFT, -DETAILS_TOP)
-  iconButton:SetScript("OnClick", nil)
+  -- On the ability tabs, with Known Ability Edit on (Options, Advanced: this session only), a click marks the rank
+  -- known by hand or takes the mark back (Window:ToggleSelectedKnown), and its tooltip says so under the spell's own
+  -- lines.
+  iconButton:RegisterForClicks("LeftButtonUp")
+  iconButton:SetScript("OnClick", function(this, button)
+    if button == "LeftButton" and self:ToggleSelectedKnown() then this:GetScript("OnEnter")(this) end
+  end)
   iconButton:SetScript("OnEnter", function(this)
     local sel = self.selected
-    if sel then SetSpellTooltip(this, sel.ability.ranks[sel.rankIndex].spell_id) end
+    if not sel then return end
+    SetSpellTooltip(this, sel.ability.ranks[sel.rankIndex].spell_id)
+    if self:CanMarkKnown() then
+      -- Verified by the game: known for good. Else, with Known Ability Edit on, the click marks it known or takes
+      -- the mark back.
+      local hint = Addon:IsRankVerified(sel.ability, sel.rankIndex) and L.KNOWN_VERIFIED_HINT
+        or self.knownEdit and (Addon:IsRankKnown(sel.ability, sel.rankIndex) and L.MARK_UNKNOWN_HINT or L.MARK_KNOWN_HINT)
+      if hint then
+        Helpers.TipLine(hint, Colors.Muted, true)
+        GameTooltip:Show()
+      end
+    end
   end)
   iconButton:SetScript("OnLeave", GameTooltip_Hide)
   self.icon = icon
