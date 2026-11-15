@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.60.1.46] - 2026-11-15
+
+- Your known ability ranks no longer need Beast Training opened. At login, and whenever you level up or learn a
+  spell, TrueshotLodge asks the game which ranks you have learned, so every rank you know shows as Known straight
+  away, even ones learned before you installed the addon. An icon's tooltip now says "Known: Verified by the game".
+- A 3D box (a pet's profile and the Looks tab) whose creature the game has no model for now says "No Model" instead
+  of standing empty.
+- Attack speeds: only a tame settles a creature's attack speed now. A speed no tame has confirmed (read off the
+  creature in the wild) shows grey with a ?, "1.50? (Faster Attack III)", with a note on hover, as on the website. A
+  creature's swing in the wild is often not its pet's, so a sighting no longer counts as new attack speed data.
+- Great Stamina's ranks now read as the game has them: flat Health ("+30 Health"), not Stamina.
+- Data since 1.60.1.45:
+  - 8 new tames (362 in all)
+  - 30 new creatures (820 in all)
+  - 3644 new sightings (28298 map points in all, 42 creatures on the map for the first time)
+  - 4 new ability tames
+  - 3 new attack speeds
+  - 6 new levels
+  - 7 new zones
+  - 14 new looks (178 in all)
+
+**Still missing** (as of this release):
+
+- 112 of 820 creatures have no known attack speed, 82 no level and 67 no zone (163 have no map points)
+
 ## [1.60.1.45] - 2026-11-15
 
 - A data update: the creatures, tames and attack speeds TrueshotLodge hunters have shared since the last release.

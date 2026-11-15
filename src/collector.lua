@@ -142,11 +142,11 @@ local function newZone(npc, mapId)
 end
 Collector.NewZone = newZone
 
--- Whether a wild attack speed is news: only when the data has no speed at all. A creature's own swing is often not its
--- pet's (read about a fifth slower when it is slowed in a fight, and unrelated for Forever's new creatures), so the
--- website lets a wild sighting fill an empty speed but never change one; only a tame does.
+-- Whether a wild attack speed is news: never. A creature's own swing is often not its pet's (read about a fifth slower
+-- when it is slowed in a fight, and many of Forever's fast creatures swing at 2.0 in the wild), so the website never
+-- takes a speed from a wild sighting: only a tame's spellbook sets one. The sighting still shows what it read.
 local function newSpeed(npc, speed)
-  return speed ~= nil and not npc.speed
+  return false
 end
 Collector.NewSpeed = newSpeed
 

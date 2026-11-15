@@ -54,11 +54,15 @@ function Addon:GetAttackTierName(speed)
   return (type(name) == "string" and name ~= "") and name or ATTACK_TIER_NAMES[spellId]
 end
 
--- A creature's attack speed as shown: "1.20 (Faster Attack VI)", "2.00", or "Unknown" when the data has none.
-function Addon:AttackSpeedText(speed)
+-- A creature's attack speed as shown: "1.20 (Faster Attack VI)", "2.00", or "Unknown" when the data has none. An
+-- `unconfirmed` speed (read off the creature in the wild: no tame has confirmed it, and only a tame sets a speed for
+-- good) is grey, with a ? after the number: "1.50? (Faster Attack III)", as the website marks it.
+function Addon:AttackSpeedText(speed, unconfirmed)
   if type(speed) ~= "number" then return L.UNKNOWN end
   local tier = self:GetAttackTierName(speed)
-  return tier and ("%.2f (%s)"):format(speed, tier) or ("%.2f"):format(speed)
+  local number = ("%.2f"):format(speed) .. (unconfirmed and "?" or "")
+  local text = tier and ("%s (%s)"):format(number, tier) or number
+  return unconfirmed and Colors.Muted(text) or text
 end
 
 -- The attack speed tiers as abilities of their own, so the window can list them like the others (the data files
@@ -170,7 +174,7 @@ local function PrepareNPC(id, npc)
   if npc.class then range = ("%s (%s)"):format(range, Colors.Highlight(npc.class)) end
   npc.level_range = range
 
-  npc.speed_text = Addon:AttackSpeedText(npc.speed)
+  npc.speed_text = Addon:AttackSpeedText(npc.speed, npc.speed ~= nil and not npc.speed_tamed)
 
   -- Zone names, in the player's language (nil when the data has none: shown as "Unknown Zone").
   local zones = {}

@@ -63,7 +63,8 @@ Select a rank to see:
 - **the tameable creatures that have that rank**, lowest level first, each with its level, its zone and a **Map
   Location** button that opens your world map with a pin on every place it has been seen
 - whether you already know it; with **Known Ability Edit** on (Options, Advanced: for that session only), click the
-  ability's icon to mark the rank known by hand (a rank your Beast Training has shown stays known)
+  ability's icon to mark the rank known by hand (a rank the game has shown you know stays known). Known ranks are
+  read from your own spells at login, with nothing to open
 
 Turn on **Level** to show only the ranks your level has reached, **Zone** for only the ranks a creature in the zone
 you are standing in has (each rank then counts its creatures there), or **Pet** for only the abilities your active
@@ -162,7 +163,7 @@ Opened with the **?** by the close button:
 - **How to Claim**: whether Collect Mode and Send Name are on, how many tames you have collected, and how a bounty is
   claimed
 - **Filters**: what Level, Zone, Pet, Rares and Faction do
-- **Known Abilities**: how a rank becomes known (Beast Training, learning it, or marking it by hand), with your counts
+- **Known Abilities**: how a rank becomes known (your own spells at login, learning it, Beast Training, or marking it by hand), with your counts
 - **Commands**: the slash commands
 - **Tab Descriptions**: what each tab is for
 

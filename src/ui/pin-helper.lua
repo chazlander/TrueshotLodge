@@ -1,5 +1,6 @@
 local _, Addon = ...
 local Colors = Addon:GetModule("Colors")
+local Helpers = Addon:GetModule("Helpers")
 local HBDPins = Addon:GetLibrary("HBDPins")
 local L = Addon:GetModule("Locale")
 local PinHelper = Addon:GetModule("PinHelper")
@@ -30,6 +31,7 @@ function PinHelper:AddTooltipLines(npc)
   line(L.DIET, npc.diet)
   line(L.TYPE, npc.type)
   line(L.ATTACK_SPEED, npc.speed_text) -- creatures only (trainers have none)
+  if npc.speed and not npc.speed_tamed then Helpers.TipLine(L.SPEED_UNCONFIRMED, Colors.Muted, true) end
   line(L.LOCATION, npc.location or npc.zone or (npc.speed_text and L.UNKNOWN_ZONE) or nil)
   -- The game refused to tame it (the website's red Not tameable badge), and the day that was reported.
   if npc.not_tameable then

@@ -213,7 +213,7 @@ local function ProfileRows(npc)
   stat(L.TYPE, npc.type)
   stat(L.DIET, npc.diet)
   stat(L.LEVEL, npc.level_range)
-  stat(L.ATTACK_SPEED, npc.speed_text)
+  stat(L.ATTACK_SPEED, npc.speed_text, nil, npc.speed and not npc.speed_tamed and { hint = L.SPEED_UNCONFIRMED } or nil)
   stat(L.LOCATION, npc.location or L.UNKNOWN_ZONE)
   if type(npc.tamed) == "string" and npc.tamed ~= "" then
     -- "Tamed by", the green dot after it, and the hunter's name, sized down when it is too long for the row (`fit`);

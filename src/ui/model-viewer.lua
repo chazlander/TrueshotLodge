@@ -68,6 +68,9 @@ local function DragOnUpdate(model)
   end
 end
 
+-- How many models each box has been asked to show, so a late check for an earlier one is ignored (ShowModel).
+local showTokens = setmetatable({}, { __mode = "k" })
+
 -- Shows a creature: by its display id (the look), else by its npc id, which the game can only draw for a creature it
 -- knows. Facing as it starts, back in the middle, at the zoom the player left it at. Returns whether it shows.
 local function ShowModel(box, display, creatureId)
@@ -91,6 +94,23 @@ local function ShowModel(box, display, creatureId)
   end
   box.noModel:SetShown(not shown)
   box.shown = shown -- (the buttons show over a model only)
+  -- The game takes any id without complaint, even one it has no model for, and then draws nothing. A moment later,
+  -- once it has had time to load, the box asks which model file it holds: none means there is nothing to see, and it
+  -- says "No Model" instead of standing empty. (A client without GetModelFileID keeps the box as it is.)
+  local token = (showTokens[box] or 0) + 1
+  showTokens[box] = token
+  if shown and model.GetModelFileID and C_Timer and C_Timer.After then
+    C_Timer.After(1, function()
+      if showTokens[box] ~= token then return end -- (another model was shown since)
+      local ok, file = pcall(model.GetModelFileID, model)
+      if ok and (file == nil or file == 0) then
+        model:Hide()
+        box.noModel:Show()
+        box.shown = false
+        if box.controls then box.controls:Hide() end
+      end
+    end)
+  end
   return shown
 end
 

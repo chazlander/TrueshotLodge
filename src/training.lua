@@ -6,7 +6,9 @@ local Training = Addon:GetModule("Training")
 -- appears there once it is learned, and a pet's own spellbook is no guide (a beast arrives knowing its abilities before
 -- the hunter has learned them). On this client Beast Training is the class trainer window, so it is read with the
 -- trainer API. The list is saved per character in `DB.char.trained` / `trained_ids` whenever the window is opened. It
--- only ever grows, because the window shows less for a pet that can't use a rank.
+-- only ever grows, because the window shows less for a pet that can't use a rank. The game also tells the addon
+-- without the window: by the "You have learned..." chat line, and by the hunter's own spells (scanKnownSpells, below),
+-- which find every learned rank at login.
 
 local function key(name, rank)
   return tostring(name):lower() .. "|" .. (tonumber(tostring(rank or ""):match("%d+")) or 1)
@@ -310,6 +312,58 @@ learnFrame:SetScript("OnEvent", function(_, event, arg)
 end)
 for _, event in ipairs({ "CHAT_MSG_SYSTEM", "LEARNED_SPELL_IN_TAB" }) do
   pcall(learnFrame.RegisterEvent, learnFrame, event) -- Not every client has every event.
+end
+
+-- The third way, and the one that needs nothing opened: the hunter's own spells. Learning a rank gives the hunter a
+-- spell of their own (the data's learn_id: 1265888 for Web Rank 2), and the game says whether they know it, through
+-- IsPlayerSpell or C_SpellBook.IsSpellKnown. (The plain IsSpellKnown looks in another spellbook and says no.) The
+-- addon asks about every rank when the hunter enters the world, levels up or learns a spell, so ranks learned before
+-- the addon was installed are found too. A rank found this way is verified, like one seen in Beast Training.
+local function knowsSpell(id)
+  if IsPlayerSpell and Addon:Plain(IsPlayerSpell(id)) then return true end
+  local isKnown = C_SpellBook and C_SpellBook.IsSpellKnown
+  return isKnown ~= nil and Addon:Plain(isKnown(id)) == true
+end
+
+-- Saves every rank whose learning spell the hunter knows; returns how many were new.
+local function scanKnownSpells()
+  if not DB.char then return 0 end
+  DB.char.trained_ids = DB.char.trained_ids or {}
+  local found = 0
+  for _, ability in pairs(Addon.TameableAbilities) do
+    if not ability.attack_speed then
+      for _, rank in ipairs(ability.ranks) do
+        if rank.learn_id and rank.spell_id and not DB.char.trained_ids[rank.spell_id] and knowsSpell(rank.learn_id) then
+          DB.char.trained_ids[rank.spell_id] = true
+          found = found + 1
+        end
+      end
+    end
+  end
+  return found
+end
+Training.ScanKnownSpells = scanKnownSpells -- (.tools/smoke.py tries it)
+
+-- The scan runs a moment after the last of a burst of events (SPELLS_CHANGED fires many times at login), and redraws
+-- the window when it found something new.
+local scanPending = false
+local function runScan()
+  scanPending = false
+  local ok, found = pcall(scanKnownSpells)
+  if not ok then return Addon:Debug("training scan error:", found) end
+  Addon:Debug("training: spells scan found", found, "new ranks")
+  local Window = Addon:GetModule("Window")
+  if found > 0 and Window.IsShown and Window:IsShown() then Window:Refresh() end
+end
+
+local scanFrame = CreateFrame("Frame")
+scanFrame:SetScript("OnEvent", function()
+  if scanPending then return end
+  scanPending = true
+  if C_Timer and C_Timer.After then C_Timer.After(2, runScan) else runScan() end
+end)
+for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LEVEL_UP", "SPELLS_CHANGED", "LEARNED_SPELL_IN_TAB" }) do
+  pcall(scanFrame.RegisterEvent, scanFrame, event) -- Not every client has every event.
 end
 
 -- Returns true if the game has shown that the hunter learned the ability rank: it was listed in their Beast Training
