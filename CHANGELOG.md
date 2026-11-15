@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.60.1.45] - 2026-11-15
+
+- A data update: the creatures, tames and attack speeds TrueshotLodge hunters have shared since the last release.
+- Data since 1.60.1.44:
+  - 8 new tames (354 in all)
+  - 2 new creatures (787 in all)
+  - 0 new sightings
+  - 0 new ability tames
+  - 4 new attack speeds
+  - 2 new levels
+  - 3 new zones
+  - 0 new looks (164 in all)
+
+**Still missing** (as of this release):
+
+- 85 of 787 creatures have no known attack speed, 58 no level and 44 no zone (169 have no map points)
+
 ## [1.60.1.44] - 2026-11-14
 
 - The 3D models (the Looks tab and a pet's profile) show the game's model buttons along the top when you hover them:
