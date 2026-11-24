@@ -90,14 +90,16 @@ end
 
 -- How many of a rank's creatures pass the filters and the search that are on (all of them when none is), and how many
 -- of those someone has tamed (the green count). The filters: the Zone Filter (self.listZone: they live in the zone
--- you are in), the Rares filter (self.listRares) and the search (self.listSearch: their name holds what was typed),
--- all set when the list is drawn; on the attack speeds, with Filter by Level on, only those you can tame now. Worked
--- out once per rank each time the list is drawn (self.rankCreatures).
+-- you are in), the Rares filter (self.listRares), the Tamed filter (self.listTamed), the Favorites filter
+-- (self.listFavorites) and the search (self.listSearch: their name holds what was typed), all set when the list is
+-- drawn; on the attack speeds, with Filter by Level on, only those you can tame now. Worked out once per rank each
+-- time the list is drawn (self.rankCreatures).
 function Window:RankCreatures(rank)
   self.rankCreatures = self.rankCreatures or {}
   local counted = self.rankCreatures[rank]
   if not counted then
-    local zone, search, rares = self.listZone, self.listSearch, self.listRares
+    local zone, search, rares, tamed = self.listZone, self.listSearch, self.listRares, self.listTamed
+    local favorites = self.listFavorites
     -- (an ability whose own name matched, with Window.SEARCH_HEADINGS on, is listed whole: GetAbilities)
     if search and self.namedRanks and self.namedRanks[rank] then search = nil end
     local byLevel = self.tab == "ATTACK" and DB.global.filter_by_level
@@ -105,10 +107,12 @@ function Window:RankCreatures(rank)
     counted = { n = 0, tamed = 0 }
     for _, id in ipairs(rank.npc_ids or {}) do
       local npc = Addon:GetNPC(id)
+      local isTamed = npc and Addon:NPCMark(npc) == "tamed"
       if npc and (not zone or self:NPCInZone(npc, zone)) and self:NPCMatchesSearch(npc, search)
-          and (not rares or self:NPCIsRare(npc)) and (not byLevel or (npc.min and npc.min <= level)) then
+          and (not rares or self:NPCIsRare(npc)) and (not byLevel or (npc.min and npc.min <= level))
+          and (not tamed or isTamed) and (not favorites or Addon:IsFavorite(npc.id)) then
         counted.n = counted.n + 1
-        if Addon:NPCMark(npc) == "tamed" then counted.tamed = counted.tamed + 1 end
+        if isTamed then counted.tamed = counted.tamed + 1 end
       end
     end
     self.rankCreatures[rank] = counted
@@ -116,13 +120,13 @@ function Window:RankCreatures(rank)
   return counted.n, counted.tamed
 end
 
--- A rank's count with the Zone Filter, the Rares filter or a search on (RankCreatures); nil with none of them on. A
--- rank a trainer teaches has no creatures: the Zone and Rares filters say nothing about it (nil), and a search for
--- creatures does not find it (0).
+-- A rank's count with the Zone Filter, the Rares filter, the Tamed filter, the Favorites filter or a search on
+-- (RankCreatures); nil with none of them on. A rank a trainer teaches has no creatures: those filters say nothing
+-- about it (nil), and a search for creatures does not find it (0).
 function Window:CreatureCount(rank)
   local search = self.listSearch
   if search and self.namedRanks and self.namedRanks[rank] then search = nil end
-  if not (self.listZone or search or self.listRares) then return nil end
+  if not (self.listZone or search or self.listRares or self.listTamed or self.listFavorites) then return nil end
   if TrainerRank(rank) then return search and 0 or nil end
   return (self:RankCreatures(rank))
 end
@@ -252,6 +256,8 @@ function Window:RefreshAbilities()
   self.listZone = self.tab ~= "PASSIVE" and self:ZoneFilter() or nil
   self.listSearch = self:CreatureSearch() -- (what was typed, on the tabs that list creatures)
   self.listRares = self:RaresOnly() -- (the Rares filter)
+  self.listTamed = DB.global.filter_tamed -- (the Tamed filter)
+  self.listFavorites = DB.global.filter_favorites -- (the Favorites filter)
   self.rankCreatures = {}
   local abilities = self:GetAbilities()
   local provider = CreateTreeDataProvider()
@@ -533,6 +539,22 @@ function Window:UpdateAbilityDetails()
       if self:NPCIsRare(npc) then rare[#rare + 1] = npc end
     end
     npcs = rare
+  end
+  -- The Tamed filter: only the creatures already tamed.
+  if DB.global.filter_tamed then
+    local tamed = {}
+    for _, npc in ipairs(npcs) do
+      if Addon:NPCMark(npc) == "tamed" then tamed[#tamed + 1] = npc end
+    end
+    npcs = tamed
+  end
+  -- The Favorites filter: only your favorites.
+  if DB.global.filter_favorites then
+    local favorites = {}
+    for _, npc in ipairs(npcs) do
+      if Addon:IsFavorite(npc.id) then favorites[#favorites + 1] = npc end
+    end
+    npcs = favorites
   end
   -- The search: only the creatures whose name holds what was typed.
   local total, search = #npcs, self:CreatureSearch()

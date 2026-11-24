@@ -149,7 +149,8 @@ end
 -- listed (as on the Looks and ability tabs), and neither is a type with no family left.
 function Window:GetFamilyGroups()
   local zone, level = self:ZoneFilter(), UnitLevel("player") or 1
-  local filtered = zone ~= nil or DB.global.filter_by_level or self:RaresOnly() or self:CreatureSearch() ~= nil
+  local filtered = zone ~= nil or DB.global.filter_by_level or self:RaresOnly() or DB.global.filter_tamed
+    or DB.global.filter_favorites or self:CreatureSearch() ~= nil
   local byType = {}
   for family, info in pairs(Addon.TameableFamilies or {}) do
     local named = self:HeadingMatches(family)

@@ -22,7 +22,8 @@ Built for WoW Forever:
 - **Verified tames**: a green dot marks creatures TrueshotLodge users have actually tamed, with the date on hover; a
   grey eye marks the ones only seen in the wild so far
 - **Rare and elite** creatures stand out: rares glow gold, elites carry a skull
-- **Pet tooltips**: hover a tameable beast in the world to see its family, attack speed and the abilities it teaches
+- **Pet tooltips**: hover a tameable beast in the world to see its family, attack speed, whether a hunter has tamed
+  it (the green dot) and the abilities it teaches; each line can be turned off on its own
 - **Pet ability tooltips**: a pet ability's tooltip (spellbook, pet bar, Beast Training, chat links) adds the pet
   level it needs and its training point cost
 - Colors that mean the same thing everywhere: **yellow** is known, **green** is ready to learn, **grey** is not yet
@@ -41,7 +42,8 @@ on the right. Hold a side tab for a moment to drag it up or down the column and 
 you like (saved for each character). At the top right, across from the tab's title, are the **filter buttons**.
 Each tab shows the filters it can use: **Level** (what your level reaches, or the
 creatures you can tame now), **Zone** (only the zone you are standing in), **Pet** (only what your active pet's
-family can learn), **Rares** (only the rare creatures) and, on the Trainers tab, **Faction**. A filter is grey while off, and red and glowing while on.
+family can learn), **Rares** (only the rare creatures), **Tamed** (only the creatures you have already tamed) and, on
+the Trainers tab, **Faction**. A filter is grey while off, and red and glowing while on.
 Beside the close button, the **gear** opens Options and the **?** opens Help (click either again to go back to your
 tab).
 
@@ -124,7 +126,8 @@ bounty or a look, the Collected Data tab, and Tamed From on the Stable tab. The 
   date) and its NPC ID
 - the **abilities** it teaches and its **looks**: click one to see it on its own tab (the family too)
 
-**Back** returns to the tab, selection or profile you came from.
+**Target** targets the creature in game when it is near enough to see (not in combat, which the game does not allow),
+and **Back** returns to the tab, selection or profile you came from.
 
 ## ![Bounties](https://wow.zamimg.com/images/wow/icons/medium/inv_inscription_80_contract_embers.jpg) Bounties
 
@@ -156,13 +159,45 @@ lives; a tame records the abilities it came with), then upload your `TrueshotLod
 **Send Name** on (Options, the gear by the close button: Collection), your tame is credited to you on the creature's Tamed badge: "Verified Tame:
 date by *your name*".
 
+## ![Database Search](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_spyglass_03.jpg) Database Search
+
+Every tameable creature, filtered and sorted however you like, as on
+[TrueshotLodge.com/search](https://trueshotlodge.com/search), laid out like Options: the filters on the left, by
+heading, and the matching creatures on the right, each with a **Map Location** button. Click one's name to open its
+profile. Above the search box, **Level** is two small boxes (0 and 60 by default: every level); narrow it to a
+range and the creatures with no level on file drop out, as a range on the website does. The search box itself
+narrows the results by name, same as everywhere else, and the **Zone** and **Level** filter buttons work here too.
+
+Each other filter is a row under its heading: click it to turn it on or off (its badge shows On or Off, or what is
+chosen):
+
+- **Taming**: Any, Tamed, Sighted (seen in the wild, not tamed) or Untamed
+- **Forever**: Added in Forever only (∞)
+- **Ability**: every ability on file, each its own row
+- **Classification**: Normal, Rare, Elite, Rare Elite, Boss
+- **Type** and **Diet**, read from the families on file
+- **Family**: every pet family, each its own row
+- **Sort**: Level, Name, Attack Speed, Classification or Tamed; click the one already in use (or right-click any of
+  them) to reverse it
+
+**Clear Filters**, at the top, resets everything on this tab, the search box and the Level boxes included.
+
+### Database Search (Top)
+
+An experimental second layout for the same tab, side by side with it for comparison: the same filters, but across
+the top as dropdowns (closer to the website's own layout) instead of a list on the left, with the matching creatures
+filling the full width underneath as a table (Creature, Family, Level, Attack Speed, Zone, Status), its column
+headers clickable to sort by them (click again to reverse). Family, Type, Classification and Ability can each have
+more than one thing checked at once; Diet and Taming pick one. Whichever layout is kept, the other (and its side
+tab) is removed.
+
 ## ![Help](https://wow.zamimg.com/images/wow/icons/medium/inv_misc_questionmark.jpg) Help
 
 Opened with the **?** by the close button:
 
 - **How to Claim**: whether Collect Mode and Send Name are on, how many tames you have collected, and how a bounty is
   claimed
-- **Filters**: what Level, Zone, Pet, Rares and Faction do
+- **Filters**: what Level, Zone, Pet, Rares, Tamed and Faction do
 - **Known Abilities**: how a rank becomes known (your own spells at login, learning it, Beast Training, or marking it by hand), with your counts
 - **Commands**: the slash commands
 - **Tab Descriptions**: what each tab is for
@@ -173,7 +208,8 @@ Opened with the **gear** by the close button. The settings, grouped and explaine
 layout:
 
 - **General**: the minimap icon, and remembering your selections between tabs and sessions
-- **Tooltips**: Pet Tooltips (tameable creatures and pets) and Pet Ability Tooltips (pet level and training points)
+- **Tooltips**: Pet Tooltips (tameable creatures and pets) and Pet Ability Tooltips (pet level and training points),
+  each on or off, with a checkbox for each of its lines (family, attack speed, tamed, abilities, ...)
 - **Visual**: the window's UI scale (50% to 150%) and resetting the tab order
 - **Collection**: Collect Mode (see below), and Send Name: put your character's name on the beasts you tame, to be
   credited on the website (off by default: your finds stay anonymous)

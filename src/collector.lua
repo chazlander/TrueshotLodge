@@ -797,7 +797,7 @@ end
 local TAME_BEAST = 1515 -- Tame Beast. Also matched by name, in case Forever's spell id differs.
 local TAME_WAIT = 15 -- seconds after the channel ends to wait for the pet
 local CHANNEL_LIMIT = 40 -- seconds after it starts, in case the channel's end is never seen
-local READ_DELAYS = { 0.5, 1.5, 3, 6 } -- seconds after the pet appears to read it
+local READ_DELAYS = { 0.5, 1.0, 1.5, 2.0, 3.0, 5 } -- seconds after the pet appears to read it
 
 local function spellName(id)
   if not id then return nil end

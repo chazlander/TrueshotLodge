@@ -39,7 +39,8 @@ end
 -- by family name. With a search (which looks for creatures), a look shows when one of its creatures matches.
 function Window:GetLookGroups()
   local zone, level = self:ZoneFilter(), UnitLevel("player") or 1
-  local filtered = zone ~= nil or DB.global.filter_by_level or self:RaresOnly() or self:CreatureSearch() ~= nil
+  local filtered = zone ~= nil or DB.global.filter_by_level or self:RaresOnly() or DB.global.filter_tamed
+    or DB.global.filter_favorites or self:CreatureSearch() ~= nil
   local groups = {}
   for family, looks in pairs(Addon.TameableLooks or {}) do
     local info = Addon.TameableFamilies and Addon.TameableFamilies[family]

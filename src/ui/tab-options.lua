@@ -21,6 +21,13 @@ local function GlobalSetting(key, label, description, icon, default)
     function(value) DB.global[key] = value end)
 end
 
+-- A tooltip option's lines (Addon.TOOLTIP_FIELDS), each a checkbox under its Enabled one: the option turns the tooltip
+-- lines on or off together, each checkbox one of them.
+local function WithFields(setting)
+  setting.fields = Addon.TOOLTIP_FIELDS[setting.key]
+  return setting
+end
+
 -- The groups and their settings, in order.
 local function Groups()
   return {
@@ -32,9 +39,10 @@ local function Groups()
         "Interface\\Icons\\INV_Misc_PocketWatch_02", true),
     } },
     { key = "options:tooltips", name = L.TOOLTIPS, settings = {
-      GlobalSetting("npc_tooltips", L.PET_TOOLTIPS, L.PET_TOOLTIPS_TOOLTIP, "Interface\\Icons\\Ability_Hunter_BeastTaming", true),
-      GlobalSetting("ability_tooltips", L.PET_ABILITY_TOOLTIPS, L.PET_ABILITY_TOOLTIPS_TOOLTIP,
-        "Interface\\Icons\\Ability_Hunter_BeastTraining", true),
+      WithFields(GlobalSetting("npc_tooltips", L.PET_TOOLTIPS, L.PET_TOOLTIPS_TOOLTIP,
+        "Interface\\Icons\\Ability_Hunter_BeastTaming", true)),
+      WithFields(GlobalSetting("ability_tooltips", L.PET_ABILITY_TOOLTIPS, L.PET_ABILITY_TOOLTIPS_TOOLTIP,
+        "Interface\\Icons\\Ability_Hunter_BeastTraining", true)),
     } },
     { key = "options:visual", name = L.VISUAL, settings = {
       { key = "ui_scale", label = L.UI_SCALE, description = L.UI_SCALE_TOOLTIP, icon = "Interface\\Icons\\INV_Misc_Spyglass_02",
@@ -60,6 +68,10 @@ local function Groups()
           DB.global.send_name = value
           if not value then Addon:GetModule("Collector"):RemoveNames() end
         end),
+    } },
+    { key = "options:integrations", name = L.INTEGRATIONS, settings = {
+      { key = "integration_dungeon_journal", label = L.DUNGEON_JOURNAL, description = L.DUNGEON_JOURNAL_TOOLTIP,
+        icon = "Interface\\Icons\\INV_Misc_Map_01", kind = "status", get = function() return Addon:HasDungeonJournal() end },
     } },
     { key = "options:sharing", name = L.DATA_SHARING, settings = {
       GlobalSetting("share_shard", L.SHARE_SHARD, L.SHARE_SHARD_TOOLTIP, "Interface\\Icons\\INV_Letter_15", true),
@@ -87,6 +99,9 @@ local function StateText(setting)
     return on and L.ON or L.OFF, Colors.State[on and "Available" or "Unavailable"]
   elseif setting.kind == "scale" then
     return ("%d%%"):format(math.floor(Window:SavedScale() * 100 + 0.5)), Colors.State.Default
+  elseif setting.kind == "status" then
+    local on = setting.get()
+    return on and L.INTEGRATION_DETECTED or L.INTEGRATION_NOT_FOUND, Colors.State[on and "Available" or "Unavailable"]
   end
   return "", Colors.State.Default
 end
@@ -262,6 +277,47 @@ function Window:GetOptionControls()
   end
   controls.DebugChecks = debugChecks
 
+  -- A tooltip option's lines: a checkbox per line under Enabled, in two columns, made for the option shown (the boxes
+  -- are reused). Greyed out while the option is off.
+  local fieldChecks = CreateFrame("Frame", nil, controls)
+  fieldChecks:SetPoint("TOPLEFT", check, "BOTTOMLEFT", 4, -12)
+  fieldChecks:SetPoint("RIGHT", controls, "RIGHT")
+  fieldChecks:SetHeight(10)
+  local fieldHeading = fieldChecks:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  fieldHeading:SetPoint("TOPLEFT", 0, 0)
+  fieldHeading:SetText(L.TOOLTIP_LINES)
+  fieldChecks.boxes = {}
+  -- Shows the checkboxes for `fields`, greyed out unless `enabled` (the option is on).
+  function fieldChecks.ShowFields(fields, enabled)
+    for i, field in ipairs(fields) do
+      local box = fieldChecks.boxes[i]
+      if not box then
+        box = CreateFrame("CheckButton", nil, fieldChecks, "CheckboxWithLabelTemplate")
+        local column, row = (i - 1) % 2, math.floor((i - 1) / 2)
+        if column == 0 then
+          box:SetPoint("TOPLEFT", fieldChecks, "TOPLEFT", -4, -20 - row * 26)
+        else
+          box:SetPoint("TOPLEFT", fieldChecks, "TOP", 16, -20 - row * 26)
+        end
+        box:SetScript("OnClick", function(this)
+          if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
+          DB.global.tooltip_off = DB.global.tooltip_off or {}
+          DB.global.tooltip_off[this.field] = not this:GetChecked() or nil
+        end)
+        fieldChecks.boxes[i] = box
+      end
+      box.field = field
+      box.Text:SetFontObject(enabled and "GameFontHighlight" or "GameFontDisable")
+      box.Text:SetText(L["TOOLTIP_FIELD_" .. field:upper()] or field)
+      box:SetChecked(Addon:TooltipShows(field))
+      box:SetEnabled(enabled)
+      box:Show()
+    end
+    for i = #fields + 1, #fieldChecks.boxes do fieldChecks.boxes[i]:Hide() end
+    fieldChecks:Show()
+  end
+  controls.FieldChecks = fieldChecks
+
   self.optionControls = controls
   return controls
 end
@@ -305,6 +361,11 @@ function Window:UpdateOptionDetails()
   controls.Reset:SetShown(setting.kind == "taborder")
   controls.TabChecks:SetShown(setting.kind == "taborder")
   controls.DebugChecks:SetShown(setting.key == "debug")
+  if setting.fields then
+    controls.FieldChecks.ShowFields(setting.fields, setting.get() and true or false)
+  else
+    controls.FieldChecks:Hide()
+  end
   if setting.key == "debug" then
     for _, box in ipairs(controls.DebugChecks.boxes) do
       box:SetChecked((DB.global.debug_on or {})[box.area] == true)

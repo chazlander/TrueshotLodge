@@ -204,6 +204,23 @@ do -- Addon:GetModule()
   end
 end
 
+do -- Addon:TooltipShows()
+  local DB = Addon:GetModule("DB")
+
+  -- The lines of each tooltip option (Options, Tooltips), each with a checkbox under it: the option turns them all on or
+  -- off, and each checkbox one line. The keys are DB.global.tooltip_off's.
+  Addon.TOOLTIP_FIELDS = {
+    npc_tooltips = { "family", "speed", "tamed", "abilities", "tameable", "origin" },
+    ability_tooltips = { "pet_level", "training" },
+  }
+
+  -- Whether a tooltip line is shown: on unless its checkbox was turned off.
+  function Addon:TooltipShows(field)
+    local off = DB.global and DB.global.tooltip_off
+    return not (off and off[field])
+  end
+end
+
 do -- Addon:Debug()
   local DB = Addon:GetModule("DB")
 
@@ -244,6 +261,50 @@ do -- Addon:Debug()
   -- `/tsl debug` commands.
   function Addon:PrintAs(label, ...)
     print(Addon:GetModule("Colors").Primary(Addon.TITLE) .. " " .. label .. ":", ...)
+  end
+end
+
+do -- Addon:IsFavorite(), Addon:ToggleFavorite()
+  local DB = Addon:GetModule("DB")
+
+  -- Whether a creature is one of the hunter's favorites (DB.global.favorites, npc id -> true): the star on its row in
+  -- Database Search and at the top of its Pet Profile, and the Favorites button beside Rares.
+  function Addon:IsFavorite(id)
+    return id ~= nil and DB.global.favorites[id] == true
+  end
+
+  -- Flips a creature's favorite. Saved in DB.global, not DB.char: the id means the same creature for every one of the
+  -- hunter's alts, so there is no reason to favorite it again on each. Clearing it back to nil, not false, keeps the
+  -- saved table down to just the creatures actually starred.
+  function Addon:ToggleFavorite(id)
+    if not id then return end
+    DB.global.favorites[id] = not DB.global.favorites[id] or nil
+  end
+end
+
+do -- Addon:HasDungeonJournal(), Addon:OpenDungeonJournal()
+  -- DungeonJournal (ExehnTV, curseforge.com/wow/addons/dungeonjournal, a WoW Forever addon, not a Blizzard one:
+  -- there is no built-in Dungeon Journal on this client). It has no documented Lua API, so detection and opening
+  -- both go through its own slash command, "/dj", the same way a player would reach it; that is also the most a
+  -- cross-addon call can ask of it, since nothing lets another addon jump it straight to one dungeon.
+  local SLASH_DJ = "/DJ"
+
+  -- Whether the DungeonJournal addon's "/dj" is registered (Options > Integrations' status line).
+  function Addon:HasDungeonJournal()
+    return hash_SlashCmdList ~= nil and hash_SlashCmdList[SLASH_DJ] ~= nil
+  end
+
+  -- Opens DungeonJournal's own window with "/dj" (its general journal, not any one dungeon: it has no API for
+  -- that). The best this addon can do for a creature inside a dungeon, since the client gives no map position
+  -- there at all (confirmed live: C_Map.GetBestMapForUnit and UnitPosition both return nil inside one).
+  function Addon:OpenDungeonJournal()
+    if not self:HasDungeonJournal() then return false end
+    if type(ExecuteSlashCommand) == "function" then
+      ExecuteSlashCommand("/dj")
+    else
+      SlashCmdList[hash_SlashCmdList[SLASH_DJ]]("")
+    end
+    return true
   end
 end
 

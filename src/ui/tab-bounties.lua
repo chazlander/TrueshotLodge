@@ -153,6 +153,8 @@ end
 function Window:BountyNPCShown(npc, zone, level, anyName)
   if not anyName and not self:NPCMatchesSearch(npc, self:CreatureSearch()) then return false end
   if self:RaresOnly() and not self:NPCIsRare(npc) then return false end -- (the Rares filter)
+  if DB.global.filter_tamed and Addon:NPCMark(npc) ~= "tamed" then return false end -- (the Tamed filter)
+  if DB.global.filter_favorites and not Addon:IsFavorite(npc.id) then return false end -- (the Favorites filter)
   if zone and not self:NPCInZone(npc, zone) then return false end
   if DB.global.filter_by_level and not (npc.min and npc.min <= level) then return false end
   return true

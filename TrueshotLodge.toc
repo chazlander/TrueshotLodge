@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: TrueshotLodge
 ## Author: Chazlander
-## Version: 1.60.1.46
+## Version: 1.60.1.47
 ## Notes: The hunter's field guide to every tameable beast in WoW Forever: what each one teaches, where to find it, its look and the pet trainers.
 ## SavedVariables: TrueshotLodgeDB, TrueshotLodgeCollected
 ## IconTexture: Interface\AddOns\TrueshotLodge\media\logo
@@ -49,6 +49,8 @@ src\ui\zone-filter.lua
 src\ui\tab-options.lua
 src\ui\tab-collector.lua
 src\ui\tab-bounties.lua
+src\ui\search-filters.lua
+src\ui\tab-search.lua
 src\ui\tab-families.lua
 src\ui\model-viewer.lua
 src\ui\tab-looks.lua

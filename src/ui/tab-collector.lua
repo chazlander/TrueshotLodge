@@ -673,25 +673,17 @@ function Window:CreateClearButton(frame)
 end
 
 function Window:UpdateClearButton()
-  local button, list, scrollBox = self.clearButton, self.list, self.scrollBox
-  local search, toggle = self.searchBox, self.toggleButton
-  if not (button and list and scrollBox and search and toggle) then return end
+  local button, list = self.clearButton, self.list
+  if not (button and list) then return end
   local shown = self.tab == "COLLECTOR"
   button:SetShown(shown)
+  if not shown then return end -- (UpdateTabs already reset the search row to its plain place)
   -- On this tab it spans the top of the list; the search row comes under it, and the list under that.
-  local drop = shown and 26 or 0
   button:ClearAllPoints()
   button:SetPoint("TOPLEFT", list, "TOPLEFT", 8, -10)
   button:SetPoint("TOPRIGHT", list, "TOPRIGHT", -8, -10)
   button:SetFrameLevel(list:GetFrameLevel() + 10)
-  toggle:ClearAllPoints()
-  toggle:SetPoint("TOPRIGHT", -8, -10 - drop)
-  search:ClearAllPoints()
-  search:SetPoint("TOPLEFT", 13, -11 - drop)
-  search:SetPoint("RIGHT", toggle, "LEFT", -4, 0)
-  scrollBox:ClearAllPoints()
-  scrollBox:SetPoint("TOPLEFT", 8, -38 - drop)
-  scrollBox:SetPoint("BOTTOMRIGHT", -20, 5)
+  self:SetSearchRowDrop(26)
 end
 
 -- ----------------------------------------------------------------------------

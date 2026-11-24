@@ -26,6 +26,9 @@ local defaults = {
     minimapIcon = { hide = false },
     npc_tooltips = true, -- Pet Tooltips (Options, Tooltips): the lines under a tameable creature's or a pet's tooltip
     ability_tooltips = true, -- Pet Ability Tooltips: a pet ability's pet level and training points under its tooltip
+    -- The tooltip lines turned off one by one (Options, Tooltips: the checkboxes under each): field -> true. Empty means
+    -- every line shows, so a line added later shows too until it is turned off. (Addon.TOOLTIP_FIELDS lists them.)
+    tooltip_off = {},
     sticky_selections = true,
     -- Data Sharing (Options tab): who your collected data is sent to, each on its own, and taking in what others send.
     share_shard = true, -- the hidden TrueshotLodge channel, and the users you have heard from (by whisper)
@@ -40,6 +43,9 @@ local defaults = {
     zone_filter = false, -- the Zone Filter checkbox in the window's title bar (src/ui/zone-filter.lua)
     filter_by_pet = false,
     filter_rares = false, -- the Rares button: only the rare creatures, wherever creatures are listed
+    filter_tamed = false, -- the Tamed button: only the creatures you have already tamed, wherever creatures are listed
+    filter_favorites = false, -- the Favorites button: only your favorites, wherever creatures are listed
+    favorites = {}, -- npc id -> true: the creatures starred as a favorite (the Favorites star and filter)
     last_tab = "UNIQUE",
     selections = {}, -- tab -> { ability = slug, rank = n } or the trainer's id
     bounty_sort = {}, -- Bounties tab: heading key -> "count" when sorted by number of entries (right-click the heading)

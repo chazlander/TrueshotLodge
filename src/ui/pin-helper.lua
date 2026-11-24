@@ -23,7 +23,9 @@ end
 -- The creature's (or trainer's) lines in GameTooltip, which is already owned: its name, title, level, abilities,
 -- family, diet, type, attack speed and location. A creature's missing level, attack speed or zone shows as unknown.
 function PinHelper:AddTooltipLines(npc)
-  GameTooltip:SetText(Colors.NPC(npc.name))
+  -- The name, with the green dot after it for a creature a hunter has tamed (as in the window's lists).
+  local dot = Addon:NPCMark(npc) == "tamed" and (" |T%s:12:12:0:0|t"):format(Addon.GREEN_DOT) or ""
+  GameTooltip:SetText(Colors.NPC(npc.name) .. dot)
   if npc.tag then GameTooltip:AddLine(npc.tag, R, G, B) end
   line(L.LEVEL, npc.level_range)
   line(L.ABILITIES, table.concat(Addon:TaughtLines(npc), ", "))
@@ -64,24 +66,30 @@ end
 -- ============================================================================
 
 -- Opens the world map on the npc's map and pins every place it has been seen. A creature without map points opens
--- its zone's map without pins. Returns false when the npc has no map at all.
+-- its zone's map without pins. A creature with no map at all (inside a dungeon, in practice: the game gives no
+-- UiMapID there) opens the DungeonJournal addon's own window instead (its general journal, not this one dungeon:
+-- it has no API to ask for that). Returns false when neither is possible.
 function PinHelper:ShowOnMap(npc)
-  if not npc or not npc.ui_map_id then return false end
+  if not npc then return false end
 
-  -- `WorldMapFrame:Show()` doesn't open the map on newer clients.
-  if OpenWorldMap then
-    OpenWorldMap(npc.ui_map_id)
-  else
-    if not WorldMapFrame:IsShown() then ToggleWorldMap() end
-    WorldMapFrame:SetMapID(npc.ui_map_id)
+  if npc.ui_map_id then
+    -- `WorldMapFrame:Show()` doesn't open the map on newer clients.
+    if OpenWorldMap then
+      OpenWorldMap(npc.ui_map_id)
+    else
+      if not WorldMapFrame:IsShown() then ToggleWorldMap() end
+      WorldMapFrame:SetMapID(npc.ui_map_id)
+    end
+
+    self:Clear()
+    for _, coords in ipairs(npc.coords or {}) do
+      HBDPins:AddWorldMapIconMap(Addon, self:Get(npc), npc.ui_map_id, coords.x * 0.01, coords.y * 0.01,
+        HBD_PINS_WORLDMAP_SHOW_WORLD)
+    end
+    return true
   end
 
-  self:Clear()
-  for _, coords in ipairs(npc.coords or {}) do
-    HBDPins:AddWorldMapIconMap(Addon, self:Get(npc), npc.ui_map_id, coords.x * 0.01, coords.y * 0.01,
-      HBD_PINS_WORLDMAP_SHOW_WORLD)
-  end
-  return true
+  return Addon:OpenDungeonJournal()
 end
 
 -- A click on a Map button (or the Trainers tab's small map): the left button shows the npc on the map, the right button

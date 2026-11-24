@@ -32,6 +32,8 @@ read_globals = {
   "Enum", "GameFontNormalSmall", "GameTooltip", "GameTooltip_Hide", "ItemRefTooltip", "GameTooltip_SetTitle", "ListHeaderMixin", "MinimalSliderWithSteppersMixin",
   "NineSliceUtil", "ScrollUtil", "Spell", "StaticPopup_Show", "TooltipDataProcessor", "UIParent", "UISpecialFrames",
   "WorldMapFrame", "OpenWorldMap", "ToggleWorldMap",
+  "UIDropDownMenu_AddButton", "UIDropDownMenu_CreateInfo", "UIDropDownMenu_Initialize", "UIDropDownMenu_SetText",
+  "UIDropDownMenu_SetWidth", "CloseDropDownMenus",
 
   -- Constants and strings
   "BOOKTYPE_PET", "CANCEL", "ERR_CHAT_PLAYER_NOT_FOUND_S", "ERR_LEARN_SPELL_S", "ZOOM_IN", "ZOOM_OUT", "KEY_MOUSEWHEELUP", "KEY_MOUSEWHEELDOWN", "ROTATE_LEFT", "ROTATE_RIGHT", "RESET_POSITION", "debugprofilestop","ERR_LEARN_ABILITY_S","SPELL_FAILED_NOT_TAMEABLE", "FACTION_ALLIANCE", "FACTION_HORDE", "FRIENDS_TEXTURE_ONLINE",
@@ -46,6 +48,9 @@ read_globals = {
   "IsInGroup", "IsInRaid", "IsLoggedIn", "IsMouseButtonDown", "IsPassiveSpell", "IsPlayerSpell", "IsSpellKnown",
   "JoinPermanentChannel", "JoinTemporaryChannel", "LeaveChannelByName", "LoadAddOn", "PlaySound",
   "RemoveChatWindowChannel", "SetCVar",
+
+  -- The slash command registry, to detect and run DungeonJournal's "/dj" (Options > Integrations)
+  "ExecuteSlashCommand", "hash_SlashCmdList",
 
   -- Units
   "UnitArmor", "UnitAttackPower", "UnitAttackSpeed", "UnitClassification", "UnitCreatureFamily", "UnitCreatureType",

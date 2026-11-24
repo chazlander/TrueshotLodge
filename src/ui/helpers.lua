@@ -1,6 +1,7 @@
 local _, Addon = ...
 local Colors = Addon:GetModule("Colors")
 local Helpers = Addon:GetModule("Helpers")
+local L = Addon:GetModule("Locale")
 
 -- The small pieces the window's tabs share: text, panels, icons, tooltips, and formatting. A helper only one tab uses
 -- stays in that tab's file. Data helpers (the family label and icon, attack speed text, ...) are on Addon.
@@ -53,19 +54,31 @@ end
 
 -- A quiet button, as the website's Map buttons: a dark fill with a bronze edge and tan text, both gold under the
 -- pointer, grey text when disabled. So a long list of creatures leads with their names, not a column of red buttons.
--- The game swaps the fonts and shows the gold edge (its highlight layer) by itself: no scripts to keep.
+-- The game swaps the fonts and shows the gold edge (its highlight layer) by itself: no scripts to keep. A frame name and
+-- template are optional (the pet profile's Target button is a secure one, SecureActionButtonTemplate).
 local outlineFonts
-function Helpers.NewOutlineButton(parent)
+local function EnsureOutlineFonts()
   if not outlineFonts then
     outlineFonts = {}
-    for name, color in pairs({ Normal = Colors.Tan, Highlight = Colors.Gold, Disable = Colors.Disabled }) do
-      local font = CreateFont("TrueshotLodgeOutlineButton" .. name .. "Font")
+    for state, color in pairs({ Normal = Colors.Tan, Highlight = Colors.Gold, Disable = Colors.Disabled }) do
+      local font = CreateFont("TrueshotLodgeOutlineButton" .. state .. "Font")
       font:CopyFontObject(GameFontNormalSmall)
       font:SetTextColor(color:GetRGB())
-      outlineFonts[name] = font
+      outlineFonts[state] = font
     end
   end
-  local button = CreateFrame("Button", nil, parent)
+  return outlineFonts
+end
+
+-- The default font set an outline button uses (Normal/Highlight/Disable), for a caller that swaps a button to a
+-- font set of its own (tab-search.lua's smaller "Instance" label) and needs to put the default back.
+function Helpers.OutlineButtonFonts()
+  return EnsureOutlineFonts()
+end
+
+function Helpers.NewOutlineButton(parent, frameName, template)
+  local fonts = EnsureOutlineFonts()
+  local button = CreateFrame("Button", frameName, parent, template)
   local fill = button:CreateTexture(nil, "BACKGROUND")
   fill:SetAllPoints()
   fill:SetColorTexture(0, 0, 0, 0.35)
@@ -74,10 +87,53 @@ function Helpers.NewOutlineButton(parent)
   local text = button:CreateFontString(nil, "OVERLAY")
   text:SetPoint("CENTER")
   button:SetFontString(text)
-  button:SetNormalFontObject(outlineFonts.Normal)
-  button:SetHighlightFontObject(outlineFonts.Highlight)
-  button:SetDisabledFontObject(outlineFonts.Disable)
+  button:SetNormalFontObject(fonts.Normal)
+  button:SetHighlightFontObject(fonts.Highlight)
+  button:SetDisabledFontObject(fonts.Disable)
   return button
+end
+
+-- The favorite star every list row and the Pet Profile toggles a creature's favorite with: Blizzard's own, the exact
+-- one the Professions window's recipe list uses -- confirmed live, off the real button
+-- (ProfessionsFrame.CraftingPage.SchematicForm.FavoriteButton, found with /fstack): its icon is one atlas,
+-- "auctionhouse-icon-favorite" (filled gold) swapped for "auctionhouse-icon-favorite-off" (hollow) as the state
+-- changes, not a template with its own states to lean on. A client without these particular atlases (SetAtlas
+-- failing, caught with pcall) falls back to a plain star icon instead of breaking.
+local FAVORITE_ATLAS_ON = "auctionhouse-icon-favorite"
+local FAVORITE_ATLAS_OFF = "auctionhouse-icon-favorite-off"
+local FALLBACK_TEXTURE = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1" -- raid marker 1, the star
+
+function Helpers.NewFavoriteButton(parent)
+  local button = CreateFrame("Button", nil, parent)
+  button:SetSize(13, 13)
+  local icon = button:CreateTexture(nil, "ARTWORK")
+  icon:SetAllPoints()
+  button.icon = icon
+  button:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(Addon:IsFavorite(self.npcId) and L.REMOVE_FAVORITE or L.SET_FAVORITE, 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  button:SetScript("OnLeave", GameTooltip_Hide)
+  return button
+end
+
+-- Draws the favorite star itself (on a plain Texture, not necessarily Helpers.NewFavoriteButton's own icon): the
+-- Favorites filter icon on Database Search (Top) uses this directly, since it is one star for the whole list rather
+-- than one per creature.
+function Helpers.SetFavoriteIcon(icon, on)
+  local ok = pcall(icon.SetAtlas, icon, on and FAVORITE_ATLAS_ON or FAVORITE_ATLAS_OFF, false)
+  if not ok then
+    icon:SetTexture(FALLBACK_TEXTURE)
+    icon:SetVertexColor((on and Colors.Gold or Colors.Muted):GetRGB())
+  end
+end
+
+-- Points a favorite star at a creature and redraws it to match: called whenever the row or page around it refreshes,
+-- and again right after a click, so the star just pressed flips without waiting for that.
+function Helpers.UpdateFavoriteButton(button, id)
+  button.npcId = id
+  Helpers.SetFavoriteIcon(button.icon, Addon:IsFavorite(id))
 end
 
 function Helpers.TemplateExists(name)

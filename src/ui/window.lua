@@ -76,6 +76,13 @@ local TABS = {
     refresh = "RefreshLooks", details = "UpdateLookDetails", selection = "selectedLook" },
   { key = "BOUNTIES", label = L.BOUNTIES, title = L.BOUNTIES, icon = Window.BOUNTY_ICON,
     refresh = "RefreshBounties", details = "UpdateBountyDetails", selection = "selectedBounty" },
+  -- The website's Database Search icon (a bare FileDataID, as the Looks tab's): a creature link opens its profile,
+  -- so there is no "selection" of its own to remember. Filters across the top as dropdowns, as on the website
+  -- (tab-search.lua); an earlier layout with the filters as rows down the left shared that same file name, kept
+  -- beside this one to compare in game, then deleted once this one won out (key "SEARCHTOP": a leftover from when
+  -- this file was tab-search-top.lua, before the rename).
+  { key = "SEARCHTOP", label = L.SEARCH, title = L.SEARCH, icon = 134442,
+    refresh = "RefreshSearchTop", details = "UpdateSearchTopDetails" },
   { key = "STABLE", label = L.STABLE, title = L.STABLE, icon = "Interface\\Icons\\Ability_Hunter_BeastCall",
     refresh = "RefreshStable" },
   -- No side tabs: the gear and the "?" by the close button open these (Window:CreateTitleButtons).
@@ -231,6 +238,8 @@ function Window:Create()
   frame:HookScript("OnHide", function() self:OnHide() end)
   self:HookCollectorPolling(frame)
   self:CreateClearButton(frame)
+  self:CreateSearchTopBar(frame)
+  self:CreateSearchTopList(frame)
   -- Filter by Pet follows the pet: relist when it is summoned, dismissed or replaced.
   -- The level filter and highlight follow the character's level.
   frame:RegisterEvent("UNIT_PET")
@@ -424,6 +433,22 @@ function Window:OnHide()
   self:UpdateTabs()
 end
 
+-- The search row's plain place is pushed down by `drop` pixels while a tab has its own row above it (the Collected
+-- Data tab's Clear Data button, the Database Search tab's Level boxes): 0 resets it. Whichever tab's own update
+-- function applies calls this after the plain reset below, so only one of them ever wins.
+function Window:SetSearchRowDrop(drop)
+  local toggle, search, scrollBox = self.toggleButton, self.searchBox, self.scrollBox
+  if not (toggle and search and scrollBox) then return end
+  toggle:ClearAllPoints()
+  toggle:SetPoint("TOPRIGHT", -8, -10 - drop)
+  search:ClearAllPoints()
+  search:SetPoint("TOPLEFT", 13, -11 - drop)
+  search:SetPoint("RIGHT", toggle, "LEFT", -4, 0)
+  scrollBox:ClearAllPoints()
+  scrollBox:SetPoint("TOPLEFT", 8, -38 - drop)
+  scrollBox:SetPoint("BOTTOMRIGHT", -20, 5)
+end
+
 function Window:UpdateTabs()
   for _, tab in ipairs(self.tabs) do
     tab:SetChecked(tab.key == self.tab)
@@ -465,15 +490,28 @@ function Window:UpdateTabs()
   end
   if not self.dragTab then self:LayoutTabs() end -- (a tab being dragged is placed by the cursor)
   if TAB_BY_KEY[self.tab] then self.header:SetText(TAB_BY_KEY[self.tab].title) end
+  self:SetSearchRowDrop(0) -- the plain place; a tab's own row above the search box pushes it down below
   self:UpdateClearButton()
+  self:UpdateSearchTopBar()
   -- Stable and the pet profile fill the window beside the side tabs; the other tabs use the list and the details.
-  local stable, profile = self.tab == "STABLE", self.tab == "PET"
+  -- Database Search has no list of its own (its filters are the dropdown bar instead, tab-search.lua): the list
+  -- stays hidden and the details pane widens to the full window, as if the list were never there.
+  local stable, profile, fullWidth = self.tab == "STABLE", self.tab == "PET", self.tab == "SEARCHTOP"
   self.stable:SetShown(stable)
   if self.profile then self.profile:SetShown(profile) end
-  self.list:SetShown(not (stable or profile))
+  self.list:SetShown(not (stable or profile or fullWidth))
+  self.details:ClearAllPoints()
   if stable or profile then
     self.details:Hide()
     self.headerCount:SetText("")
+  elseif fullWidth then
+    self.details:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 5, -72)
+    self.details:SetPoint("BOTTOMRIGHT", -5, 5)
+    self.details:Show()
+  else
+    self.details:SetPoint("TOPLEFT", self.list, "TOPRIGHT", 2, 0)
+    self.details:SetPoint("BOTTOMRIGHT", -5, 5)
+    self.details:Show()
   end
   -- The Options tab's controls sit in the details: only on that tab.
   if self.optionControls and self.tab ~= "OPTIONS" then self.optionControls:Hide() end
@@ -488,7 +526,7 @@ end
 local ROW_KINDS = {
   { "rankInfo", "InitRankButton" }, { "setting", "InitOptionButton" }, { "trainer", "InitTrainerButton" },
   { "collected", "InitCollectedButton" }, { "bounty", "InitBountyButton" }, { "look", "InitLookButton" },
-  { "family", "InitFamilyButton" }, { "help", "InitHelpButton" },
+  { "family", "InitFamilyButton" }, { "help", "InitHelpButton" }, { "searchFilter", "InitSearchFilterButton" },
 }
 Window.ROW_KINDS = ROW_KINDS -- (.tools/smoke.py fills every row a tab lists through it)
 
@@ -631,32 +669,43 @@ function Window:CreateList(frame)
   ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 end
 
--- The filter buttons at the right of the header, in the Filters box: Level, Zone and Pet (Faction on the Trainers tab)
--- in a row, and Rares above Pet (`top`), beside the box's label. Each shows on the tabs it applies to; grey while off,
--- red and glowing while on. The setting is DB.global[key]; the Zone Filter's own rules are in zone-filter.lua.
-local CREATURE_LISTS = { UNIQUE = true, COMMON = true, ATTACK = true, BOUNTIES = true, FAMILIES = true, LOOKS = true }
+-- The filter buttons at the right of the header, in the Filters box: Level, Zone, Pet (Faction on the Trainers tab)
+-- and Tamed in a row, and Rares above Tamed (`top`), beside the box's label. Each shows on the tabs it applies to;
+-- grey while off, red and glowing while on. The setting is DB.global[key]; the Zone Filter's own rules are in
+-- zone-filter.lua.
+local CREATURE_LISTS = { UNIQUE = true, COMMON = true, ATTACK = true, BOUNTIES = true, FAMILIES = true, LOOKS = true,
+  SEARCHTOP = true }
 local FILTER_BUTTONS = {
   { key = "filter_by_level", label = L.FILTER_LEVEL, title = L.FILTER_BY_LEVEL, slot = 1,
-    tabs = { UNIQUE = true, COMMON = true, PASSIVE = true, ATTACK = true, BOUNTIES = true, FAMILIES = true, LOOKS = true } },
+    tabs = { UNIQUE = true, COMMON = true, PASSIVE = true, ATTACK = true, BOUNTIES = true, FAMILIES = true, LOOKS = true,
+      SEARCHTOP = true } },
   { key = "zone_filter", label = L.FILTER_ZONE, title = L.ZONE_FILTER_TITLE, slot = 2,
-    tabs = { UNIQUE = true, COMMON = true, ATTACK = true, TRAINERS = true, BOUNTIES = true, FAMILIES = true, LOOKS = true } },
+    tabs = { UNIQUE = true, COMMON = true, ATTACK = true, TRAINERS = true, BOUNTIES = true, FAMILIES = true, LOOKS = true,
+      SEARCHTOP = true } },
   { key = "filter_by_pet", label = L.FILTER_PET, title = L.FILTER_BY_PET, slot = 3, tabs = { UNIQUE = true, COMMON = true } },
   -- (the Pet place: the two never show on the same tab)
   { key = "filter_by_faction", label = L.FILTER_FACTION, title = L.FILTER_BY_FACTION, slot = 3, tabs = { TRAINERS = true } },
-  -- Rares: only the rare creatures, wherever creatures are listed. In the row above, over Pet.
-  { key = "filter_rares", label = L.FILTER_RARES, title = L.FILTER_BY_RARES, tooltip = L.FILTER_RARES_TOOLTIP, slot = 3,
+  -- Tamed: only the creatures already tamed, wherever creatures are listed.
+  { key = "filter_tamed", label = L.FILTER_TAMED, title = L.FILTER_BY_TAMED, tooltip = L.FILTER_TAMED_TOOLTIP, slot = 4,
+    tabs = CREATURE_LISTS },
+  -- Rares: only the rare creatures, wherever creatures are listed. In the row above, over Tamed.
+  { key = "filter_rares", label = L.FILTER_RARES, title = L.FILTER_BY_RARES, tooltip = L.FILTER_RARES_TOOLTIP, slot = 4,
     top = true, tabs = CREATURE_LISTS },
+  -- Favorites: only your favorites, wherever creatures are listed. Beside Rares, in the same top row: slot 3's
+  -- bottom-row place (Pet/Faction) never shows on these tabs, so the two rows never collide here.
+  { key = "filter_favorites", label = L.FILTER_FAVORITES, title = L.FILTER_BY_FAVORITES, tooltip = L.FILTER_FAVORITES_TOOLTIP,
+    slot = 3, top = true, tabs = CREATURE_LISTS },
 }
 local FILTER_WIDTH, FILTER_HEIGHT, FILTER_GAP = 58, 22, 6
--- The Filters box: fixed at the top right, as wide as three buttons whichever show, from under the title bar down to
+-- The Filters box: fixed at the top right, as wide as four buttons whichever show, from under the title bar down to
 -- the top of the panes (the list's top, 72), with the window's own edge on its right.
-local FILTER_SLOTS, FILTER_LEFT, FILTER_RIGHT = 3, 10, 8 -- the places; the room before the first and after the last
+local FILTER_SLOTS, FILTER_LEFT, FILTER_RIGHT = 4, 10, 8 -- the places; the room before the first and after the last
 -- Two rows: the box's label with the Rares button at its right end (a little shorter than the others, to fit under the
 -- title bar), then the row of buttons under them.
 local FILTER_BOX_TOP, FILTER_BOX_BOTTOM = 26, 72
 local FILTER_TOP_ROW, FILTER_TOP_HEIGHT = 0, 19 -- the top row's buttons: their top and their height
 local FILTER_BUTTONS_TOP = 21 -- the row under it: its top
-local FILTER_LABEL_SLOTS = 2 -- the label is centered over this many places from the left (clear of Rares)
+local FILTER_LABEL_SLOTS = 3 -- the label is centered over this many places from the left (clear of Rares)
 
 -- Whether a creature is rare (its classification, as the data has it: "Rare", "Rare Elite").
 function Window:NPCIsRare(npc)
@@ -716,6 +765,23 @@ function Window:CreateFilterButtons(frame)
       DB.global[filter.key] = not DB.global[filter.key]
       if PlaySound and SOUNDKIT then
         PlaySound(DB.global[filter.key] and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+      end
+      -- Database Search echoes the header's generic filters in its own Level, Zone and Favorites controls too, each
+      -- way: turned on (tab-search.lua) sets the tab's own control to agree, so it stops silently disagreeing with
+      -- the generic filter (still in force regardless); turned back off resets that control, rather than leaving it
+      -- switched on with nothing left to explain why. Rares and Tamed have no equivalent control of their own on
+      -- this tab (search-filters.lua's SearchNPCShown reads DB.global.filter_rares/filter_tamed directly), so there
+      -- is nothing to echo for those two, either way.
+      if self.tab == "SEARCHTOP" then
+        if DB.global[filter.key] then
+          if filter.key == "filter_by_level" then self:SearchTopUseCharacterLevel()
+          elseif filter.key == "zone_filter" then self:SearchTopUseCurrentZone()
+          elseif filter.key == "filter_favorites" then self:SearchTopUseFavorites() end
+        else
+          if filter.key == "filter_by_level" then self:SearchTopResetLevel()
+          elseif filter.key == "zone_filter" then self:SearchTopResetZone()
+          elseif filter.key == "filter_favorites" then self:SearchTopResetFavorites() end
+        end
       end
       self:UpdateFilterButtons()
       self:Refresh()
@@ -839,7 +905,8 @@ end
 -- have a creature whose name holds it (a rank, a family, a look, a bounty), and on the right only those creatures. The
 -- other tabs have no creatures, so there it searches the list itself (the Passive tab's abilities, trainers, options,
 -- help and collected data).
-local CREATURE_TABS = { UNIQUE = true, COMMON = true, ATTACK = true, FAMILIES = true, LOOKS = true, BOUNTIES = true }
+local CREATURE_TABS = { UNIQUE = true, COMMON = true, ATTACK = true, FAMILIES = true, LOOKS = true, BOUNTIES = true,
+  SEARCHTOP = true }
 
 -- Whether the search also matches the names on the left (an ability, a family, a look, a bounty), as it did before it
 -- searched creatures. Off: it searches creature names only. Set it to true to have both: an entry whose own name
@@ -912,10 +979,24 @@ function Window:SetCollapsed(category, key)
   end
 end
 
+-- The shared details-pane widgets every tab but Database Search draws into (an icon, a name, a description, the
+-- creature list, ...): shown by default, since every one of those tabs just fills in whichever ones it uses and
+-- leaves the rest alone, the same way they always did -- Database Search (Top) is the only tab with no use for any
+-- of them (its own dropdown bar and table fill the whole pane instead), so it is the only one that ever hides them.
+-- Reset here, before the tab's own refresh runs (each tab's own refresh calls its own "details" function directly,
+-- e.g. RefreshOptions calls UpdateOptionDetails itself -- Window:UpdateDetails below is a second, narrower entry
+-- point tab-abilities.lua uses on its own, not the one every tab switch goes through), so leaving Database Search
+-- does not leave every other tab missing pieces.
+local SHARED_DETAILS_WIDGETS = { "iconButton", "name", "subtitle", "facts", "nameLink", "description", "mapButton",
+  "miniMap", "npcLabel", "npcBox", "npcBar" }
+
 -- Fills the current tab, with the function the tab names (TABS); the ability tabs share one (tab-abilities.lua).
 function Window:Refresh()
   if not self.frame then return end
   if self.tab == "STABLE" then self:UpdateTabs() end -- (the Stable page shows in place of the list and details)
+  for _, key in ipairs(SHARED_DETAILS_WIDGETS) do
+    if self[key] then self[key]:Show() end
+  end
   local info = TAB_BY_KEY[self.tab]
   self[info and info.refresh or "RefreshAbilities"](self)
 end
@@ -1097,8 +1178,9 @@ function Window:SetMapButton(button, npc)
     button.hint = L.UNKNOWN_ZONE_TOOLTIP
   else
     button:SetText(L.MAP_UNAVAILABLE)
-    button:SetEnabled(false)
-    button.hint = nil
+    local hasJournal = Addon:HasDungeonJournal()
+    button:SetEnabled(hasJournal)
+    button.hint = hasJournal and L.MAP_UNAVAILABLE_JOURNAL_TOOLTIP or nil
   end
   button:SetWidth(math.max(44, math.ceil((button:GetTextWidth() or 60) + 24)))
 end
@@ -1264,6 +1346,9 @@ end
 
 -- Fills the details pane for the current tab's selection, with the function the tab names (TABS).
 function Window:UpdateDetails()
+  for _, key in ipairs(SHARED_DETAILS_WIDGETS) do
+    if self[key] then self[key]:Show() end
+  end
   local info = TAB_BY_KEY[self.tab]
   self[info and info.details or "UpdateAbilityDetails"](self)
 end

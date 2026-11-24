@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.60.1.47] - 2026-11-24
+
+- A creature's tooltip now shows when a TrueshotLodge hunter has tamed it: "Tamed" with the green dot, the day and
+  who. The map pins' tooltips carry the green dot after the name too.
+- The tooltip options are finer: Pet Tooltips and Pet Ability Tooltips still turn their lines on or off together, and
+  under each (Options, Tooltips) a checkbox turns each line on or off: Family, Attack Speed, Tamed, Abilities,
+  Tameable and Origin; Required Pet Level and Training Point Cost.
+- A pet's profile has a Target button between Back and Map: it targets the creature in game, when it is near enough
+  to see. The game does not let addons change your target in combat, so it waits until the fight is over.
+- A new Tamed filter, beside Rares: only the creatures you have already tamed, wherever creatures are listed.
+- A new Database Search tab: every tameable creature, filtered across the top by
+  Family, Classification, Diet, Taming (Any/Tamed/Sighted/Untamed), Ability and Zone, with a Level range, Added in
+  Forever and Favorites beside the search box. Click a column heading (Creature, Family, Level, Attack Speed or Zone)
+  to sort by it; click a result to open its profile. Rares, Tamed and Favorites now filter it too, the same as
+  everywhere else creatures are listed.
+- Favorites: a star next to a creature's name (Database Search) and at the top of its profile marks it a favorite. A Favorites filter sits beside Rares and Tamed,
+  wherever creatures are listed.
+- The Zone dropdown (Database Search) now groups its zones into submenus by continent (Eastern Kingdoms, Kalimdor,
+  and any other one of its own, like Zephras Isle), with Instances for a creature found only inside a dungeon.
+- Data since 1.60.1.46:
+  - 104 new tames (445 in all)
+  - 1 new creature (807 in all)
+  - 2 new sightings
+  - 27 new ability tames
+  - 1 new attack speed
+  - 3 new levels
+  - 3 new zones
+  - 15 new looks (186 in all)
+
+**Still missing** (as of this release):
+
+- 112 of 807 creatures have no known attack speed, 79 no level and 65 no zone (145 have no map points)
+
 ## [1.60.1.46] - 2026-11-15
 
 - Your known ability ranks no longer need Beast Training opened. At login, and whenever you level up or learn a

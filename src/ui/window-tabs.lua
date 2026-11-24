@@ -91,9 +91,11 @@ local function SideOf(key)
   return (DB.char.tab_side or {})[key] == "left" and "left" or "right"
 end
 
--- The first tab's offset (in the tabs' own scale) on a side.
-local function TabTop(side)
-  return TAB_TOP -- (the same on both sides)
+-- The first tab's offset (in the tabs' own scale) on a side: one tab's height (self.tabStep, set once the template's
+-- own size is known) above TAB_TOP, so the column starts flush with the header band instead of leaving a whole
+-- tab's worth of empty space below it before the first one.
+local function TabTop(self, side)
+  return TAB_TOP + (self.tabStep or 0) -- (the same on both sides)
 end
 
 -- A tab at `y` on a side: its edge against the window's.
@@ -261,7 +263,7 @@ function Window:LayoutTabs(columns, dragged)
   columns = columns or { left = Column(order, "left"), right = Column(order, "right") }
   local used = {}
   for _, side in ipairs({ "right", "left" }) do
-    local y = TabTop(side)
+    local y = TabTop(self, side)
     for _, key in ipairs(columns[side]) do
       local tab = byKey[key]
       if tab then
@@ -299,7 +301,7 @@ function Window:UpdateTabDrag()
   local columns = { left = Column(order, "left", tab.key), right = Column(order, "right", tab.key) }
   local column = columns[side]
   local count = #column + 1
-  local top = TabTop(side)
+  local top = TabTop(self, side)
   -- (in the tabs' own scale, as their offsets are)
   local offset = (cursorY / scale - frame:GetTop()) / TAB_SCALE - self.tabStep / 2
   offset = math.max(top - (count - 1) * self.tabStep, math.min(top, offset))

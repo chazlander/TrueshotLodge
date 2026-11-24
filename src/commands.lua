@@ -42,6 +42,7 @@ local DEBUG_COMMANDS = {
   { "tabs", "the parts of a side tab (a left-side one if any), to check its mirroring" },
   { "tabs art|mask|icon", "change how the left tabs are mirrored, live (art on/off, mask flip/keep/off, icon on/off)" },
   { "tabs right|left", "move the left tab column 1 pixel right or left, live" },
+  { "shots [npc ids]", "open each tab in turn and take a screenshot of it, then pet profiles (the given creatures, or three samples)" },
 }
 
 local Debug = {}
@@ -187,6 +188,97 @@ function Debug.tabs(option)
   return Addon:GetModule("Window"):DescribeTab()
 end
 
+-- `/tsl debug shots [npc ids]`: a screenshot of every tab, for checking the window after a change without clicking
+-- through it. It opens each side tab you have shown (in your order), then Options and Help, then a pet profile for
+-- each creature given, or for three samples: one with an attack speed a tame confirmed, one with a speed only seen in
+-- the wild (the grey "?"), and one with no known look (the "No Model" box). The game saves each picture in its
+-- Screenshots folder; the chat lists them in order when it is done. Leave the keyboard and mouse alone while it runs.
+local SHOT_SETTLE = 1.5 -- seconds a tab is given to draw (and its 3D model to load) before its picture is taken
+local SHOT_GAP = 1      -- seconds after a picture before the next tab opens
+
+-- The sample creatures for the pet profiles: the first (lowest id) of each kind.
+local function SampleProfiles()
+  local withLook = {}
+  for _, looks in pairs(Addon.TameableLooks or {}) do
+    for _, look in ipairs(looks) do
+      for _, npcId in ipairs(look.npcs or {}) do withLook[npcId] = true end
+    end
+  end
+  local confirmed, wild, noLook
+  for id, npc in pairs(Addon.TameableNPCs or {}) do
+    if not Addon.IGNORED_NPC_IDS[id] then
+      if npc.speed and npc.speed_tamed and withLook[id] and (not confirmed or id < confirmed) then confirmed = id end
+      if npc.speed and not npc.speed_tamed and (not wild or id < wild) then wild = id end
+      if not withLook[id] and (not noLook or id < noLook) then noLook = id end
+    end
+  end
+  local ids = {}
+  for _, id in ipairs({ confirmed, wild, noLook }) do
+    if id then ids[#ids + 1] = id end
+  end
+  return ids
+end
+
+function Debug.shots(...)
+  local Window = Addon:GetModule("Window")
+  if Addon.shooting then return Say("shots: already taking them") end
+  if not (_G.Screenshot and C_Timer and Window:IsAvailable()) then return Say("shots: this client cannot take them") end
+
+  -- What to show, in order: each a label and how to open it.
+  local steps = {}
+  for _, key in ipairs(Window:TabOrder()) do
+    local info
+    for _, tab in ipairs(Window.TABS) do
+      if tab.key == key then info = tab end
+    end
+    if info and not info.noSideTab and Window:TabShown(key) then
+      steps[#steps + 1] = { label = key, open = function() Window:SelectTab(key) end }
+    end
+  end
+  for _, key in ipairs({ "OPTIONS", "HELP" }) do
+    steps[#steps + 1] = { label = key, open = function() Window:SelectTab(key) end }
+  end
+  local ids = {}
+  for _, word in ipairs({ ... }) do
+    local id = tonumber(word)
+    if id and Addon:GetNPC(id) then ids[#ids + 1] = id end
+  end
+  if #ids == 0 then ids = SampleProfiles() end
+  for _, id in ipairs(ids) do
+    local npc = Addon:GetNPC(id)
+    steps[#steps + 1] = { label = "PET " .. id .. " " .. npc.name, open = function() Window:ShowPetProfile(id) end }
+  end
+
+  -- The game's "Screen captured" note would show in the next picture: it is kept quiet while the pictures are taken.
+  local status = _G.ActionStatus
+  if status and status.UnregisterEvent then pcall(status.UnregisterEvent, status, "SCREENSHOT_SUCCEEDED") end
+  local startTab = Window.tab
+  Addon.shooting = true
+  Window:Show()
+  Say("shots: taking", #steps, "pictures, about", math.ceil(#steps * (SHOT_SETTLE + SHOT_GAP)), "seconds. Hands off.")
+
+  local taken = {}
+  local function finish()
+    Addon.shooting = nil
+    if status and status.RegisterEvent then pcall(status.RegisterEvent, status, "SCREENSHOT_SUCCEEDED") end
+    if startTab and startTab ~= "PET" then Window:SelectTab(startTab) end
+    Say("shots: done,", #taken, "pictures in the Screenshots folder, in this order:")
+    for i, line in ipairs(taken) do print(("  %d. %s"):format(i, line)) end
+  end
+  local function step(i)
+    if i > #steps then return finish() end
+    local ok = pcall(steps[i].open)
+    C_Timer.After(SHOT_SETTLE, function()
+      if ok then
+        _G.Screenshot()
+        taken[#taken + 1] = date("%H:%M:%S") .. " " .. steps[i].label
+      end
+      C_Timer.After(SHOT_GAP, function() step(i + 1) end)
+    end)
+  end
+  step(1)
+end
+
 -- Lists globals that might belong to the Beast Training UI.
 local function ScanTrainingGlobals()
   local found = {}
@@ -272,12 +364,12 @@ function Debug.training(option)
 end
 
 -- `/tsl debug [command] [option]`: works only while Debug Mode (Options > Advanced) is on.
-function Commands:HandleDebug(command, option)
+function Commands:HandleDebug(command, ...)
   if not Addon:GetModule("DB").global.debug then
     return print(Addon.TITLE .. ": the debug commands need Debug Mode on (Options, the gear by the close button: Advanced).")
   end
   local run = command and Debug[command]
-  if run then return run(option) end
+  if run then return run(...) end
   if command then Say("unknown command:", command) end
   Say("commands (/tsl debug ...):")
   for _, entry in ipairs(DEBUG_COMMANDS) do
@@ -295,7 +387,7 @@ function Commands:Handle(message)
   elseif cmd == "help" then
     return UI:ShowSection("HELP")
   elseif cmd == "debug" then
-    return self:HandleDebug(args[2], args[3])
+    return self:HandleDebug(unpack(args, 2))
   end
   UI:Toggle()
 end

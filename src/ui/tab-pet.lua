@@ -132,9 +132,21 @@ function Window:CreatePetProfile(frame)
   end)
   self.profileBack = back
 
+  -- The favorite star, at the far left of the title row (fixed there, not beside the name itself: the title is
+  -- centered text spanning the pane's full width, so there is no one place next to the name to anchor it once the
+  -- name's own length changes). The title's own left margin is pulled in to clear it.
+  local favorite = Helpers.NewFavoriteButton(left)
+  favorite:SetPoint("TOPLEFT", left, "TOPLEFT", 8, -39)
+  favorite:SetScript("OnClick", function(button)
+    PlayClick()
+    Addon:ToggleFavorite(button.npcId)
+    Helpers.UpdateFavoriteButton(button, button.npcId)
+  end)
+  self.profileFavorite = favorite
+
   self.profileTitle = NewText(left, "GameFontHighlightLarge", "CENTER")
   self.profileTitle:SetPoint("TOP", 0, -40)
-  self.profileTitle:SetPoint("LEFT", 8, 0)
+  self.profileTitle:SetPoint("LEFT", 28, 0)
   self.profileTitle:SetPoint("RIGHT", -8, 0)
   self.profileSubtitle = NewText(left, "GameFontNormal", "CENTER")
   self.profileSubtitle:SetPoint("TOP", self.profileTitle, "BOTTOM", 0, -4)
@@ -190,6 +202,123 @@ function Window:CreatePetProfile(frame)
   map:SetScript("OnEnter", function(button) PinHelper:ShowMapTooltip(button) end)
   map:SetScript("OnLeave", GameTooltip_Hide)
   self.profileMap = map
+
+  self:CreateTargetButton(left)
+end
+
+-- ----------------------------------------------------------------------------
+-- The Target button
+-- ----------------------------------------------------------------------------
+
+-- Targets the creature shown, between Back and Map. Only the game's own secure buttons may change your target, so this
+-- is one (SecureActionButtonTemplate), running the macro "/cleartarget" then "/targetexact <name>", as RestedXP's
+-- Active Targets buttons do. The game finds the creature by its exact name, the nearest one it can see; a creature
+-- too far away is not found, and the chat says so.
+--
+-- A secure button inside the window would make the whole window protected in combat: it could not be closed or moved
+-- until the fight ended. So as a fight starts (PLAYER_REGEN_DISABLED, the last moment the game allows it) the button
+-- leaves the window for UIParent, hidden, and a plain stand-in takes its place that only says why it cannot target;
+-- when the fight is over it comes back. Nor may its macro change in combat, so a profile opened mid-fight gets its
+-- macro then.
+local TARGET_WIDTH = 70
+
+function Window:CreateTargetButton(left)
+  -- The stand-in, shown in combat: greyed out, with the reason on hover.
+  local standIn = Helpers.NewOutlineButton(left)
+  standIn:SetSize(TARGET_WIDTH, MAP_HEIGHT)
+  standIn:SetText(L.TARGET)
+  standIn:Disable()
+  standIn:SetMotionScriptsWhileDisabled(true)
+  standIn:SetScript("OnEnter", function(button)
+    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L.TARGET, 1, 1, 1)
+    Helpers.TipLine(L.TARGET_IN_COMBAT, Colors.Muted, true)
+    GameTooltip:Show()
+  end)
+  standIn:SetScript("OnLeave", GameTooltip_Hide)
+  standIn:Hide()
+  self.profileTargetStandIn = standIn
+  self.targetLeft = left
+
+  -- The name to target: the game's own (its language), else the data's.
+  local function TargetName()
+    local id = self.profileNpc
+    local npc = id and Addon:GetNPC(id)
+    return npc and (Addon:NPCGameName(id) or npc.name)
+  end
+  self.TargetName = TargetName
+
+  local events = CreateFrame("Frame")
+  events:RegisterEvent("PLAYER_REGEN_DISABLED")
+  events:RegisterEvent("PLAYER_REGEN_ENABLED")
+  events:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_REGEN_DISABLED" then
+      self:StowTargetButton()
+    else
+      self:UpdateTargetButton()
+    end
+  end)
+  self:UpdateTargetButton()
+end
+
+-- The secure button itself, made the first time it is needed out of combat.
+function Window:GetTargetButton()
+  if self.profileTarget then return self.profileTarget end
+  if InCombatLockdown() then return nil end
+  local target = Helpers.NewOutlineButton(self.targetLeft, "TrueshotLodgeTargetButton", "SecureActionButtonTemplate")
+  target:SetSize(TARGET_WIDTH, MAP_HEIGHT)
+  target:SetText(L.TARGET)
+  target:RegisterForClicks("AnyUp", "AnyDown") -- (the game acts on one of them, by its key-down setting)
+  target:SetAttribute("type", "macro")
+  target:HookScript("OnEnter", function(button)
+    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L.TARGET, 1, 1, 1)
+    if button.name then GameTooltip:AddLine(L.TARGET_TOOLTIP:format(Colors.NPC(button.name)), nil, nil, nil, true) end
+    GameTooltip:Show()
+  end)
+  target:HookScript("OnLeave", GameTooltip_Hide)
+  -- After the click: a word in the chat when nothing by that name was near enough.
+  target:HookScript("PostClick", function(button, _, down)
+    if down then return end
+    PlayClick()
+    local name = button.name
+    C_Timer.After(0.1, function()
+      local targeted = UnitExists("target") and Addon:Plain(UnitName("target"))
+      if name and targeted ~= name then Addon:Print(L.TARGET_NOT_FOUND:format(name)) end
+    end)
+  end)
+  self.profileTarget = target
+  return target
+end
+
+-- Out of combat: the secure button in the window, set to the creature shown, and the stand-in away.
+function Window:UpdateTargetButton()
+  if InCombatLockdown() then
+    self.profileTargetStandIn:Show()
+    return
+  end
+  local target = self:GetTargetButton()
+  if not target then return end
+  if target:GetParent() ~= self.targetLeft then target:SetParent(self.targetLeft) end
+  local name = self.TargetName()
+  target.name = name
+  target:SetAttribute("macrotext", name and ("/cleartarget\n/targetexact " .. name) or nil)
+  target:SetEnabled(name ~= nil)
+  self.profileTargetStandIn:Hide()
+  target:Show()
+  self:PlaceProfileButtons()
+end
+
+-- A fight starting: the secure button out of the window, hidden, and the stand-in in its place.
+function Window:StowTargetButton()
+  local target = self.profileTarget
+  if target then
+    target:Hide()
+    target:ClearAllPoints()
+    target:SetParent(UIParent)
+  end
+  self.profileTargetStandIn:Show()
+  self:PlaceProfileButtons()
 end
 
 -- ----------------------------------------------------------------------------
@@ -278,6 +407,7 @@ function Window:RefreshPetProfile()
   end
   self.headerCount:SetText("")
   self.profileBack:SetShown(self.petHistory ~= nil and #self.petHistory > 0)
+  Helpers.UpdateFavoriteButton(self.profileFavorite, npc.id)
   -- The name, with the infinity mark before it for a creature new in WoW Forever (as in the creature lists).
   self.profileTitle:SetText(npc.forever and ("|T%s:16:16:0:0|t %s"):format(Addon.FOREVER_ICON, npc.name) or npc.name)
   self.profileSubtitle:SetText(("%s %s %s"):format(L.LEVEL, npc.level_range or L.UNKNOWN, Addon:FamilyLabel(npc.family)))
@@ -289,5 +419,28 @@ function Window:RefreshPetProfile()
 
   -- The Map button, as in the creature lists (Window:InitNPCRow).
   self:SetMapButton(self.profileMap, npc)
-  self.profileBack:SetWidth(self.profileMap:GetWidth()) -- Back is as wide as Map, across from it
+  self:UpdateTargetButton() -- (its macro for this creature; placed with Back and Map)
+  self:PlaceProfileButtons()
+end
+
+-- Back, Target and Map across the top of the left pane. Back is as wide as Map when there is room (they look a pair),
+-- and Target sits in the middle of what is left between them, narrower when Map's word is long ("Unknown Zone").
+local BUTTON_GAP, BACK_MIN = 6, 60
+function Window:PlaceProfileButtons()
+  local back, map = self.profileBack, self.profileMap
+  local inner = Helpers.LIST_WIDTH - 20 -- (the pane less its 10-pixel margins)
+  local mapWidth = map:GetWidth()
+  local backWidth = math.max(BACK_MIN, math.min(mapWidth, inner - mapWidth - TARGET_WIDTH - 2 * BUTTON_GAP))
+  back:SetWidth(backWidth)
+  local from = back:IsShown() and (backWidth + BUTTON_GAP) or 0
+  local room = inner - mapWidth - BUTTON_GAP - from
+  local width = math.min(TARGET_WIDTH, room)
+  -- The secure Target button while it is in the window (out of combat), and the stand-in.
+  for _, target in pairs({ secure = self.profileTarget, standIn = self.profileTargetStandIn }) do
+    if target:GetParent() == self.targetLeft then
+      target:SetWidth(width)
+      target:ClearAllPoints()
+      target:SetPoint("TOPLEFT", 10 + from + (room - width) / 2, -10)
+    end
+  end
 end
